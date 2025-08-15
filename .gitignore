@@ -205,9 +205,40 @@ GeoLite2-City.mmdb
 *~
 
 # IDE specific
+# Cursor IDE
 .cursor/
+.cursor-*
+cursor.log
+cursor-*.log
+*.cursor-*
+
+# Trae AI IDE
 .trae/
+.trae-*
+trae.log
+trae-*.log
+*.trae-*
+trae_cache/
+trae_temp/
+
+# VS Code and related
+.vscode/
 *.code-workspace
+.vscode-*
+
+# Other AI-powered IDEs
+.windsurf/
+.bolt/
+.replit/
+.gitpod/
+.codespaces/
+
+# IDE temporary and cache files
+*.ide-*
+*.workspace
+*.session
+*.cache
+.idea-*
 
 # AI model files and caches
 *.pkl
