@@ -1,0 +1,82 @@
+{% from "_form_helpers.html" import render_field %}
+
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">{{ title }}</h4>
+    </div>
+    <form method="POST" novalidate>
+        <div class="card-body">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ render_field(form.name, class="form-control", placeholder="例如：小学高年级-鼓励式") }}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">适用年级 <span class="text-danger">*</span></label>
+                {% if form.grade_levels.errors %}
+                    {% for error in form.grade_levels.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="row mt-2">
+                {% for grade in form.grade_levels %}
+                    <div class="col-md-6">
+                        <div class="p-2 border rounded mb-2 d-flex align-items-center justify-content-between">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input grade-level-checkbox" 
+                                       name="{{ grade.name }}" 
+                                       value="{{ grade.data }}" 
+                                       id="{{ grade.id }}"
+                                       {% if grade.data in form.grade_levels.data %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ grade.id }}">
+                                    <strong>{{ grade.label.text }}</strong>
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input default-checkbox" 
+                                       type="checkbox" 
+                                       name="default_for_{{ grade.data }}" 
+                                       value="true" 
+                                       id="default-for-{{ grade.data }}"
+                                       {% if grade.data not in form.grade_levels.data %}disabled{% endif %}
+                                       {% if grade.data|int in default_grade_ids %}checked{% endif %}>
+                                <label class="form-check-label small text-muted" for="default-for-{{ grade.data }}">
+                                    设为默认
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ render_field(form.style_instructions, class="form-control", rows="12", placeholder="请在此处输入对AI的评语风格指令...") }}
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <a href="{{ url_for('admin.manage_prompt_styles') }}" class="btn btn-secondary">取消</a>
+            <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const gradeCheckboxes = document.querySelectorAll('.grade-level-checkbox');
+    gradeCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const gradeLevelId = this.value;
+            const defaultCheckbox = document.getElementById('default-gl-' + gradeLevelId);
+            if (this.checked) {
+                defaultCheckbox.disabled = false;
+            } else {
+                defaultCheckbox.disabled = true;
+                defaultCheckbox.checked = false;
+            }
+        });
+    });
+});
+</script> 

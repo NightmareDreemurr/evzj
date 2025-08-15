@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}作文详情 - {{ essay.student_profile.user.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">作文详情</h4>
+                    <div>
+                        <a href="javascript:history.back()" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回
+                        </a>
+                        {% if current_user.role == 'admin' %}
+                        <a href="{{ url_for('admin.essays') }}" class="btn btn-primary">
+                            <i class="fas fa-list"></i> 作文管理
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 基本信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>基本信息</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>学生姓名:</strong></td>
+                                    <td>{{ essay.student_profile.user.full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>作业标题:</strong></td>
+                                    <td>{{ essay.assignment.title }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>提交时间:</strong></td>
+                                    <td>{{ essay.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if essay.submitted_at else '未提交' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>状态:</strong></td>
+                                    <td>
+                                        {% if essay.status == 'graded' %}
+                                            <span class="badge bg-success">已评分</span>
+                                        {% elif essay.status == 'pending' %}
+                                            <span class="badge bg-warning">待评分</span>
+                                        {% elif essay.status.startswith('error') %}
+                                            <span class="badge bg-danger">评分失败</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ essay.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if essay.total_score is not none %}
+                                <tr>
+                                    <td><strong>总分:</strong></td>
+                                    <td><span class="badge bg-primary fs-6">{{ essay.total_score }}</span></td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            {% if essay.dimension_scores %}
+                            <h5>维度得分</h5>
+                            <div class="row">
+                                {% for score in essay.dimension_scores %}
+                                <div class="col-6 mb-2">
+                                    <div class="card bg-light">
+                                        <div class="card-body p-2 text-center">
+                                            <small class="text-muted">{{ score.dimension.name }}</small>
+                                            <div class="h5 mb-0">{{ score.score }}/{{ score.dimension.max_score }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 作文内容 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>作文内容</h5>
+                            <div class="card">
+                                <div class="card-body">
+                                    {% if essay.content %}
+                                        <div class="essay-content" style="line-height: 2; font-size: 16px; white-space: pre-wrap;">{{ essay.content }}</div>
+                                    {% else %}
+                                        <p class="text-muted">暂无内容</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 评分详情 -->
+                    {% if essay.grading_result %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>评分详情</h5>
+                            <div class="card">
+                                <div class="card-body">
+                                    {% set grading_data = essay.grading_result | from_json %}
+                                    
+                                    <!-- 总体评价 -->
+                                    {% if grading_data.overall_comment %}
+                                    <div class="mb-3">
+                                        <h6>总体评价</h6>
+                                        <p class="text-muted">{{ grading_data.overall_comment }}</p>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- 维度详情 -->
+                                    {% if grading_data.dimension_details %}
+                                    <div class="mb-3">
+                                        <h6>维度评分详情</h6>
+                                        {% for detail in grading_data.dimension_details %}
+                                        <div class="card mb-2">
+                                            <div class="card-header py-2">
+                                                <strong>{{ detail.dimension_name }}</strong>
+                                                <span class="badge bg-primary float-end">{{ detail.score }}/{{ detail.max_score }}</span>
+                                            </div>
+                                            <div class="card-body py-2">
+                                                <p class="mb-0">{{ detail.comment }}</p>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- 改进建议 -->
+                                    {% if grading_data.suggestions %}
+                                    <div class="mb-3">
+                                        <h6>改进建议</h6>
+                                        <ul class="list-group list-group-flush">
+                                            {% for suggestion in grading_data.suggestions %}
+                                            <li class="list-group-item px-0">{{ suggestion }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 修改记录 -->
+                    {% if essay.correction_result %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>修改记录</h5>
+                            <div class="card">
+                                <div class="card-body">
+                                    {% set correction_data = essay.correction_result | from_json %}
+                                    {% if correction_data.corrections %}
+                                        <div class="table-responsive">
+                                            <table class="table table-sm">
+                                                <thead>
+                                                    <tr>
+                                                        <th>位置</th>
+                                                        <th>原文</th>
+                                                        <th>修改后</th>
+                                                        <th>类型</th>
+                                                        <th>说明</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for correction in correction_data.corrections %}
+                                                    <tr>
+                                                        <td>{{ correction.position }}</td>
+                                                        <td><span class="text-danger">{{ correction.original }}</span></td>
+                                                        <td><span class="text-success">{{ correction.corrected }}</span></td>
+                                                        <td><span class="badge bg-info">{{ correction.type }}</span></td>
+                                                        <td>{{ correction.explanation }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% else %}
+                                        <p class="text-muted">无修改记录</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.essay-content {
+    font-family: 'Microsoft YaHei', sans-serif;
+    text-align: justify;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}编辑学校 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-school"></i> 编辑学校</h2>
+                <a href="{{ url_for('admin.schools') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回学校列表
+                </a>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">学校信息 - {{ school.name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 学校基本信息展示 -->
+                            <div class="row mb-4">
+                                <div class="col-md-12">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle"></i> 学校基本信息</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>学校ID:</strong> {{ school.id }}<br>
+                                                <strong>创建时间:</strong> {{ school.created_at.strftime('%Y-%m-%d %H:%M:%S') if school.created_at else '未知' }}<br>
+                                                <strong>教师数量:</strong> {{ school.teachers.count() }} 人
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>班级数量:</strong> {{ school.classrooms.count() }} 个<br>
+                                {% set student_count = 0 %}
+                                {% for classroom in school.classrooms %}
+                                    {% set student_count = student_count + classroom.enrollments|length %}
+                                {% endfor %}
+                                                <strong>学生数量:</strong> {{ student_count }} 人<br>
+                                                <strong>最后更新:</strong> {{ school.updated_at.strftime('%Y-%m-%d %H:%M:%S') if school.updated_at else '从未更新' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <form method="POST">
+                                {{ form.hidden_tag() }}
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id }}" class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+                                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">学校的正式名称，将在系统中显示</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.sort_name.id }}" class="form-label">{{ form.sort_name.label.text }} <span class="text-danger">*</span></label>
+                                    {{ form.sort_name(class="form-control" + (" is-invalid" if form.sort_name.errors else "")) }}
+                                    {% if form.sort_name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.sort_name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">用于排序和搜索的名称，建议使用简短易识别的名称</div>
+                                </div>
+                                
+                                <!-- 关联信息展示 -->
+                                {% if school.teachers %}
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-light">
+                                            <h6><i class="fas fa-chalkboard-teacher"></i> 教师列表</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>姓名</th>
+                                                            <th>用户名</th>
+                                                            <th>邮箱</th>
+                                                            <th>加入时间</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for teacher in school.teachers[:10] %}
+                                                        <tr>
+                                                            <td>{{ teacher.full_name }}</td>
+                                                            <td>{{ teacher.user.username }}</td>
+                                                            <td>{{ teacher.user.email }}</td>
+                                                            <td>{{ teacher.user.created_at.strftime('%Y-%m-%d') if teacher.user.created_at else '-' }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                                {% if school.teachers.count() > 10 %}
+                                                <p class="text-muted">显示前10位教师，共{{ school.teachers.count() }}位</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if school.classrooms %}
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="alert alert-light">
+                                            <h6><i class="fas fa-users"></i> 班级列表</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>班级名称</th>
+                                                            <th>入学年份</th>
+                                                            <th>毕业年份</th>
+                                                            <th>学生数量</th>
+                                                            <th>创建时间</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for classroom in school.classrooms[:10] %}
+                                                        <tr>
+                                                            <td>{{ classroom.class_name }}</td>
+                                                            <td>{{ classroom.entry_year }}</td>
+                                                            <td>{{ classroom.graduate_year }}</td>
+                                                            <td>{{ classroom.enrollments|length }}</td>
+                                                            <td>{{ classroom.created_at.strftime('%Y-%m-%d') if classroom.created_at else '-' }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                                {% if school.classrooms.count() > 10 %}
+                                                <p class="text-muted">显示前10个班级，共{{ school.classrooms.count() }}个</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin.schools') }}" class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times"></i> 取消
+                                    </a>
+                                    {{ form.submit(class="btn btn-primary") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

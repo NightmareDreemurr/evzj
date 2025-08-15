@@ -1,0 +1,525 @@
+<style>
+    .dimension-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: .25rem;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .dimension-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .rubric-card {
+        border: 1px solid #ced4da;
+        padding: 1rem;
+        border-radius: .25rem;
+        margin-top: 1rem;
+        background-color: #fff;
+    }
+    .select2-container--bootstrap-5 .select2-selection {
+        width: 100%;
+    }
+</style>
+
+<div id="basic-info-header" class="d-flex justify-content-between align-items-center mb-3">
+    <h4 id="basic-info-summary" class="mb-0"></h4>
+    <button type="button" id="edit-basic-info-btn" class="btn btn-secondary" style="display: none;">编辑基本信息</button>
+</div>
+
+<form id="standard-form" method="POST" action="{{ action_url }}" novalidate>
+    {{ form.hidden_tag() }}
+    <div id="basic-info-card" class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8 col-md-12 mb-3">
+                    {{ form.title.label(class="form-label") }}
+                    {{ form.title(class="form-control", placeholder="例如：四年级说明文写作标准") }}
+                </div>
+                <div class="col-lg-4 col-md-12 mb-3">
+                    {{ form.grade_level.label(class="form-label") }}
+                    {{ form.grade_level(class="form-select") }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-8 col-md-12 mb-3">
+                    {{ form.tags.label(class="form-label") }}
+                    <div class="w-100">
+                        {{ form.tags(class="form-select", id="tags", multiple="multiple", style="width: 100%;") }}
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-12 mb-3">
+                    <label class="form-label" for="total_score">总分</label>
+                    <input type="text" id="total_score" name="total_score" class="form-control" readonly placeholder="自动计算">
+                </div>
+            </div>
+            <button type="button" id="collapse-basic-info-btn" class="btn btn-primary">保存并折叠</button>
+        </div>
+    </div>
+    
+    <hr>
+    
+    <h4>评分维度</h4>
+    <table class="table table-bordered" id="collapsed-dimensions-table" style="display: none;">
+        <thead>
+            <tr>
+                <th style="width: 25%;">维度名称</th>
+                <th>评分等级概览</th>
+                <th style="width: 10%;">操作</th>
+            </tr>
+        </thead>
+        <tbody id="collapsed-dimensions-body">
+            <!-- Collapsed dimensions will be inserted here -->
+        </tbody>
+    </table>
+
+    <div id="dimensions-container">
+        <!-- 现有维度将通过 JS 预加载 -->
+    </div>
+
+    <button type="button" id="add-dimension-btn" class="btn btn-outline-primary mt-2">
+        <i class="fas fa-plus"></i> 添加维度
+    </button>
+
+    <div class="mt-4">
+        <input type="submit" class="btn btn-primary btn-lg" value="{{ submit_text }}">
+        <a href="{{ url_for('standards.manage_standards') }}" class="btn btn-secondary btn-lg">取消</a>
+    </div>
+</form>
+
+<!-- 维度模板 (隐藏) -->
+<template id="dimension-template">
+    <div class="dimension-card" data-dimension-index="{dimension_index}">
+        <div class="dimension-header">
+            <input type="text" name="dimensions-{dimension_index}-name" class="form-control dimension-name-input" placeholder="维度 {dimension_number}: 在此填写维度名称" value="{dimension_name}" required>
+            <div class="ms-3" style="min-width: 200px; display: flex; align-items:center;">
+                 <label class="form-label mb-0 me-2 text-nowrap fw-bold">维度满分:</label>
+                 <input type="number" name="dimensions-{dimension_index}-max_score" class="form-control dimension-max-score" placeholder="手动输入" value="{dimension_max_score}" required>
+            </div>
+            <button type="button" class="btn btn-danger remove-dimension-btn ms-3" style="white-space: nowrap;">删除维度</button>
+        </div>
+
+        <h6>评分等级</h6>
+        <div class="rubrics-container">
+            <!-- 现有等级将通过 JS 预加载 -->
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm add-rubric-btn">
+                <i class="fas fa-plus"></i> 添加等级
+            </button>
+            <button type="button" class="btn btn-primary btn-sm collapse-dimension-btn">保存并折叠</button>
+        </div>
+    </div>
+</template>
+
+<!-- 等级模板 (隐藏) -->
+<template id="rubric-template">
+    <div class="rubric-card" data-rubric-index="{rubric_index}">
+        <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-3 d-flex align-items-center">
+                <h4 class="rubric-level-display mb-0 ms-4 me-3">{level_letter}</h4>
+                <input type="hidden" class="rubric-level-input" name="dimensions-{dimension_index}-rubrics-{rubric_index}-level_name" value="{level_letter}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">分值</label>
+                <div class="input-group">
+                    <input type="number" step="0.5" name="dimensions-{dimension_index}-rubrics-{rubric_index}-min_score" class="form-control rubric-score" placeholder="下限" value="{rubric_min_score}" required>
+                    <span class="input-group-text">~</span>
+                    <input type="number" step="0.5" name="dimensions-{dimension_index}-rubrics-{rubric_index}-max_score" class="form-control rubric-score" placeholder="上限" value="{rubric_max_score}" required>
+                </div>
+            </div>
+        </div>
+        <div class="mb-2">
+             <label class="form-label fw-bold">具体标准</label>
+             <textarea name="dimensions-{dimension_index}-rubrics-{rubric_index}-description" class="form-control" rows="2" placeholder="详细描述该等级的标准" required>{rubric_description}</textarea>
+        </div>
+        <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-rubric-btn">移除此等级</button>
+        </div>
+    </div>
+</template>
+
+<!-- 折叠后的维度行模板 (隐藏) -->
+<template id="collapsed-dimension-template">
+    <tr data-dimension-index="{dimension_index}">
+        <td class="dimension-name-cell">{dimension_name}</td>
+        <td class="rubrics-summary-cell">{rubrics_summary}</td>
+        <td>
+            <button type="button" class="btn btn-secondary btn-sm edit-dimension-btn">展开编辑</button>
+        </td>
+    </tr>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- 1. INITIAL SETUP ---
+    const form = document.getElementById('standard-form');
+    const dimensionsContainer = document.getElementById('dimensions-container');
+    const addDimensionBtn = document.getElementById('add-dimension-btn');
+    const dimensionTemplate = document.getElementById('dimension-template');
+    const rubricTemplate = document.getElementById('rubric-template');
+    const totalScoreInput = document.querySelector('[name="total_score"]');
+    const collapsedDimensionsTable = document.getElementById('collapsed-dimensions-table');
+    const collapsedDimensionsBody = document.getElementById('collapsed-dimensions-body');
+    const collapsedDimensionTemplate = document.getElementById('collapsed-dimension-template');
+    const cancelBtn = document.querySelector('a.btn-secondary[href*="manage_standards"]');
+
+    // Basic Info elements
+    const basicInfoSummary = document.getElementById('basic-info-summary');
+    const editBasicInfoBtn = document.getElementById('edit-basic-info-btn');
+    const basicInfoCard = document.getElementById('basic-info-card');
+    const collapseBasicInfoBtn = document.getElementById('collapse-basic-info-btn');
+    const titleInput = document.querySelector('[name="title"]');
+    const gradeLevelSelect = document.querySelector('[name="grade_level"]');
+
+    // Initialize Select2 and Mark
+    $('#tags').select2({
+        theme: "bootstrap-5",
+        placeholder: "选择或创建标签",
+        tags: true,
+        tokenSeparators: [',', ' ']
+    });
+    marked.setOptions({
+        breaks: true // Convert single line breaks in text to <br>
+    });
+
+    // --- 2. STATE MANAGEMENT & CONFIG ---
+    const existingStandard = {{ standard_json|default('null')|safe }};
+    const isEditMode = !!(existingStandard && existingStandard.id);
+    const storageKey = isEditMode ? `standardFormData_${existingStandard.id}` : 'standardFormData_new';
+    let dimensionCounter = 0;
+
+    // --- 3. CORE FUNCTIONS ---
+
+    function updateBasicInfoSummary() {
+        const gradeLevelEl = gradeLevelSelect.options[gradeLevelSelect.selectedIndex];
+        const gradeLevelText = gradeLevelEl ? gradeLevelEl.text : '未指定年级';
+        const titleText = titleInput.value.trim() || '未命名标准';
+        const score = totalScoreInput.value || '0';
+        
+        const selectedTags = $('#tags').select2('data');
+        const tagNames = selectedTags.map(tag => tag.text).join(', ');
+        const tagText = tagNames ? ` (${tagNames})` : '';
+
+        basicInfoSummary.textContent = `${gradeLevelText} · ${titleText}${tagText} (${score}分)`;
+    }
+
+    function collapseBasicInfo() {
+        updateBasicInfoSummary();
+        basicInfoCard.style.display = 'none';
+        editBasicInfoBtn.style.display = 'block';
+    }
+
+    function expandBasicInfo() {
+        basicInfoCard.style.display = 'block';
+        editBasicInfoBtn.style.display = 'none';
+    }
+
+    function saveState() {
+        const dimensions = [];
+        document.querySelectorAll('.dimension-card').forEach(card => {
+            const dimensionIndex = card.dataset.dimensionIndex;
+            const rubrics = [];
+            card.querySelectorAll('.rubric-card').forEach(rubricCard => {
+                rubrics.push({
+                    level_name: rubricCard.querySelector('.rubric-level-input').value,
+                    min_score: rubricCard.querySelector(`input[name$="min_score"]`).value,
+                    max_score: rubricCard.querySelector(`input[name$="max_score"]`).value,
+                    description: rubricCard.querySelector(`textarea[name$="description"]`).value
+                });
+            });
+
+            dimensions.push({
+                name: card.querySelector('.dimension-name-input').value,
+                max_score: card.querySelector('.dimension-max-score').value,
+                rubrics: rubrics,
+                isCollapsed: card.style.display === 'none'
+            });
+        });
+
+        const state = {
+            title: document.querySelector('[name="title"]').value,
+            grade_level: document.querySelector('[name="grade_level"]').value,
+            tags: $('#tags').val(),
+            dimensions: dimensions,
+            basicInfoCollapsed: basicInfoCard.style.display === 'none'
+        };
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (e) {
+            console.error("Error saving state to localStorage:", e);
+        }
+    }
+
+    function loadState() {
+        const savedState = localStorage.getItem(storageKey);
+        if (!savedState) return false;
+
+        try {
+            const state = JSON.parse(savedState);
+            
+            // Restore form fields
+            document.querySelector('[name="title"]').value = state.title || '';
+            document.querySelector('[name="grade_level"]').value = state.grade_level || '';
+            $('#tags').val(state.tags || []).trigger('change');
+
+            // Clear existing elements before loading
+            dimensionsContainer.innerHTML = '';
+            collapsedDimensionsBody.innerHTML = '';
+            dimensionCounter = 0;
+
+            // Restore dimensions
+            if (state.dimensions) {
+                state.dimensions.forEach(dimData => {
+                    const newCard = addDimension(dimData);
+                    if (dimData.isCollapsed) {
+                        collapseDimension(newCard, false); // Pass false to prevent recursive save
+                    }
+                });
+            }
+
+            // Restore basic info collapsed state
+            if (state.basicInfoCollapsed) {
+                collapseBasicInfo();
+            } else {
+                expandBasicInfo();
+            }
+
+            updateTotalScore();
+            return true;
+        } catch (e) {
+            console.error("Error loading state from localStorage:", e);
+            localStorage.removeItem(storageKey); // Clear corrupted data
+            return false;
+        }
+    }
+
+    function clearState() {
+        localStorage.removeItem(storageKey);
+    }
+
+    function updateTotalScore() {
+        let total = 0;
+        document.querySelectorAll('.dimension-max-score').forEach(input => {
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val)) {
+                total += val;
+            }
+        });
+        totalScoreInput.value = total;
+        updateBasicInfoSummary();
+    }
+
+    function addDimension(data = {}) {
+        const dimensionIndex = dimensionCounter++;
+        const dimensionNumber = dimensionIndex + 1;
+        const template = dimensionTemplate.innerHTML
+            .replace(/{dimension_index}/g, dimensionIndex)
+            .replace(/{dimension_number}/g, dimensionNumber)
+            .replace('{dimension_name}', data.name || '')
+            .replace('{dimension_max_score}', data.max_score || '');
+        
+        dimensionsContainer.insertAdjacentHTML('beforeend', template);
+        const newDimensionCard = dimensionsContainer.lastElementChild;
+        const rubricsContainer = newDimensionCard.querySelector('.rubrics-container');
+        
+        if (data.rubrics && data.rubrics.length > 0) {
+            data.rubrics.forEach(rubricData => addRubric(rubricsContainer, dimensionIndex, rubricData));
+        } else {
+            addRubric(rubricsContainer, dimensionIndex); // Add one default rubric
+        }
+        
+        updateTotalScore();
+        return newDimensionCard;
+    }
+
+    function addRubric(container, dimensionIndex, data = {}) {
+        const rubricIndex = container.children.length;
+        const levelLetter = String.fromCharCode(65 + rubricIndex); // A, B, C...
+        const template = rubricTemplate.innerHTML
+            .replace(/{dimension_index}/g, dimensionIndex)
+            .replace(/{rubric_index}/g, rubricIndex)
+            .replace(/{level_letter}/g, levelLetter)
+            .replace('{rubric_level_name}', data.level_name || levelLetter)
+            .replace('{rubric_min_score}', data.min_score ?? '')
+            .replace('{rubric_max_score}', data.max_score ?? '')
+            .replace('{rubric_description}', data.description || '');
+
+        container.insertAdjacentHTML('beforeend', template);
+        return container.lastElementChild;
+    }
+
+    function collapseDimension(dimensionCard, doSaveState = true) {
+        const dimensionIndex = dimensionCard.dataset.dimensionIndex;
+        const dimensionName = dimensionCard.querySelector('.dimension-name-input').value || '未命名维度';
+        
+        let rubricsSummary = '';
+        dimensionCard.querySelectorAll('.rubric-card').forEach((rubricCard, index) => {
+            const level = rubricCard.querySelector('.rubric-level-input').value;
+            const desc = rubricCard.querySelector('textarea').value;
+            const minScore = rubricCard.querySelector('input[name*="min_score"]').value;
+            const maxScore = rubricCard.querySelector('input[name*="max_score"]').value;
+
+            // Generate a summary for each rubric
+            if(index > 0) {
+                 rubricsSummary += '<hr class="my-1">';
+            }
+            const parsedDesc = marked.parseInline(desc || '无描述');
+            rubricsSummary += `<div><strong>${level} (${minScore}~${maxScore}分):</strong> ${parsedDesc}</div>`;
+        });
+
+        // If no rubrics, show a message
+        if (!rubricsSummary) {
+            rubricsSummary = '<p class="text-muted">暂无评分等级</p>';
+        }
+
+        // Create or update the collapsed row
+        let collapsedRow = collapsedDimensionsBody.querySelector(`tr[data-dimension-index="${dimensionIndex}"]`);
+        if (collapsedRow) {
+            collapsedRow.querySelector('.dimension-name-cell').innerHTML = marked.parseInline(dimensionName);
+            collapsedRow.querySelector('.rubrics-summary-cell').innerHTML = rubricsSummary;
+        } else {
+            const parsedDimensionName = marked.parseInline(dimensionName);
+            const rowHTML = collapsedDimensionTemplate.innerHTML
+                .replace('{dimension_index}', dimensionIndex)
+                .replace('{dimension_name}', parsedDimensionName)
+                .replace('{rubrics_summary}', rubricsSummary);
+            collapsedDimensionsBody.insertAdjacentHTML('beforeend', rowHTML);
+        }
+
+        dimensionCard.style.display = 'none';
+        collapsedDimensionsTable.style.display = 'table';
+
+        if(doSaveState) {
+           saveState();
+        }
+    }
+
+    function expandDimension(dimensionIndex) {
+        const dimensionCard = dimensionsContainer.querySelector(`.dimension-card[data-dimension-index="${dimensionIndex}"]`);
+        if(dimensionCard) {
+            dimensionCard.style.display = 'block';
+        }
+        const collapsedRow = collapsedDimensionsBody.querySelector(`tr[data-dimension-index="${dimensionIndex}"]`);
+        if(collapsedRow) {
+            collapsedRow.remove();
+        }
+        if(collapsedDimensionsBody.children.length === 0) {
+            collapsedDimensionsTable.style.display = 'none';
+        }
+        if (dimensionCard) dimensionCard.querySelector('.dimension-name-input').focus();
+    }
+    
+    function preloadData(standard) {
+        if (!standard) return;
+        
+        document.querySelector('[name="title"]').value = standard.title;
+        document.querySelector('[name="grade_level"]').value = standard.grade_level_id;
+        
+        if (standard.tags) {
+            const tags = standard.tags.map(tag => {
+                // Create the option if it doesn't exist
+                if (!$('#tags').find(`option[value="${tag.id}"]`).length) {
+                    const newOption = new Option(tag.name, tag.id, true, true);
+                    $('#tags').append(newOption);
+                }
+                return tag.id;
+            });
+            $('#tags').val(tags).trigger('change');
+        }
+
+        dimensionsContainer.innerHTML = '';
+        if (standard.dimensions && standard.dimensions.length > 0) {
+            standard.dimensions.forEach(dim => {
+                const newCard = addDimension(dim);
+                collapseDimension(newCard, false);
+            });
+        }
+    }
+
+    // --- 5. EVENT LISTENERS ---
+    form.addEventListener('submit', clearState);
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', clearState);
+    }
+
+    titleInput.addEventListener('input', updateBasicInfoSummary);
+    gradeLevelSelect.addEventListener('change', updateBasicInfoSummary);
+    $('#tags').on('change', updateBasicInfoSummary);
+    collapseBasicInfoBtn.addEventListener('click', collapseBasicInfo);
+    editBasicInfoBtn.addEventListener('click', expandBasicInfo);
+
+    addDimensionBtn.addEventListener('click', () => {
+        const newCard = addDimension();
+        newCard.querySelector('.dimension-name-input').focus();
+        saveState();
+    });
+
+    dimensionsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-dimension-btn')) {
+            e.target.closest('.dimension-card').remove();
+            updateTotalScore();
+            saveState();
+        }
+        if (e.target.classList.contains('add-rubric-btn')) {
+            const dimensionCard = e.target.closest('.dimension-card');
+            const rubricsContainer = dimensionCard.querySelector('.rubrics-container');
+            const dimensionIndex = dimensionCard.dataset.dimensionIndex;
+            addRubric(rubricsContainer, dimensionIndex);
+            saveState();
+        }
+        if (e.target.classList.contains('remove-rubric-btn')) {
+            const rubricCard = e.target.closest('.rubric-card');
+            const dimensionCard = e.target.closest('.dimension-card');
+            rubricCard.remove();
+            // Re-label remaining rubrics
+            const rubricsContainer = dimensionCard.querySelector('.rubrics-container');
+            rubricsContainer.querySelectorAll('.rubric-card').forEach((card, index) => {
+                const letter = String.fromCharCode(65 + index);
+                card.querySelector('.rubric-level-display').textContent = letter;
+                card.querySelector('.rubric-level-input').value = letter;
+            });
+            saveState();
+        }
+        if (e.target.classList.contains('collapse-dimension-btn')) {
+            collapseDimension(e.target.closest('.dimension-card'));
+        }
+    });
+    
+    collapsedDimensionsTable.addEventListener('click', function(e) {
+        if (e.target.classList.contains('edit-dimension-btn')) {
+            const dimensionRow = e.target.closest('tr');
+            expandDimension(dimensionRow.dataset.dimensionIndex);
+            saveState();
+        }
+    });
+
+    // Save state on any input change within the form
+    form.addEventListener('input', () => {
+        // Debounce saveState to avoid excessive calls
+        clearTimeout(window.saveStateTimeout);
+        window.saveStateTimeout = setTimeout(saveState, 500);
+    });
+
+    // --- 7. INITIALIZATION ---
+    const stateLoaded = loadState();
+
+    if (!stateLoaded) {
+        if (isEditMode) {
+            // EDIT mode, first visit: load from server and collapse all.
+            preloadData(existingStandard);
+            collapseBasicInfo();
+        } else {
+            // ADD mode, first visit: expand all.
+            expandBasicInfo();
+        }
+    }
+
+    // Final setup, called after any data loading.
+    updateTotalScore();
+});
+</script> 

@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}管理员后台 - {{ super() }}{% endblock %}
+
+{% block page_title %}管理员仪表盘{% endblock %}
+
+
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2"><i class="fas fa-tachometer-alt"></i> 管理员仪表盘</h1>
+        <div class="text-muted">
+            <i class="fas fa-clock"></i> 最后更新: {{ moment().format('YYYY-MM-DD HH:mm') }}
+        </div>
+    </div>
+    <p>欢迎回来, {{ current_user.username }}!</p>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-primary h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">总用户数</h5>
+                        <h3 class="mb-0">{{ stats.total_users if stats else '1,234' }}</h3>
+                        <small class="opacity-75">系统注册用户</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-success h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">教师数量</h5>
+                        <h3 class="mb-0">{{ stats.total_teachers if stats else '156' }}</h3>
+                        <small class="opacity-75">注册教师用户</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-chalkboard-teacher fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-info h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">学生数量</h5>
+                        <h3 class="mb-0">{{ stats.total_students if stats else '1,078' }}</h3>
+                        <small class="opacity-75">注册学生用户</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-user-graduate fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-warning h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">学校数量</h5>
+                        <h3 class="mb-0">{{ stats.total_schools if stats else '25' }}</h3>
+                        <small class="opacity-75">合作学校</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-school fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-secondary h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">班级数量</h5>
+                        <h3 class="mb-0">{{ stats.total_classrooms if stats else '89' }}</h3>
+                        <small class="opacity-75">活跃班级</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-door-open fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-dark h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">作业数量</h5>
+                        <h3 class="mb-0">{{ stats.total_assignments if stats else '342' }}</h3>
+                        <small class="opacity-75">已发布作业</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-tasks fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white h-100" style="background-color: #6f42c1 !important;">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">作文数量</h5>
+                        <h3 class="mb-0">{{ stats.total_essays if stats else '5,678' }}</h3>
+                        <small class="opacity-75">学生提交</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-file-alt fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card text-white bg-danger h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">待处理任务</h5>
+                        <h3 class="mb-0">{{ stats.pending_tasks if stats else '90' }}</h3>
+                        <small class="opacity-75">需要关注</small>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 最近注册用户 -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> 最近注册用户</h5>
+                    <a href="{{ url_for('admin.users') if url_for else '#' }}" class="btn btn-sm btn-outline-primary">
+                        查看全部 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>角色</th>
+                                    <th>学校</th>
+                                    <th>注册时间</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-2">
+                                                <div class="avatar-title bg-light text-primary rounded-circle">
+                                                    {{ user.username[0].upper() }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ user.username }}</div>
+                                                {% if user.full_name %}
+                                                <small class="text-muted">{{ user.full_name }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        {% if user.role == 'admin' %}
+                                            <span class="badge bg-danger">管理员</span>
+                                        {% elif user.role == 'teacher' %}
+                                            <span class="badge bg-success">教师</span>
+                                        {% elif user.role == 'student' %}
+                                            <span class="badge bg-info">学生</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.role == 'teacher' and user.teacher_profile and user.teacher_profile.school %}
+                                            {{ user.teacher_profile.school.name }}
+                                        {% elif user.role == 'student' and user.student_profile %}
+                                            {% set enrollment = user.student_profile.enrollments.first() %}
+                                            {% if enrollment and enrollment.classroom.school %}
+                                                {{ enrollment.classroom.school.name }}
+                                            {% else %}
+                                                <span class="text-muted">未分配</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ user.created_at.strftime('%m-%d %H:%M') if user.created_at else '-' }}</small>
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">正常</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">停用</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>用户</th>
+                                    <th>操作</th>
+                                    <th>时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>student1@example.com</td>
+                                    <td>提交了一篇新作文</td>
+                                    <td>2025-07-12 14:30</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>teacher1@example.com</td>
+                                    <td>创建了新的评分标准</td>
+                                    <td>2025-07-12 13:00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- 快速操作 -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> 快速操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.create_user') if url_for else '#' }}" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> 新增用户
+                        </a>
+                        <a href="{{ url_for('admin.create_school') if url_for else '#' }}" class="btn btn-success">
+                            <i class="fas fa-school"></i> 新增学校
+                        </a>
+                        <a href="{{ url_for('admin.create_classroom') if url_for else '#' }}" class="btn btn-info">
+                            <i class="fas fa-door-open"></i> 新增班级
+                        </a>
+                        <a href="{{ url_for('admin.create_prompt_style') if url_for else '#' }}" class="btn btn-warning">
+                            <i class="fas fa-palette"></i> 新增评语风格
+                        </a>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6 class="mb-3">系统管理</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.system_stats') if url_for else '#' }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-chart-bar"></i> 系统统计
+                        </a>
+                        <a href="{{ url_for('admin.users') if url_for else '#' }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-users"></i> 用户管理
+                        </a>
+                        <a href="{{ url_for('admin.schools') if url_for else '#' }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-school"></i> 学校管理
+                        </a>
+                        <a href="{{ url_for('admin.classrooms') if url_for else '#' }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-door-open"></i> 班级管理
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+}
+
+.avatar-title {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

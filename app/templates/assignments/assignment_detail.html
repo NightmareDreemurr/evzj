@@ -1,0 +1,1168 @@
+{% extends "base.html" %}
+{% from "_form_helpers.html" import render_field %}
+
+{% block title %}作业详情 - {{ assignment.title }}{% endblock %}
+
+{% block head %}
+<style>
+    /* 移动端优化样式 */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            line-height: 1.3;
+        }
+        .page-header p {
+            font-size: 0.9rem;
+        }
+        .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        /* 卡片优化 */
+        .card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .card-body {
+            padding: 15px;
+        }
+        .card-header {
+            padding: 12px 15px;
+        }
+        .card-header h6 {
+            font-size: 1rem;
+        }
+        
+        /* 表单优化 */
+        .nav-tabs {
+            flex-wrap: wrap;
+        }
+        .nav-tabs .nav-link {
+            font-size: 0.9rem;
+            padding: 8px 12px;
+        }
+        .form-control {
+            font-size: 16px; /* 防止iOS缩放 */
+        }
+        textarea.form-control {
+            min-height: 200px;
+        }
+        
+        /* 提交记录优化 */
+        .list-group-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        .list-group-item h5 {
+            font-size: 1.1rem;
+        }
+        .list-group-item p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        /* 折叠面板优化 */
+        .accordion-button {
+            font-size: 0.9rem;
+            padding: 12px 15px;
+        }
+        .accordion-body {
+            padding: 15px;
+        }
+        
+        /* 文件上传区域优化 */
+        .drop-zone {
+            padding: 30px 15px;
+            text-align: center;
+        }
+        .drop-zone i {
+            font-size: 2rem;
+        }
+        .drop-zone p {
+            font-size: 0.9rem;
+        }
+        
+        /* 表格优化 */
+        .table-responsive {
+            border-radius: 8px;
+        }
+        .table {
+            font-size: 0.85rem;
+        }
+        .table th,
+        .table td {
+            padding: 8px;
+            vertical-align: middle;
+        }
+        
+        /* 移动端表格替换为卡片 */
+        .desktop-table {
+            display: none;
+        }
+        .mobile-submissions {
+            display: block;
+        }
+        .submission-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            padding-right: 45px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #007bff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+        }
+        
+        .submission-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .submission-card:hover .card-arrow {
+            color: #007bff;
+            opacity: 1;
+        }
+        
+        .submission-card:active {
+            transform: translateY(0);
+        }
+        .submission-card.graded {
+            border-left-color: #28a745;
+        }
+        .submission-card.error {
+            border-left-color: #dc3545;
+        }
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .student-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+        .submission-time {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .submission-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .submission-status {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .submission-score {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1rem;
+        }
+        .card-arrow {
+             position: absolute;
+             top: 50%;
+             right: 16px;
+             transform: translateY(-50%);
+             color: #6c757d;
+             font-size: 14px;
+             opacity: 0.7;
+         }
+        
+        /* 导航标签优化 */
+        .nav-pills {
+            gap: 8px;
+        }
+        
+        .nav-pills .nav-link {
+            padding: 8px 12px;
+            font-size: 14px;
+            white-space: nowrap;
+            border-radius: 20px;
+        }
+        
+        .nav-pills .nav-item {
+            margin-bottom: 8px;
+        }
+        
+        /* 按钮优化 */
+        .btn-sm {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+        }
+        
+        /* 图表容器优化 */
+        .chart-container {
+            height: 250px !important;
+        }
+        
+        /* 分页优化 */
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .page-link {
+            font-size: 0.9rem;
+            padding: 6px 10px;
+        }
+        
+        /* 状态标签优化 */
+        .status-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        /* 评分详情优化 */
+        .score-details {
+            font-size: 0.85rem;
+        }
+        .score-details .row {
+            margin: 0;
+        }
+        .score-details .col-md-6 {
+            padding: 0 8px;
+            margin-bottom: 15px;
+        }
+        
+        /* 隐藏桌面端专用元素 */
+        .desktop-only {
+            display: none;
+        }
+        .desktop-table {
+            display: none;
+        }
+        .mobile-submissions {
+            display: block;
+        }
+    }
+    
+    @media (min-width: 769px) {
+        .mobile-only {
+            display: none;
+        }
+        .desktop-table {
+            display: block;
+        }
+        .mobile-submissions {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <div>
+            <h1 class="h3 mb-1 text-gray-800">{{ assignment.title }}</h1>
+            <p class="mb-0 text-muted">
+                发布于: {{ assignment.created_at.strftime('%Y-%m-%d %H:%M') }} | 
+                截止日期: <span class="{{ 'text-danger' if assignment.due_date and assignment.due_date < now else '' }}">{{ assignment.due_date.strftime('%Y-%m-%d %H:%M') if assignment.due_date else '无' }}</span>
+            </p>
+        </div>
+        {% if current_user.role in ['admin', 'teacher'] %}
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('assignments.submissions', assignment_id=assignment.id) }}" class="btn btn-primary">
+                <i class="fas fa-list-ul mr-2"></i>查看具体情况
+            </a>
+            <a href="{{ url_for('assignments.assignment_report', assignment_id=assignment.id) }}" class="btn btn-info">
+                <i class="fas fa-chart-bar mr-2"></i>作业报告
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Assignment Description -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">作业要求</h6>
+        </div>
+        <div class="card-body">
+            {{ assignment.description | safe if assignment.description else '该作业没有详细描述。' }}
+        </div>
+    </div>
+
+    {# For Teachers/Admins: Display the grading standard in a collapsible panel #}
+    {% if current_user.role in ['admin', 'teacher'] %}
+    <div class="accordion mt-4" id="gradingStandardAccordion">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGradingStandard" aria-expanded="false" aria-controls="collapseGradingStandard">
+                    <strong>评分标准详情:</strong> {{ assignment.grading_standard.title }} (总分: {{ assignment.grading_standard.total_score }})
+                </button>
+            </h2>
+            <div id="collapseGradingStandard" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#gradingStandardAccordion">
+                <div class="accordion-body">
+                    {% include 'standards/_standard_details.html' with context %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# For Students: Display submission form and previous submissions #}
+    {% if current_user.role == 'student' %}
+    <!-- Submission Form -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">提交我的作业</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id) }}" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+
+                <!-- Tab Navs -->
+                <ul class="nav nav-tabs" id="submissionTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-panel" type="button" role="tab" aria-controls="text-panel" aria-selected="true">
+                            <i class="fas fa-keyboard mr-1"></i> 输入文字
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image-panel" type="button" role="tab" aria-controls="image-panel" aria-selected="false">
+                            <i class="fas fa-image mr-1"></i> 上传图片
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content pt-3" id="submissionTabContent">
+                    <!-- Text Input Panel -->
+                    <div class="tab-pane fade show active" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
+                        <div class="mb-3">
+                            {{ render_field(form.content, class="form-control", rows=15, placeholder='请在此处输入你的作文...') }}
+                        </div>
+                    </div>
+                    <!-- Image Upload Panel -->
+                    <div class="tab-pane fade" id="image-panel" role="tabpanel" aria-labelledby="image-tab">
+                        <div class="mb-3">
+                             {{ render_field(form.image, class="form-control") }}
+                             <small class="form-text text-muted">请上传清晰的作文图片，系统将自动识别图片中的文字。</small>
+                        </div>
+                    </div>
+                </div>
+
+                {% if form.content.errors or form.image.errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.content.errors %}
+                            <span>{{ error }}</span><br>
+                        {% endfor %}
+                        {% for error in form.image.errors %}
+                            <span>{{ error }}</span><br>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <input type="submit" value="{{ form.submit.label.text }}" class="btn btn-primary mt-3">
+            </form>
+        </div>
+    </div>
+
+    <!-- Submission History -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">我的提交记录</h6>
+        </div>
+        <div class="card-body">
+            {% if submissions %}
+            <div class="list-group">
+                {% for sub in submissions %}
+                <div class="list-group-item list-group-item-action flex-column align-items-start">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">第 {{ loop.revindex }} 次提交</h5>
+                        <small>提交于: {{ sub.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                    </div>
+                    <p class="mb-1 mt-2 text-gray-800" style="white-space: pre-wrap;">{{ sub.content }}</p>
+                    
+                    {# --- Status Text Logic --- #}
+                    {% set status_map = {
+                        'graded': ('#28a745', '已批改'),
+                        'submitted': ('#007bff', '已提交'),
+                        'grading': ('#ffc107', '批改中...'),
+                        'error_api': ('#dc3545', 'API错误'),
+                        'error_parsing': ('#dc3545', '解析错误'),
+                        'error_no_text': ('#dc3545', '无文本'),
+                        'error_no_standard': ('#dc3545', '无标准'),
+                        'error_unknown': ('#dc3545', '未知错误')
+                    } %}
+                    {% set status_color = status_map.get(sub.status, ('#6c757d', sub.status))[0] %}
+                    {% set status_text = status_map.get(sub.status, ('#6c757d', sub.status))[1] %}
+                    <small>状态: <span class="status-icon" style="background-color: {{ status_color }};"></span><strong style="color: {{ status_color }};">{{ status_text }}</strong></small>
+
+                    {# --- AI Score Display --- #}
+                    {% if sub.ai_score %}
+                    <div class="mt-3">
+                        <a class="btn btn-primary btn-sm" data-bs-toggle="collapse" href="#collapse-critique-{{ sub.id }}" role="button" aria-expanded="false" aria-controls="collapse-critique-{{ sub.id }}">
+                            <i class="fas fa-comment-dots mr-1"></i> 查看AI老师评语详情
+                        </a>
+                    </div>
+                    <div class="mt-2 collapse" id="collapse-critique-{{ sub.id }}">
+                        <div class="card card-body bg-light">
+                            {% set score_data = sub.ai_score %}
+                            <div class="row score-details">
+                                <div class="col-md-6">
+                                    <h5 class="card-title">AI总体评价</h5>
+                                    <p class="mb-1"><strong>总分:</strong> {{ score_data.total_score }}</p>
+                                    <p class="mb-0"><strong>评语:</strong> {{ score_data.overall_comment }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-thumbs-up text-success"></i> 主要优点:</h6>
+                                    <ul class="list-group list-group-flush small">
+                                        {% for strength in score_data.strengths %}
+                                        <li class="list-group-item bg-light py-1">{{ strength }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <h6 class="mt-3"><i class="fas fa-edit text-warning"></i> 改进建议:</h6>
+                                    <ul class="list-group list-group-flush small">
+                                        {% for improvement in score_data.improvements %}
+                                        <li class="list-group-item bg-light py-1">{{ improvement }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                            <hr>
+                            <h5 class="mt-2">各维度详细反馈</h5>
+                            <div class="accordion" id="accordion-dimensions-{{ sub.id }}">
+                                {% for dimension in score_data.dimensions %}
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading-{{ sub.id }}-{{ loop.index }}">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-dimension-{{ sub.id }}-{{ loop.index }}" aria-expanded="false" aria-controls="collapse-dimension-{{ sub.id }}-{{ loop.index }}">
+                                            <strong>{{ dimension.dimension_name }}</strong>&nbsp;-&nbsp;<small>得分: {{ dimension.score }}, 等级: {{ dimension.selected_rubric_level }}</small>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse-dimension-{{ sub.id }}-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ sub.id }}-{{ loop.index }}">
+                                        <div class="accordion-body">
+                                            <p><strong>AI反馈:</strong> {{ dimension.feedback }}</p>
+                                            {% if dimension.example_good_sentence %}
+                                            <p class="mb-1"><strong>优秀句子示例:</strong></p>
+                                            <blockquote class="blockquote blockquote-custom bg-white p-2 shadow-sm rounded">
+                                                <p class="mb-0 font-italic small">{{ dimension.example_good_sentence }}</p>
+                                            </blockquote>
+                                            {% endif %}
+                                            {% if dimension.example_improvement_suggestion and dimension.example_improvement_suggestion.original and dimension.example_improvement_suggestion.suggested %}
+                                            <p class="mt-2 mb-1"><strong>句子修改建议:</strong></p>
+                                            <div class="d-flex">
+                                                <div class="w-50 pr-2">
+                                                    <p class="text-muted mb-0 small">原句:</p>
+                                                    <s class="text-danger small">{{ dimension.example_improvement_suggestion.original }}</s>
+                                                </div>
+                                                <div class="w-50 ps-2">
+                                                    <p class="text-muted mb-0 small">建议:</p>
+                                                    <strong class="text-success small">{{ dimension.example_improvement_suggestion.suggested }}</strong>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center text-muted">您还没有提交过这个作业。</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# --- TEACHER/ADMIN VIEW --- #}
+    {% elif current_user.role in ['admin', 'teacher'] %}
+
+    <!-- Batch Upload Section -->
+    <div class="card shadow mb-4 mt-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">批量上传学生作业 (图片)</h6>
+        </div>
+        <div class="card-body">
+            <p>如果学生提交的是纸质作业，您可以在此一次性上传所有学生的作业图片。系统将自动进行识别和匹配。</p>
+            
+            <!-- New File Upload Component -->
+            <form id="file-upload-form" action="{{ url_for('assignments.batch_upload_submissions', assignment_id=assignment.id) }}" method="post" enctype="multipart/form-data" novalidate>
+                <div class="file-upload-wrapper">
+                    <div id="drop-zone" class="drop-zone">
+                        <div class="drop-zone-text">
+                            <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                            <p>拖拽图片到这里</p>
+                            <p class="small">或</p>
+                            <label for="submission_images" class="btn btn-primary">点击选择文件</label>
+                        </div>
+                        <input type="file" name="submission_images" id="submission_images" class="d-none" multiple required accept="image/*">
+                    </div>
+
+                    <div id="file-preview-list" class="file-preview-list mt-3"></div>
+                    
+                    <div id="upload-progress-wrapper" class="progress-wrapper mt-3" style="display: none;">
+                        <div id="upload-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+
+                    <button id="upload-btn" type="submit" class="btn btn-success mt-3" disabled>
+                        <i class="fas fa-upload mr-2"></i>开始上传和处理
+                    </button>
+                </div>
+            </form>
+
+            {% if pending_submissions_count > 0 %}
+            <div class="alert alert-info mt-3">
+                您有 <strong>{{ pending_submissions_count }}</strong> 张图片正在等待处理或审核。
+                <a href="{{ url_for('assignments.confirm_submissions', assignment_id=assignment.id) }}" class="alert-link">立即前往审核页面</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- Analytics Section -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">提交状态概览</h6>
+                </div>
+                <div class="card-body">
+                    <div id="status-chart" class="chart-container" style="height:300px"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">总体分数分布</h6>
+                </div>
+                <div class="card-body">
+                    <div id="score-chart" class="chart-container" style="height:300px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">各维度平均得分率 (%)</h6>
+                </div>
+                <div class="card-body">
+                    <div id="dimension-chart" class="chart-container" style="height:350px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submissions List -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">学生提交列表</h6>
+            <div class="card-options">
+                <ul class="nav nav-pills flex-wrap">
+                    <li class="nav-item">
+                        <a class="nav-link {% if status_filter == 'all' %}active{% endif %}" href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id, status_filter='all') }}">全部 ({{ status_counts.values()|sum }})</a>
+                    </li>
+                    {% for status, count in status_counts.items() %}
+                        {% if status != 'not_submitted' and count > 0 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if status_filter == status %}active{% endif %}" href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id, status_filter=status) }}">{{ status_map.get(status, status) }} ({{ count }})</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 桌面端表格视图 -->
+            <div class="desktop-table">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                         <thead>
+                            <tr>
+                                <th>学生</th>
+                                <th>提交时间</th>
+                                <th>状态</th>
+                                <th>AI得分</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in submissions_pagination.items %}
+                            <tr>
+                                <td>{{ submission.student.full_name }}</td>
+                                <td>{{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <span class="status-icon bg-{{ 'success' if submission.status == 'graded' else ('danger' if 'error' in submission.status else 'warning') }}"></span>
+                                    {{ status_map.get(submission.status, submission.status) }}
+                                </td>
+                                <td>
+                                    {% if submission.ai_score and submission.ai_score.total_score is not none %}
+                                        {{ submission.ai_score.total_score }} / {{ assignment.grading_standard.total_score }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('assignments.review_submission', assignment_id=assignment.id, submission_id=submission.id) }}" class="btn btn-sm btn-secondary">查看与评分</a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">没有符合条件的提交。</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 移动端卡片视图 -->
+            <div class="mobile-submissions">
+                {% for submission in submissions_pagination.items %}
+                <a href="{{ url_for('assignments.review_submission', assignment_id=assignment.id, submission_id=submission.id) }}" class="submission-card {{ 'graded' if submission.status == 'graded' else ('error' if 'error' in submission.status else '') }}">
+                    <div class="submission-header">
+                        <div class="student-name">{{ submission.student.full_name }}</div>
+                        <div class="submission-time">{{ submission.created_at.strftime('%m-%d %H:%M') }}</div>
+                    </div>
+                    <div class="submission-meta">
+                        <div class="submission-status">
+                            <span class="status-icon" style="background-color: {{ '#28a745' if submission.status == 'graded' else ('#dc3545' if 'error' in submission.status else '#ffc107') }};"></span>
+                            {{ status_map.get(submission.status, submission.status) }}
+                        </div>
+                        <div class="submission-score">
+                            {% if submission.ai_score and submission.ai_score.total_score is not none %}
+                                {{ submission.ai_score.total_score }} / {{ assignment.grading_standard.total_score }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </a>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>没有符合条件的提交</p>
+                </div>
+                {% endfor %}
+            </div>
+            <!-- Pagination -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if submissions_pagination.has_prev %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id, page=submissions_pagination.prev_num, status_filter=status_filter) }}">上一页</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>
+                    {% endif %}
+                    
+                    {% for page_num in submissions_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == submissions_pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id, page=page_num, status_filter=status_filter) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if submissions_pagination.has_next %}
+                         <li class="page-item"><a class="page-link" href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id, page=submissions_pagination.next_num, status_filter=status_filter) }}">下一页</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><a class="page-link" href="#">下一页</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- ECharts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.3.2/dist/echarts.min.js"></script>
+<!-- Marked.js for rendering markdown in standard descriptions -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+.file-upload-wrapper .drop-zone {
+    border: 2px dashed #007bff;
+    border-radius: 5px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.file-upload-wrapper .drop-zone.dragover {
+    background-color: #e9f5ff;
+    border-color: #0056b3;
+}
+.file-upload-wrapper .drop-zone-text p {
+    margin-bottom: 0.5rem;
+}
+.file-upload-wrapper .file-preview-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+.file-upload-wrapper .file-preview-item {
+    position: relative;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.file-upload-wrapper .file-thumbnail-wrapper {
+    position: relative;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    background-color: #f8f9fa;
+}
+.file-upload-wrapper .file-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.file-upload-wrapper .file-details {
+    padding: 8px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+.file-upload-wrapper .remove-file-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.file-upload-wrapper .file-preview-item:hover .remove-file-btn {
+    opacity: 1;
+}
+.progress-wrapper {
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.progress-bar {
+    background-color: #28a745;
+    color: white;
+    text-align: center;
+    line-height: 20px;
+    transition: width 0.4s ease;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Render markdown for rubric descriptions
+    document.querySelectorAll('.rubric-description').forEach(function(elem) {
+        elem.innerHTML = marked.parse(elem.innerText || elem.textContent);
+    });
+
+    // Render markdown for dimension names
+    document.querySelectorAll('.dimension-name-cell').forEach(function(elem) {
+        elem.innerHTML = marked.parseInline(elem.innerText || elem.textContent);
+    });
+
+    {% if current_user.role in ['admin', 'teacher'] %}
+    
+    // Helper function to show message when no data
+    function showNoDataMessage(chartDom) {
+        chartDom.innerHTML = '<div class="d-flex justify-content-center align-items-center h-100 text-muted">暂无数据</div>';
+    }
+
+    // 1. Status Chart
+    const statusChartDom = document.getElementById('status-chart');
+    if (statusChartDom) {
+        const statusChart = echarts.init(statusChartDom);
+        const statusChartData = JSON.parse('{{ status_chart_data_json|safe }}');
+        
+        const totalCount = statusChartData.reduce((sum, item) => sum + item.value, 0);
+
+        if (statusChartData && totalCount > 0) {
+            const statusChartOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        let studentList = '';
+                        if (params.data.students && params.data.students.length > 0) {
+                            const maxToShow = 10;
+                            const studentsToShow = params.data.students.slice(0, maxToShow);
+                            studentList = '<br/><hr style="margin: 5px 0;"/>' + studentsToShow.join('<br/>');
+                            if (params.data.students.length > maxToShow) {
+                                studentList += `<br/>...等共${params.data.students.length}人`;
+                            }
+                        }
+                        return `${params.name}: ${params.value}人 (${params.percent}%)` + studentList;
+                    }
+                },
+                legend: { 
+                    top: 'bottom', 
+                    icon: 'circle',
+                    formatter: function (name) {
+                        return echarts.format.truncateText(name, 100, '14px Microsoft YaHei', '…');
+                    }
+                },
+                series: [{
+                    name: '提交状态',
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: { show: false, position: 'center' },
+                    emphasis: {
+                        label: { show: true, fontSize: '20', fontWeight: 'bold' }
+                    },
+                    labelLine: { show: false },
+                    data: statusChartData
+                }]
+            };
+            statusChart.setOption(statusChartOption);
+        } else {
+            showNoDataMessage(statusChartDom);
+        }
+    }
+
+    // 2. Score Distribution Chart
+    const scoreChartDom = document.getElementById('score-chart');
+    if (scoreChartDom) {
+        const scoreData = JSON.parse('{{ score_chart_data_json|safe }}');
+        if (scoreData && scoreData.scores && scoreData.scores.length > 0) {
+            const scoreChart = echarts.init(scoreChartDom);
+            const binCount = 10;
+            const maxScore = scoreData.max_score;
+            const binWidth = maxScore > 0 ? maxScore / binCount : 1;
+            
+            const bins = Array(binCount).fill(0);
+            const labels = [];
+            for (let i = 0; i < binCount; i++) {
+                const start = i * binWidth;
+                const end = (i + 1) * binWidth;
+                labels.push(`${start.toFixed(0)}-${end.toFixed(0)}`);
+            }
+
+            scoreData.scores.forEach(score => {
+                if (score >= maxScore) {
+                    bins[binCount - 1]++;
+                } else {
+                    const binIndex = Math.floor(score / binWidth);
+                    if (binIndex >= 0 && binIndex < binCount) {
+                        bins[binIndex]++;
+                    }
+                }
+            });
+
+            // Find the first and last non-zero bin indices
+            let firstNonZero = bins.findIndex(count => count > 0);
+            let lastNonZero = bins.length - 1;
+            while (lastNonZero >= 0 && bins[lastNonZero] === 0) {
+                lastNonZero--;
+            }
+
+            if (firstNonZero === -1) {
+                // No data with scores
+                showNoDataMessage(scoreChartDom);
+            } else {
+                // Slice the labels and bins to include only from first to last non-zero
+                const trimmedLabels = labels.slice(firstNonZero, lastNonZero + 1);
+                const trimmedBins = bins.slice(firstNonZero, lastNonZero + 1);
+
+                const scoreChartOption = {
+                    tooltip: { 
+                        trigger: 'axis', 
+                        axisPointer: { type: 'shadow' },
+                        formatter: function (params) {
+                            return `${params[0].name}分<br/>${params[0].seriesName}: ${params[0].value}人`;
+                        }
+                    },
+                    xAxis: { type: 'category', data: trimmedLabels },
+                    yAxis: { type: 'value', name: '学生人数', allowDecimals: false },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    series: [{
+                        name: '学生人数',
+                        type: 'bar',
+                        data: trimmedBins,
+                        barWidth: '60%',
+                    }]
+                };
+                scoreChart.setOption(scoreChartOption);
+            }
+        } else {
+            showNoDataMessage(scoreChartDom);
+        }
+    }
+
+
+    // 3. Dimension Chart
+    const dimensionChartDom = document.getElementById('dimension-chart');
+    if (dimensionChartDom) {
+        const dimensionData = JSON.parse('{{ dimension_chart_data_json|safe }}');
+        if (dimensionData && dimensionData.labels && dimensionData.labels.length > 0) {
+            const dimensionChart = echarts.init(dimensionChartDom);
+            const dimensionChartOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (params) {
+                        let content = '';
+                        params.value.forEach((val, idx) => {
+                            content += dimensionData.labels[idx] + ': ' + val.toFixed(2) + '%<br/>';
+                        });
+                        return content;
+                    }
+                },
+                radar: {
+                    center: ['50%', '55%'], // Shift center downward to give more space for top labels
+                    indicator: dimensionData.labels.map((label, idx) => ({
+                        name: `${label}\n${dimensionData.values[idx].toFixed(2)}%`,
+                        max: 100
+                    })),
+                    name: {
+                        textStyle: {
+                            color: '#333',
+                            fontSize: 11,
+                            lineHeight: 18
+                        },
+                        nameGap: 35 // Slight increase to prevent truncation
+                    },
+                    radius: '70%',
+                    splitArea: {
+                        show: true
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#ddd'
+                        }
+                    }
+                },
+                series: [{
+                    name: '平均得分率',
+                    type: 'radar',
+                    data: [{
+                        value: dimensionData.values,
+                        name: '平均得分率',
+                        areaStyle: {
+                            opacity: 0.1
+                        }
+                    }]
+                }]
+            };
+            dimensionChart.setOption(dimensionChartOption);
+        } else {
+            showNoDataMessage(dimensionChartDom);
+        }
+    }
+    
+    // Resize charts on window resize
+    window.addEventListener('resize', function() {
+        if (statusChartDom) echarts.getInstanceByDom(statusChartDom)?.resize();
+        if (scoreChartDom) echarts.getInstanceByDom(scoreChartDom)?.resize();
+        if (dimensionChartDom) echarts.getInstanceByDom(dimensionChartDom)?.resize();
+    });
+
+    // --- New File Upload Logic ---
+    const form = document.getElementById('file-upload-form');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('submission_images');
+    const filePreviewList = document.getElementById('file-preview-list');
+    const uploadBtn = document.getElementById('upload-btn');
+    const progressWrapper = document.getElementById('upload-progress-wrapper');
+    const progressBar = document.getElementById('upload-progress');
+
+    let uploadedFiles = []; // Use a more robust array to store file info
+
+    function renderPreviews() {
+        filePreviewList.innerHTML = ''; // Clear existing previews
+        
+        // Revoke old URLs to prevent memory leaks before creating new ones
+        uploadedFiles.forEach(fileObj => {
+            if (fileObj.url) {
+                URL.revokeObjectURL(fileObj.url);
+            }
+        });
+
+        uploadedFiles.forEach(fileObj => {
+            fileObj.url = URL.createObjectURL(fileObj.file); // Create fresh URL
+
+            const item = document.createElement('div');
+            item.className = 'file-preview-item';
+            
+            let thumbnailHTML = `
+                <div class="file-thumbnail-wrapper">
+                    <img src="${fileObj.url}" alt="${fileObj.file.name}" class="file-thumbnail">
+                </div>`;
+            
+            let detailsHTML = `
+                <div class="file-details" title="${fileObj.file.name}">
+                    ${fileObj.file.name}
+                </div>`;
+
+            item.innerHTML = `
+                ${thumbnailHTML}
+                ${detailsHTML}
+                <button type="button" class="remove-file-btn" data-id="${fileObj.id}">&times;</button>`;
+            
+            filePreviewList.appendChild(item);
+        });
+
+        uploadBtn.disabled = uploadedFiles.length === 0;
+    }
+
+    function addFiles(files) {
+        Array.from(files).forEach(file => {
+            // Add only if it's an image
+            if (file.type.startsWith('image/')) {
+                uploadedFiles.push({
+                    id: Date.now() + Math.random(), // Unique ID for each file
+                    file: file,
+                    url: null // URL will be created during render
+                });
+            }
+        });
+        renderPreviews();
+    }
+
+    function removeFile(id) {
+        const fileToRemove = uploadedFiles.find(f => f.id === id);
+        if (fileToRemove && fileToRemove.url) {
+            URL.revokeObjectURL(fileToRemove.url);
+        }
+        uploadedFiles = uploadedFiles.filter(f => f.id !== id);
+        renderPreviews();
+    }
+    
+    // Trigger file input click
+    dropZone.addEventListener('click', (e) => {
+        if(e.target.id !== 'submission_images' && e.target.tagName !== 'LABEL') {
+             fileInput.click();
+        }
+    });
+
+    // Handle drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+    });
+
+    // Handle file selection via button
+    fileInput.addEventListener('change', () => {
+        addFiles(fileInput.files);
+        // Reset the input so the 'change' event fires even if the same file is selected again
+        fileInput.value = ''; 
+    });
+
+    // Handle remove file button
+    filePreviewList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-file-btn')) {
+            const id = parseFloat(e.target.getAttribute('data-id'));
+            removeFile(id);
+        }
+    });
+
+    // Handle form submission with AJAX
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (uploadedFiles.length === 0) {
+            alert('请选择要上传的文件。');
+            return;
+        }
+
+        const formData = new FormData();
+        uploadedFiles.forEach(fileObj => {
+            formData.append('submission_images', fileObj.file);
+        });
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressWrapper.style.display = 'block';
+                progressBar.style.width = percentComplete + '%';
+                progressBar.textContent = percentComplete + '%';
+                progressBar.setAttribute('aria-valuenow', percentComplete);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                progressBar.style.width = '100%';
+                progressBar.textContent = '上传成功! 正在跳转...';
+                progressBar.classList.add('bg-success');
+                // Redirect to the confirmation page
+                window.location.href = "{{ url_for('assignments.confirm_submissions', assignment_id=assignment.id) }}";
+            } else {
+                progressBar.textContent = `上传失败: ${xhr.statusText || 'Server Error'}`;
+                progressBar.classList.remove('bg-success');
+                progressBar.classList.add('bg-danger');
+            }
+        };
+
+        xhr.onerror = () => {
+            progressBar.textContent = '网络错误，上传失败。';
+            progressBar.classList.remove('bg-success');
+            progressBar.classList.add('bg-danger');
+        };
+        
+        uploadBtn.disabled = true;
+        xhr.send(formData);
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}

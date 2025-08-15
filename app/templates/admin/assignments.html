@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}作业管理 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-tasks"></i> 作业管理</h2>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('assignments.create_assignment') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 新增作业
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary" onclick="exportAssignments()">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">搜索</label>
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="作业标题、描述" 
+                                   value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">学校</label>
+                            <select class="form-select" name="school_id">
+                                <option value="">全部学校</option>
+                                {% for school in schools %}
+                                <option value="{{ school.id }}" 
+                                        {% if request.args.get('school_id') == school.id|string %}selected{% endif %}>
+                                    {{ school.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">班级</label>
+                            <select class="form-select" name="classroom_id">
+                                <option value="">全部班级</option>
+                                {% for classroom in classrooms %}
+                                <option value="{{ classroom.id }}" 
+                                        {% if request.args.get('classroom_id') == classroom.id|string %}selected{% endif %}>
+                                    {{ classroom.school.name }} - {{ classroom.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">状态</label>
+                            <select class="form-select" name="status">
+                                <option value="">全部状态</option>
+                                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>进行中</option>
+                                <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>已结束</option>
+                                <option value="draft" {% if request.args.get('status') == 'draft' %}selected{% endif %}>草稿</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">排序</label>
+                            <select class="form-select" name="sort">
+                                <option value="created_at_desc" {% if request.args.get('sort') == 'created_at_desc' %}selected{% endif %}>创建时间↓</option>
+                                <option value="created_at_asc" {% if request.args.get('sort') == 'created_at_asc' %}selected{% endif %}>创建时间↑</option>
+                                <option value="due_date_desc" {% if request.args.get('sort') == 'due_date_desc' %}selected{% endif %}>截止时间↓</option>
+                                <option value="due_date_asc" {% if request.args.get('sort') == 'due_date_asc' %}selected{% endif %}>截止时间↑</option>
+                                <option value="title_asc" {% if request.args.get('sort') == 'title_asc' %}selected{% endif %}>标题A-Z</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 作业列表 -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">作业列表 (共 {{ assignments.total }} 个)</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="view" id="listView" checked>
+                        <label class="btn btn-outline-secondary" for="listView">
+                            <i class="fas fa-list"></i>
+                        </label>
+                        <input type="radio" class="btn-check" name="view" id="cardView">
+                        <label class="btn btn-outline-secondary" for="cardView">
+                            <i class="fas fa-th"></i>
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if assignments %}
+                    <!-- 列表视图 -->
+                    <div id="listViewContent">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%">
+                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                        </th>
+                                        <th width="25%">作业信息</th>
+                                        <th width="15%">班级</th>
+                                        <th width="10%">创建者</th>
+                                        <th width="15%">时间</th>
+                                        <th width="10%">状态</th>
+                                        <th width="10%">提交情况</th>
+                                        <th width="10%">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for assignment in assignments %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input assignment-checkbox" 
+                                                   value="{{ assignment.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">{{ assignment.title }}</div>
+                                            <small class="text-muted">{{ assignment.description[:50] }}{% if assignment.description|length > 50 %}...{% endif %}</small>
+                                            {% if assignment.prompt_style %}
+                                            <div>
+                                                <span class="badge bg-info">{{ assignment.prompt_style.name }}</span>
+                                            </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if assignment.classrooms %}
+                                            <div class="fw-medium">{{ assignment.classrooms[0].class_name }}</div>
+                                            <small class="text-muted">{{ assignment.classrooms[0].school.name }}</small>
+                                            {% if assignment.classrooms|length > 1 %}
+                                            <small class="text-info">+{{ assignment.classrooms|length - 1 }}个班级</small>
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">未分配班级</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">{{ assignment.teacher.user.full_name or assignment.teacher.user.username }}</div>
+                                            <small class="text-muted">{{ assignment.teacher.user.email }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <div><strong>创建:</strong> {{ assignment.created_at.strftime('%Y-%m-%d') }}</div>
+                                                {% if assignment.due_date %}
+                                                <div><strong>截止:</strong> 
+                                                    <span class="{% if assignment.due_date < today %}text-danger{% endif %}">
+                                                        {{ assignment.due_date.strftime('%Y-%m-%d') }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if assignment.due_date and assignment.due_date < today %}
+                                                <span class="badge bg-danger">已过期</span>
+                                            {% else %}
+                                                <span class="badge bg-success">进行中</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% set total_students = assignment.students|length %}
+                                            {% set submitted_count = assignment.essays|length %}
+                                            <div class="text-center">
+                                                <div class="fw-medium">{{ submitted_count }}/{{ total_students }}</div>
+                                                <div class="progress" style="height: 4px;">
+                                                    {% set progress = (submitted_count / total_students * 100) if total_students > 0 else 0 %}
+                                                    <div class="progress-bar" style="width: {{ progress }}%"></div>
+                                                </div>
+                                                <small class="text-muted">{{ "%.1f"|format(progress) }}%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewAssignment({{ assignment.id }})" 
+                                                        title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="deleteAssignment({{ assignment.id }})" 
+                                                        title="删除">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 卡片视图 -->
+                    <div id="cardViewContent" style="display: none;">
+                        <div class="row p-3">
+                            {% for assignment in assignments %}
+                            <div class="col-lg-4 col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ assignment.title }}</h6>
+                                        {% if assignment.due_date and assignment.due_date < today %}
+                                            <span class="badge bg-danger">已过期</span>
+                                        {% else %}
+                                            <span class="badge bg-success">进行中</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text small text-muted">{{ assignment.description[:80] }}{% if assignment.description|length > 80 %}...{% endif %}</p>
+                                        <div class="mb-2">
+                                            <small class="text-muted">
+                                                {% if assignment.classrooms %}
+                                <i class="fas fa-school"></i> {{ assignment.classrooms[0].school.name }}<br>
+                                <i class="fas fa-door-open"></i> {{ assignment.classrooms[0].class_name }}<br>
+                                {% if assignment.classrooms|length > 1 %}
+                                <small class="text-info">+{{ assignment.classrooms|length - 1 }}个班级</small><br>
+                                {% endif %}
+                                {% endif %}
+                                                <i class="fas fa-user"></i> {{ assignment.teacher.user.full_name or assignment.teacher.user.username }}
+                                            </small>
+                                        </div>
+                                        {% if assignment.prompt_style %}
+                                        <div class="mb-2">
+                                            <span class="badge bg-info">{{ assignment.prompt_style.name }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% set total_students = assignment.students|length %}
+                                        {% set submitted_count = assignment.essays|length %}
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <small class="text-muted">提交进度</small>
+                                                <small class="fw-medium">{{ submitted_count }}/{{ total_students }}</small>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                {% set progress = (submitted_count / total_students * 100) if total_students > 0 else 0 %}
+                                                <div class="progress-bar" style="width: {{ progress }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                {% if assignment.due_date %}
+                                                截止: {{ assignment.due_date.strftime('%m-%d') }}
+                                                {% else %}
+                                                无截止时间
+                                                {% endif %}
+                                            </small>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewAssignment({{ assignment.id }})">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="deleteAssignment({{ assignment.id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-tasks fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">暂无作业数据</h5>
+                        <p class="text-muted">点击上方按钮创建第一个作业</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 分页 -->
+            {% if assignments.pages > 1 %}
+            <nav aria-label="作业分页" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if assignments.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.assignments', page=assignments.prev_num, **request.args) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in assignments.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != assignments.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.assignments', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if assignments.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.assignments', page=assignments.next_num, **request.args) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 作业详情模态框 -->
+<div class="modal fade" id="assignmentDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">作业详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="assignmentDetailContent">
+                <!-- 通过AJAX加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这个作业吗？此操作不可撤销。</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    删除作业将同时删除所有相关的学生作文提交！
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 视图切换
+document.getElementById('listView').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('listViewContent').style.display = 'block';
+        document.getElementById('cardViewContent').style.display = 'none';
+    }
+});
+
+document.getElementById('cardView').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('listViewContent').style.display = 'none';
+        document.getElementById('cardViewContent').style.display = 'block';
+    }
+});
+
+// 全选功能
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.assignment-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// 查看作业详情
+function viewAssignment(assignmentId) {
+    fetch(`/admin/assignments/${assignmentId}/detail`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('assignmentDetailContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('assignmentDetailModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('加载作业详情失败');
+        });
+}
+
+// 删除作业
+let deleteAssignmentId = null;
+
+function deleteAssignment(assignmentId) {
+    deleteAssignmentId = assignmentId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (deleteAssignmentId) {
+        fetch(`/admin/assignments/${deleteAssignmentId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败');
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+    }
+});
+
+// 导出作业
+function exportAssignments() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/admin/assignments/export?${params.toString()}`);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+<div class="standard-details-view">
+    {% if assignment.grading_standard %}
+    <div id="basic-info-header" class="d-flex justify-content-between align-items-center mb-3">
+        <h5 id="basic-info-summary" class="mb-0">
+            {% if assignment.grading_standard.grade_level %}{{ assignment.grading_standard.grade_level.name }}{% else %}未指定年级{% endif %} · 
+            {{ assignment.grading_standard.title or '未命名标准' }}
+            {% if assignment.grading_standard.tags %}({{ assignment.grading_standard.tags|map(attribute='name')|join(', ') }}){% endif %} 
+            ({{ assignment.grading_standard.total_score or '0' }}分)
+        </h5>
+    </div>
+    
+    <table class="table table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 25%;">维度名称</th>
+                <th>评分等级概览</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dimension in assignment.grading_standard.dimensions|sort(attribute='id') %}
+            <tr>
+                <td>
+                    <strong class="dimension-name-cell">{{ dimension.name }}</strong>
+                    <br>
+                    <span class="badge bg-secondary">满分: {{ dimension.max_score }}</span>
+                </td>
+                <td class="rubrics-summary-cell">
+                    {% for rubric in dimension.rubrics|sort(attribute='max_score', reverse=True) %}
+                        {% if not loop.first %}<hr class="my-1">{% endif %}
+                        <div class="rubric-summary-item">
+                            <strong>{{ rubric.level_name }} ({{ rubric.min_score|round(1) }}~{{ rubric.max_score|round(1) }}分):</strong> 
+                            <span class="rubric-description">{{ rubric.description }}</span>
+                        </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="2">
+                    <div class="alert alert-info mb-0">该评分标准下没有设定任何评分维度。</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% else %}
+    <div class="alert alert-warning">
+        该作业未关联任何评分标准。
+    </div>
+    {% endif %}
+</div>
+
+{# Use a block to ensure the script is only loaded once, even if this partial is included multiple times. #}
+{% block standard_details_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    // Ensure this script runs only once and marked is configured.
+    if (typeof window.markedSetup === 'undefined') {
+        window.markedSetup = true;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof marked === 'undefined') {
+                console.error('Marked.js library not loaded.');
+                return;
+            }
+            
+            marked.setOptions({
+                breaks: true, // Convert single line breaks in text to <br>
+                gfm: true // Use GitHub Flavored Markdown
+            });
+
+            // Function to render markdown in a container.
+            function renderMarkdownInContainer(container) {
+                const descriptions = container.querySelectorAll('.rubric-description');
+                descriptions.forEach(function(descElement) {
+                    // Prevent re-rendering
+                    if (descElement.dataset.rendered) return;
+
+                    const rawMarkdown = descElement.textContent || '';
+                    descElement.innerHTML = marked.parse(rawMarkdown);
+                    descElement.dataset.rendered = 'true';
+                });
+            }
+
+            // Initial render
+            renderMarkdownInContainer(document.body);
+
+            // If you have dynamic content added later, you can re-run renderMarkdownInContainer(newContentContainer);
+        });
+    }
+</script>
+{% endblock %} 

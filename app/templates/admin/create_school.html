@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}新增学校 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-school"></i> 新增学校</h2>
+                <a href="{{ url_for('admin.schools') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回学校列表
+                </a>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">学校信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {{ form.hidden_tag() }}
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id }}" class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+                                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">学校的正式名称，将在系统中显示</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.sort_name.id }}" class="form-label">{{ form.sort_name.label.text }} <span class="text-danger">*</span></label>
+                                    {{ form.sort_name(class="form-control" + (" is-invalid" if form.sort_name.errors else "")) }}
+                                    {% if form.sort_name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.sort_name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">用于排序和搜索的名称，建议使用简短易识别的名称</div>
+                                </div>
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin.schools') }}" class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times"></i> 取消
+                                    </a>
+                                    {{ form.submit(class="btn btn-primary") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

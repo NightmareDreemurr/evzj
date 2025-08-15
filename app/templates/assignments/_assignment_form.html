@@ -1,0 +1,47 @@
+{% from "_form_helpers.html" import render_field %}
+
+<form method="POST" action="{{ form_action_url }}">
+    {{ form.hidden_tag() }}
+    <div class="row">
+        <div class="col-md-12">
+            {{ render_field(form.title, class="form-control") }}
+        </div>
+        <div class="col-md-12">
+            {{ render_field(form.description, class="form-control", rows=5) }}
+        </div>
+        <div class="col-md-6">
+            {{ render_field(form.grading_standard, class="form-select") }}
+        </div>
+        <div class="col-md-6">
+            {{ render_field(form.prompt_style_template, class="form-select") }}
+        </div>
+        <div class="col-md-6">
+            {{ render_field(form.due_date, class="form-control") }}
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    <h5>发布对象</h5>
+    <p class="text-muted">您可以选择将作业发布给整个班级，或指定班级下的个别学生。</p>
+    
+    {{ render_field(form.classrooms, class="form-select select2-multiple", multiple="multiple") }}
+    {{ render_field(form.students, class="form-select select2-multiple", multiple="multiple") }}
+
+    <div class="mt-4">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('assignments.list_assignments') }}" class="btn btn-secondary">取消</a>
+    </div>
+</form>
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('.select2-multiple').select2({
+        theme: 'bootstrap-5',
+        placeholder: $(this).data('placeholder'),
+        allowClear: true
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}生成作业报告 - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-bar"></i>
+                        生成作业报告
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>{{ assignment.title }}</h4>
+                            <p class="text-muted">{{ assignment.description }}</p>
+                            
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle"></i> 报告生成说明</h5>
+                                <p>AI将分析本次作业的所有已评分作文，生成包含以下内容的详细报告：</p>
+                                <ul>
+                                    <li><strong>班级共性问题分析</strong> - 识别学生普遍存在的写作问题</li>
+                                    <li><strong>优秀作文特点总结</strong> - 分析高分作文的优点和特色</li>
+                                    <li><strong>各维度表现分析</strong> - 统计各评分维度的得分情况</li>
+                                    <li><strong>具体问题分类</strong> - 语法错误、逻辑不清、词汇不足等问题的占比</li>
+                                    <li><strong>数据可视化</strong> - 饼状图、柱状图、雷达图展示分析结果</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-box-icon bg-info"><i class="fas fa-file-alt"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">已评分作文</span>
+                                            <span class="info-box-number">{{ essays_count }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-box-icon bg-success"><i class="fas fa-chart-line"></i></span>
+                                        <div class="info-box-content">
+                                            <span class="info-box-text">评分标准</span>
+                                            <span class="info-box-number">{{ assignment.grading_standard.title }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if essays_count == 0 %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>注意：</strong>当前作业还没有已评分的作文，无法生成报告。请先完成作文评分后再生成报告。
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card card-outline card-primary">
+                                <div class="card-header">
+                                    <h5 class="card-title">生成报告</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    {% if essays_count > 0 %}
+                                    <div id="generateReportContainer">
+                                        <div id="normalState">
+                                            <button type="button" class="btn btn-primary btn-lg" id="generateReportBtn">
+                                                <i class="fas fa-magic"></i>
+                                                生成AI报告
+                                            </button>
+                                        </div>
+                                        <div id="loadingState" style="display: none;">
+                                            <div class="text-center">
+                                                <h5><i class="fas fa-spinner fa-spin"></i> <span id="statusMessage">正在生成报告...</span></h5>
+                                                <p class="mb-2">AI正在分析 {{ essays_count }} 篇作文，请耐心等待</p>
+                                                <div class="progress mb-3">
+                                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                                         role="progressbar" style="width: 0%" 
+                                                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressBar">
+                                                        <span id="progressText">0%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <small class="text-muted d-block mb-1">
+                                                        <i class="fas fa-clock"></i>
+                                                        预计需要 1-3 分钟，请不要关闭或刷新页面
+                                                    </small>
+                                                    <small class="text-muted d-block mb-1">
+                                                        <i class="fas fa-brain"></i>
+                                                        AI正在进行深度分析：共性问题识别、优秀特点总结、教学建议生成
+                                                    </small>
+                                                    <small class="text-muted d-block">
+                                                        <i class="fas fa-chart-bar"></i>
+                                                        生成完成后将自动跳转到报告页面
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="errorState" style="display: none;">
+                                            <div class="alert alert-danger">
+                                                <h5><i class="fas fa-exclamation-triangle"></i> 生成失败</h5>
+                                                <p id="errorMessage">报告生成过程中出现错误，请重试。</p>
+                                                <button type="button" class="btn btn-primary" id="retryBtn">
+                                                    <i class="fas fa-redo"></i>
+                                                    重新生成
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">需要至少一篇已评分作文才能生成报告</p>
+                                    <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                        <i class="fas fa-magic"></i>
+                                        生成AI报告
+                                    </button>
+                                    {% endif %}
+                                    
+                                    <hr>
+                                    <a href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id) }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left"></i>
+                                        返回作业详情
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-box {
+    display: block;
+    min-height: 90px;
+    background: #fff;
+    width: 100%;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    border-radius: 2px;
+    margin-bottom: 15px;
+}
+
+.info-box-icon {
+    border-top-left-radius: 2px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 2px;
+    display: block;
+    float: left;
+    height: 90px;
+    width: 90px;
+    text-align: center;
+    font-size: 45px;
+    line-height: 90px;
+    background: rgba(0,0,0,0.2);
+}
+
+.info-box-content {
+    padding: 5px 10px;
+    margin-left: 90px;
+}
+
+.info-box-text {
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.info-box-number {
+    display: block;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+    color: white;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let pollInterval;
+let taskId;
+
+$(document).ready(function() {
+    // 处理报告生成按钮点击
+    $('#generateReportBtn').on('click', function() {
+        startReportGeneration();
+    });
+    
+    // 重试按钮点击
+    $('#retryBtn').on('click', function() {
+        startReportGeneration();
+    });
+    
+    // 如果页面加载时URL包含错误参数，显示错误状态
+    if (window.location.search.includes('error')) {
+        showErrorState('报告生成失败，请重试。');
+    }
+});
+
+function startReportGeneration() {
+    // 隐藏其他状态，显示加载状态
+    $('#normalState').hide();
+    $('#errorState').hide();
+    $('#loadingState').show();
+    
+    // 重置进度条
+    updateProgress(0, '初始化中...');
+    
+    // 禁用返回按钮，防止用户意外离开
+    $('a[href*="assignment_detail"]').addClass('disabled').attr('onclick', 'return false;');
+    
+    // 添加页面离开确认
+    window.onbeforeunload = function() {
+        return '报告正在生成中，确定要离开吗？';
+    };
+    
+    // 发送异步请求启动报告生成
+    $.ajax({
+        url: '{{ url_for("assignments.generate_report_async", assignment_id=assignment.id) }}',
+        method: 'POST',
+        success: function(response) {
+            if (response.success) {
+                taskId = response.task_key;
+                updateProgress(10, '任务已启动，正在准备数据...');
+                // 开始轮询任务状态
+                startPolling();
+            } else {
+                showErrorState(response.message || '启动报告生成失败');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('启动报告生成失败:', error);
+            showErrorState('网络错误，请检查连接后重试');
+        }
+    });
+}
+
+function startPolling() {
+    pollInterval = setInterval(function() {
+        checkTaskStatus();
+    }, 2000); // 每2秒轮询一次
+}
+
+function checkTaskStatus() {
+    if (!taskId) return;
+    
+    $.ajax({
+        url: '/assignments/{{ assignment.id }}/report-status/' + taskId,
+        method: 'GET',
+        success: function(response) {
+            if (response.status === 'completed') {
+                // 任务完成
+                clearInterval(pollInterval);
+                updateProgress(100, '报告生成完成！');
+                
+                setTimeout(function() {
+                    window.onbeforeunload = null;
+                    window.location.href = '{{ url_for("assignments.assignment_report", assignment_id=assignment.id) }}';
+                }, 1000);
+                
+            } else if (response.status === 'failed') {
+                // 任务失败
+                clearInterval(pollInterval);
+                showErrorState(response.error || '报告生成过程中出现错误');
+                
+            } else if (response.status === 'running') {
+                // 任务运行中，更新进度
+                updateProgress(response.progress, response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('获取任务状态失败:', error);
+            // 继续轮询，不中断
+        }
+    });
+}
+
+function updateProgress(percentage, message) {
+    $('#progressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+    $('#progressText').text(percentage + '%');
+    $('#statusMessage').text(message);
+}
+
+function showErrorState(message) {
+    // 清除轮询
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+    
+    // 显示错误状态
+    $('#loadingState').hide();
+    $('#normalState').hide();
+    $('#errorState').show();
+    $('#errorMessage').text(message);
+    
+    // 恢复页面状态
+    $('a[href*="assignment_detail"]').removeClass('disabled').removeAttr('onclick');
+    window.onbeforeunload = null;
+}
+</script>
+{% endblock %}

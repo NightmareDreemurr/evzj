@@ -1,0 +1,73 @@
+{# Sidebar for different roles #}
+
+{# --- ADMIN Sidebar --- #}
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+        <i class="fas fa-fw fa-tachometer-alt"></i> 仪表盘
+    </a>
+    <hr class="sidebar-divider my-2">
+    <div class="sidebar-heading text-muted small px-3 mb-1">用户管理</div>
+    <a class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}" href="{{ url_for('admin.users') }}">
+        <i class="fas fa-fw fa-users"></i> 用户管理
+    </a>
+    <a class="nav-link {% if request.endpoint == 'admin.schools' %}active{% endif %}" href="{{ url_for('admin.schools') }}">
+        <i class="fas fa-fw fa-school"></i> 学校管理
+    </a>
+    <a class="nav-link {% if request.endpoint == 'admin.classrooms' %}active{% endif %}" href="{{ url_for('admin.classrooms') }}">
+        <i class="fas fa-fw fa-chalkboard-teacher"></i> 班级管理
+    </a>
+    <hr class="sidebar-divider my-2">
+    <div class="sidebar-heading text-muted small px-3 mb-1">内容管理</div>
+    <a class="nav-link {% if request.endpoint == 'admin.assignments' %}active{% endif %}" href="{{ url_for('admin.assignments') }}">
+        <i class="fas fa-fw fa-tasks"></i> 作业管理
+    </a>
+    <a class="nav-link {% if request.endpoint == 'admin.essays' %}active{% endif %}" href="{{ url_for('admin.essays') }}">
+        <i class="fas fa-fw fa-file-alt"></i> 作文管理
+    </a>
+    <a class="nav-link {% if request.endpoint == 'standards.manage_standards' %}active{% endif %}" href="{{ url_for('standards.manage_standards') }}">
+        <i class="fas fa-fw fa-ruler-combined"></i> 评分标准
+    </a>
+    <a class="nav-link {% if 'prompt_style' in request.endpoint %}active{% endif %}" href="{{ url_for('admin.manage_prompt_styles') }}">
+        <i class="fas fa-fw fa-quote-left"></i> 评语风格
+    </a>
+    <hr class="sidebar-divider my-2">
+    <div class="sidebar-heading text-muted small px-3 mb-1">系统管理</div>
+    <a class="nav-link {% if request.endpoint == 'admin.system_stats' %}active{% endif %}" href="{{ url_for('admin.system_stats') }}">
+        <i class="fas fa-fw fa-chart-bar"></i> 系统统计
+    </a>
+    <a class="nav-link {% if request.endpoint == 'admin.manage_grade_levels' %}active{% endif %}" href="{{ url_for('admin.manage_grade_levels') }}">
+        <i class="fas fa-fw fa-layer-group"></i> 年级管理
+    </a>
+    <a class="nav-link disabled" href="#"><i class="fas fa-fw fa-cog"></i> 系统设置</a>
+
+{# --- TEACHER Sidebar --- #}
+{% elif current_user.is_authenticated and current_user.role == 'teacher' %}
+    <a class="nav-link {% if request.endpoint == 'assignments.list_assignments' or not request.endpoint.startswith('assignments.') %}active{% endif %}" href="{{ url_for('assignments.list_assignments') }}">
+        <i class="fas fa-fw fa-tasks"></i> 作业管理
+    </a>
+    <a class="nav-link {% if request.endpoint == 'standards.manage_standards' %}active{% endif %}" href="{{ url_for('standards.manage_standards') }}">
+        <i class="fas fa-fw fa-ruler-combined"></i> 评分标准库
+    </a>
+     <a class="nav-link disabled" href="#">
+        <i class="fas fa-fw fa-user-graduate"></i> 学生管理
+    </a>
+
+
+{# --- STUDENT Sidebar --- #}
+{% elif current_user.is_authenticated and current_user.role == 'student' %}
+    <a class="nav-link active" href="#">
+        <i class="fas fa-fw fa-home"></i> 我的主页
+    </a>
+    <a class="nav-link" href="#">
+        <i class="fas fa-fw fa-pen-square"></i> 我的作业
+    </a>
+    <a class="nav-link" href="#">
+        <i class="fas fa-fw fa-book-reader"></i> 我的作文
+    </a>
+
+{# --- Fallback for other logged-in users or guests --- #}
+{% else %}
+    <a class="nav-link active" href="/">
+        <i class="fas fa-fw fa-home"></i> 欢迎
+    </a>
+{% endif %}

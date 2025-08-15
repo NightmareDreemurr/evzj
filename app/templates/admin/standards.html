@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}评分标准管理 - {{ super() }}{% endblock %}
+
+{% block page_title %}评分标准管理{% endblock %}
+
+{% block sidebar %}
+    <a class="nav-link" href="{{ url_for('admin.dashboard') }}">仪表盘</a>
+    <a class="nav-link" href="#">用户管理</a>
+    <a class="nav-link active" href="{{ url_for('admin.manage_standards') }}">评分标准管理</a>
+    <a class="nav-link" href="#">作文管理</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        所有评分标准
+        <a href="{{ url_for('admin.add_standard') }}" class="btn btn-primary btn-sm">新增评分标准</a>
+    </div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>标题</th>
+                    <th>年级</th>
+                    <th>总分</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for standard in standards %}
+                <tr>
+                    <td>{{ standard.id }}</td>
+                    <td>{{ standard.title }}</td>
+                    <td>{{ standard.grade_level.name }}</td>
+                    <td>{{ standard.total_score }}</td>
+                    <td>
+                        {% if standard.is_active %}
+                            <span class="badge bg-success">已启用</span>
+                        {% else %}
+                            <span class="badge bg-secondary">已禁用</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_standard', standard_id=standard.id) }}" class="btn btn-secondary btn-sm">编辑</a>
+                        
+                        <form action="{{ url_for('admin.toggle_standard_status', standard_id=standard.id) }}" method="POST" class="d-inline">
+                            {% if standard.is_active %}
+                                <button type="submit" class="btn btn-warning btn-sm">禁用</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-success btn-sm">启用</button>
+                            {% endif %}
+                        </form>
+
+                        <form action="{{ url_for('admin.delete_standard', standard_id=standard.id) }}" method="POST" class="d-inline" onsubmit="return confirm('确定要删除这个评分标准吗？此操作不可撤销。');">
+                            <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">暂无评分标准。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

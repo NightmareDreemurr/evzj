@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}新增班级 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus"></i> 新增班级</h2>
+                <a href="{{ url_for('admin.classrooms') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回班级列表
+                </a>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">班级信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {{ form.hidden_tag() }}
+                                
+                                <!-- 学校选择 -->
+                                <div class="mb-3">
+                                    {{ form.school_id.label(class="form-label") }}
+                                    {{ form.school_id(class="form-select") }}
+                                    {% if form.school_id.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.school_id.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 班级名称 -->
+                                <div class="mb-3">
+                                    {{ form.class_name.label(class="form-label") }}
+                                    {{ form.class_name(class="form-control", placeholder="例如：高一(1)班") }}
+                                    {% if form.class_name.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.class_name.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">请输入班级的完整名称</div>
+                                </div>
+                                
+                                <!-- 班级编号 -->
+                                <div class="mb-3">
+                                    {{ form.class_number.label(class="form-label") }}
+                                    {{ form.class_number(class="form-control", placeholder="例如：101") }}
+                                    {% if form.class_number.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.class_number.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">班级编号用于系统内部标识，在同一学校内应唯一</div>
+                                </div>
+                                
+                                <!-- 入学年份 -->
+                                <div class="mb-3">
+                                    {{ form.entry_year.label(class="form-label") }}
+                                    {{ form.entry_year(class="form-control", placeholder="例如：2024") }}
+                                    {% if form.entry_year.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.entry_year.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">学生入学的年份</div>
+                                </div>
+                                
+                                <!-- 毕业年份 -->
+                                <div class="mb-3">
+                                    {{ form.graduate_year.label(class="form-label") }}
+                                    {{ form.graduate_year(class="form-control", placeholder="例如：2027") }}
+                                    {% if form.graduate_year.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.graduate_year.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">预计毕业年份</div>
+                                </div>
+                                
+                                <!-- 描述 -->
+                                <div class="mb-4">
+                                    {{ form.description.label(class="form-label") }}
+                                    {{ form.description(class="form-control", rows="3", placeholder="班级描述信息（可选）") }}
+                                    {% if form.description.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.description.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 提交按钮 -->
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('admin.classrooms') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> 取消
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> 创建班级
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 自动计算毕业年份
+document.getElementById('entry_year').addEventListener('input', function() {
+    const entryYear = parseInt(this.value);
+    if (entryYear && entryYear > 1900 && entryYear < 3000) {
+        // 假设学制为3年（可根据实际情况调整）
+        const graduateYear = entryYear + 3;
+        document.getElementById('graduate_year').value = graduateYear;
+    }
+});
+
+// 表单验证
+document.querySelector('form').addEventListener('submit', function(e) {
+    const entryYear = parseInt(document.getElementById('entry_year').value);
+    const graduateYear = parseInt(document.getElementById('graduate_year').value);
+    
+    if (graduateYear <= entryYear) {
+        e.preventDefault();
+        alert('毕业年份必须大于入学年份');
+        return false;
+    }
+    
+    const currentYear = new Date().getFullYear();
+    if (entryYear > currentYear + 5) {
+        e.preventDefault();
+        alert('入学年份不能过于超前');
+        return false;
+    }
+});
+</script>
+{% endblock %}

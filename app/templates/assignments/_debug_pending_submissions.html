@@ -1,0 +1,48 @@
+<div class="mt-5 p-3 border rounded bg-light">
+    <h4><a data-toggle="collapse" href="#debug-window" role="button" aria-expanded="false" aria-controls="debug-window">【调试窗口】PendingSubmissions 状态查看</a></h4>
+    <div class="collapse" id="debug-window">
+        <p><small>这里显示的是当前与该作业关联的所有待处理提交在数据库中的实时状态。</small></p>
+        <table class="table table-bordered table-sm" style="font-size: 0.8rem;">
+            <thead class="thead-light">
+                <tr>
+                    <th>#</th>
+                    <th>ID</th>
+                    <th>原始文件名</th>
+                    <th>文件路径</th>
+                    <th>状态</th>
+                    <th>匹配的学生ID</th>
+                    <th>OCR识别文本 (前100字符)</th>
+                    <th>错误信息</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in submissions %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ sub.id }}</td>
+                    <td>{{ sub.original_filename }}</td>
+                    <td>{{ sub.file_path }}</td>
+                    <td>
+                        {% if sub.status == 'match_completed' %}
+                            <span class="badge badge-success">匹配完成</span>
+                        {% elif sub.status == 'ocr_completed' %}
+                            <span class="badge badge-info">OCR完成</span>
+                        {% elif sub.status == 'failed' %}
+                            <span class="badge badge-danger">失败</span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ sub.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ sub.matched_student_id or 'N/A' }}</td>
+                    <td><pre><code>{{ sub.ocr_text[:100] if sub.ocr_text else '' }}</code></pre></td>
+                    <td><small class="text-danger">{{ sub.error_message }}</small></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center">没有找到待处理的提交记录。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div> 

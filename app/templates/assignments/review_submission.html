@@ -1,0 +1,1088 @@
+{% extends "base.html" %}
+
+{% block title %}批阅作业 - {{ assignment.title }} ({{ submission.enrollment.student.user.full_name }}){% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面左上角返回按钮 -->
+    <a href="{{ url_for('assignments.submissions', assignment_id=assignment.id) }}" class="page-back-btn">
+        <i class="fas fa-arrow-left"></i>
+        返回提交列表
+    </a>
+    
+    <!-- Page Heading -->
+    <div class="page-heading mb-4">
+        <h1 class="h3 mb-1 text-gray-800">批阅作业</h1>
+        <p class="mb-0 text-muted">
+            <strong>作业:</strong> {{ assignment.title }}<br>
+            <strong>学生:</strong> {{ submission.enrollment.student.user.full_name }}<br>
+            <strong>提交时间:</strong> {{ submission.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+        </p>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-12 col-lg-7">
+            
+            <!-- Essay Image Card -->
+            {% if image_filename %}
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">学生作答图片</h6>
+                    <a href="https://7sref.com/assignments/submission/{{ submission.id }}/manual_annotate" class="btn btn-sm btn-outline-primary">手动圈画</a>
+                </div>
+                <div class="card-body text-center">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#imageModal">
+                        <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image" style="max-height: 500px; cursor: pointer;">
+                    </a>
+                    <p class="mt-2 text-muted small">点击图片查看大图</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Essay Content -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">学生作文</h6>
+                    <small class="text-muted">点击段落即可编辑</small>
+                </div>
+                <div class="card-body">
+                    {% if submission.status and 'error' in submission.status %}
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> 处理失败</h4>
+                            <p>系统在后台自动处理这篇作文时遇到错误。因此，AI评分未能完成。</p>
+                            <hr>
+                            <p class="mb-0"><strong>详细错误信息:</strong> {{ submission.error_message or "未提供详细错误信息。" }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    
+                    
+                    
+                    <div id="essay-content" class="editable-diff-field border p-2 rounded" contenteditable="true" style="min-height: 200px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grading & Feedback -->
+        <div class="col-12 col-lg-5" id="grading-panel">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">AI 智能评分与教师微调</h6>
+                    <div id="total-score-display" class="badge bg-primary text-white" style="font-size: 1.2rem;">
+                        {{ grading_result.total_score }} / {{ total_max_score }}分
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if submission.status == 'graded' and grading_result %}
+                        <div class="ai-feedback-section mb-4">
+                            <h6 class="text-secondary font-weight-bold">综合评价与寄语</h6>
+                            <div class="editable-diff-field border p-2 rounded" 
+                                 data-field-name="overall_comment" 
+                                 data-key="overall_comment"
+                                 contenteditable="true" 
+                                 style="min-height: 50px;">
+                            </div>
+                        </div>
+
+                        <div class="ai-feedback-section mb-4">
+                            <h6 class="text-success font-weight-bold">主要优点</h6>
+                            <div id="strengths-list-container" class="list-container">
+                                {# JS will populate this #}
+                            </div>
+                            <div class="text-end mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-success add-item-btn" data-container="strengths-list-container" data-field-type="string">+</button>
+                            </div>
+                        </div>
+
+                        <div class="ai-feedback-section mb-4">
+                            <h6 class="text-warning font-weight-bold">改进建议</h6>
+                            <div id="improvements-list-container" class="list-container">
+                                {# JS will populate this #}
+                            </div>
+                            <div class="text-end mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-success add-item-btn" data-container="improvements-list-container" data-field-type="string">+</button>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6 class="mb-3 font-weight-bold text-primary">各维度详细分析</h6>
+                        <div id="teacherDimensionsList">
+                            {% for dim in grading_result.dimensions %}
+                                <div class="card dimension-row mb-3" data-dimension-name="{{ dim.dimension_name }}" data-max-score="{{ criteria_max_scores.get(dim.dimension_name, '0') }}" data-original-dim='{{ dim | tojson | safe }}'>
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="dimension-name fw-bold me-2">{{ dim.dimension_name }}</span>
+                                        <div class="d-flex align-items-center">
+                                            <div class="input-group input-group-sm score-controls me-2" style="width: 140px;">
+                                                <span role="button" class="btn btn-outline-secondary btn-sm score-btn" data-action="decrement">-</span>
+                                                <input type="text" class="form-control form-control-sm text-center dimension-score" value="{{ dim.score }}" readonly>
+                                                <span role="button" class="btn btn-outline-secondary btn-sm score-btn" data-action="increment">+</span>
+                                            </div>
+                                            <span class="badge bg-info dimension-grade" style="min-width: 40px; font-size: 0.9rem;"></span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <small class="text-muted d-block mb-2">AI原始评分: {{ dim.score }} / {{ criteria_max_scores.get(dim.dimension_name, 'N/A') }}分 | 等级: {{ dim.selected_rubric_level }}</small>
+                                        
+                                        <div class="field-wrapper">
+                                            <div class="editable-diff-field border p-2 rounded mt-2" data-field-name="feedback" contenteditable="true" style="min-height: 40px;"></div>
+                                        </div>
+
+                                        <div class="mt-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong class="text-success">亮点句子:</strong>
+                                                <button type="button" class="btn btn-sm btn-outline-success add-item-btn" data-container="good-sentence-list-{{ loop.index }}" data-type="string">+</button>
+                                            </div>
+                                            <div id="good-sentence-list-{{ loop.index }}" class="list-container mt-2">
+                                                {# JS will populate this #}
+                                            </div>
+                                            <button type="button" class="btn good-sentence-add-btn dimension-add-btn" data-container="good-sentence-list-{{ loop.index }}" data-type="string">
+                                                <i class="fas fa-plus me-2"></i>添加亮点句子
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong class="text-warning">待改进句:</strong>
+                                                <button type="button" class="btn btn-sm btn-outline-warning add-item-btn" data-container="suggestion-list-{{ loop.index }}" data-type="suggestion-pair">+</button>
+                                            </div>
+                                            <div id="suggestion-list-{{ loop.index }}" class="list-container mt-2">
+                                                 {# JS will populate this #}
+                                            </div>
+                                            <button type="button" class="btn suggestion-add-btn dimension-add-btn" data-container="suggestion-list-{{ loop.index }}" data-type="suggestion-pair">
+                                                <i class="fas fa-plus me-2"></i>添加待改进句
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-3">
+                             <p class="text-muted">AI评分结果不可用，无法进行手动修改。</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+             <!-- Save Button -->
+            <div class="text-end mb-4">
+                <button id="save-changes-btn" class="btn btn-primary" data-submission-id="{{ submission.id }}">
+                    <i class="fas fa-save me-2"></i>保存修改
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image Modal -->
+    {% if image_filename %}
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="imageModalLabel">学生作答图片</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image">
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<style>
+    .editable-diff-field ins {
+        color: #c82333;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .editable-diff-field del {
+        color: #c82333;
+        text-decoration: line-through;
+    }
+    .field-wrapper {
+        position: relative;
+    }
+    .delete-item-btn {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        z-index: 10;
+        padding: 0.1rem 0.3rem;
+        font-size: 0.8rem;
+        line-height: 1;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+    .suggestion-card .delete-item-btn {
+        top: 8px;
+        right: 8px;
+    }
+    .delete-item-btn:hover {
+        background-color: rgba(230, 230, 230, 1);
+        color: #c82333;
+    }
+    .field-wrapper.has-delete-btn .editable-diff-field {
+        padding-top: 1rem !important;
+    }
+    .editable-diff-field[contenteditable="true"] {
+        white-space: pre-line;
+    }
+
+/* 页面左上角返回按钮 */
+.page-back-btn {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-back-btn:hover {
+    background: #f8f9fa;
+    color: #495057;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 页面标题区域 */
+.page-heading {
+    padding-top: 60px;
+    text-align: center;
+}
+
+/* 移动端优化样式 */
+@media (max-width: 768px) {
+    .page-back-btn {
+        top: 10px;
+        left: 10px;
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    .page-heading {
+        padding-top: 50px;
+        text-align: center;
+    }
+    
+    .page-heading h1 {
+        font-size: 1.5rem;
+        line-height: 1.3;
+        margin-bottom: 10px;
+    }
+    
+    .page-heading p {
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    /* 卡片统一优化 */
+    .card {
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 主评分卡片头部 */
+    #grading-panel .card-header {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        text-align: left;
+        padding: 15px;
+    }
+    
+    #grading-panel .card-header h6 {
+        font-size: 1rem;
+        margin-bottom: 0;
+        text-align: left;
+        flex: 1;
+    }
+    
+    #grading-panel .card-header #total-score-display {
+        margin-top: 0;
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+    
+    .card-body {
+        padding: 15px;
+        text-align: left;
+    }
+    
+    /* 评分区域优化 */
+    .score-controls {
+        width: 120px !important;
+        margin: 0;
+        flex-shrink: 0;
+    }
+    
+    .dimension-row .card-header {
+        padding: 12px 15px;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px;
+    }
+    
+    .dimension-row .card-header .d-flex {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .dimension-name {
+        flex: 1;
+        text-align: left !important;
+        margin-bottom: 0 !important;
+        font-size: 0.9rem;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+    
+    .dimension-grade {
+        min-width: 35px !important;
+        font-size: 0.8rem !important;
+        text-align: center;
+    }
+    
+    #total-score-display {
+        margin-top: 10px;
+        font-size: 1.1rem !important;
+    }
+    
+    /* 编辑区域优化 */
+    .editable-diff-field {
+        font-size: 0.9rem;
+        min-height: 80px;
+        padding: 12px;
+    }
+    
+    /* 按钮优化 */
+    .add-item-btn {
+        margin-top: 8px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+        min-width: 30px;
+    }
+    
+    /* 维度分析区域按钮优化 */
+    .dimension-row .mt-3 {
+        position: relative;
+    }
+    
+    .dimension-row .d-flex.justify-content-between.align-items-center {
+        margin-bottom: 8px;
+    }
+    
+    .dimension-row .d-flex.justify-content-between.align-items-center strong {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.9rem;
+        line-height: 1.2;
+        margin-bottom: 0;
+    }
+    
+    .dimension-row .d-flex.justify-content-between.align-items-center .add-item-btn {
+        display: none; /* 隐藏原有的小按钮 */
+    }
+    
+    /* 维度分析区域大按钮样式 */
+    .dimension-row .list-container {
+        margin-bottom: 10px;
+    }
+    
+    .dimension-row .list-container + .dimension-add-btn {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        margin-top: 5px;
+        border-radius: 6px;
+    }
+    
+    /* 亮点句子大按钮 - 绿色 */
+    .dimension-row .good-sentence-add-btn {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+    
+    .dimension-row .good-sentence-add-btn:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+        color: white;
+    }
+    
+    /* 待改进句大按钮 - 黄色 */
+    .dimension-row .suggestion-add-btn {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+    
+    .dimension-row .suggestion-add-btn:hover {
+        background-color: #e0a800;
+        border-color: #d39e00;
+        color: #212529;
+    }
+    
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+    
+    /* 图片优化 */
+    .img-fluid {
+        max-height: 300px !important;
+        width: 100%;
+        object-fit: contain;
+    }
+    
+    .card-body.text-center {
+        text-align: center !important;
+    }
+    
+    /* 表单元素优化 */
+    .input-group {
+        justify-content: center;
+    }
+    
+    .form-control {
+        font-size: 16px; /* 防止iOS缩放 */
+        text-align: center;
+    }
+    
+    /* AI反馈区域优化 */
+    .ai-feedback-section {
+        margin-bottom: 20px;
+    }
+    
+    .ai-feedback-section h6 {
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 1rem;
+    }
+    
+    /* 列表容器优化 */
+    .list-container {
+        margin-top: 15px;
+    }
+    
+    .field-wrapper {
+        margin-bottom: 15px;
+        width: 100%;
+    }
+    
+    .field-wrapper .editable-diff-field {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* AI反馈区域按钮容器优化 */
+    .ai-feedback-section .text-end {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .ai-feedback-section .add-item-btn {
+        width: 100%;
+        margin-top: 0;
+    }
+    
+    /* 改进建议区域黄色按钮 */
+    .ai-feedback-section:has(h6.text-warning) .add-item-btn {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+    
+    .ai-feedback-section:has(h6.text-warning) .add-item-btn:hover {
+        background-color: #e0a800;
+        border-color: #d39e00;
+        color: #212529;
+    }
+    
+    /* 建议卡片优化 */
+    .suggestion-card {
+        margin-bottom: 15px;
+    }
+    
+    .suggestion-card .card-body {
+        padding: 12px;
+    }
+    
+    /* 保存按钮优化 */
+    .text-end {
+        text-align: center !important;
+    }
+    
+    /* 维度区域按钮保持原样 */
+    .dimension-row .text-end {
+        text-align: right !important;
+    }
+    
+    .dimension-row .add-item-btn {
+        width: auto !important;
+        margin-top: 8px;
+    }
+    
+    #save-changes-btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+        margin-top: 20px;
+    }
+    
+    /* 维度分析区域优化 - 已在上面定义 */
+    .badge {
+        margin-top: 0;
+    }
+    
+    /* 小文本优化 */
+    small.text-muted {
+        text-align: center;
+        display: block;
+        margin-bottom: 10px;
+    }
+    
+    /* 删除按钮优化 */
+    .delete-item-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+    }
+    
+    /* 模态框优化 */
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .modal-body {
+        padding: 15px;
+        text-align: center;
+    }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const gradingResult = {{ grading_result | tojson | safe }};
+    const originalAiScore = {{ original_ai_score | tojson | safe }};
+    const totalMaxScore = parseFloat('{{ total_max_score or 0 }}');
+    const rubricsData = {{ rubrics_data | tojson | safe }};
+    const feedbackState = {}; // The single source of truth for text fields
+
+    /* stylelint-disable */
+    const originalEssayContent = {{ original_content | default('') | tojson | safe }};
+    const currentEssayContent = {{ content_source | default('') | tojson | safe }};
+    /* stylelint-enable */
+
+    // --- Utility Functions ---
+
+    function getCleanText(element) {
+        return element.textContent || '';
+    }
+
+    function getCaretCharacterOffsetWithin(element) {
+        let caretOffset = 0;
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(element);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            caretOffset = preCaretRange.toString().length;
+        }
+        return caretOffset;
+    }
+
+    function setCaretPosition(element, offset) {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        let charCount = 0;
+
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nextCharCount = charCount + node.length;
+                if (offset >= charCount && offset <= nextCharCount) {
+                    range.setStart(node, offset - charCount);
+                    range.collapse(true);
+                    return true; 
+                }
+                charCount = nextCharCount;
+            } else {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    if (traverse(node.childNodes[i])) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        if (offset === 0) {
+            range.setStart(element, 0);
+            range.collapse(true);
+        } else if (traverse(element)) {
+            // Position was set inside traverse
+        } else {
+            // If offset is out of bounds, place it at the end
+            range.selectNodeContents(element);
+            range.collapse(false);
+        }
+        
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function createDiffHtml(original, current) {
+        original = (original || '').replace(/\r\n?/g, '\n');
+        current = (current || '').replace(/\r\n?/g, '\n');
+        let i = 0, j = 0;
+        let html = '';
+        let buffer = '';
+        let type = 'equal'; // 'equal', 'add', 'del'
+
+        function flushBuffer() {
+            if (buffer) {
+                let escaped = buffer.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                if (type === 'add') html += `<ins>${escaped}</ins>`;
+                else if (type === 'del') html += `<del>${escaped}</del>`;
+                else html += escaped;
+                buffer = '';
+            }
+        }
+
+        while (i < original.length || j < current.length) {
+            const oChar = original[i];
+            const cChar = current[j];
+
+            if (oChar === cChar) {
+                if (type !== 'equal') flushBuffer();
+                type = 'equal';
+                buffer += oChar;
+                i++;
+                j++;
+            } else {
+                // Simple heuristic: assume deletion if original has more, addition if current has more
+                if (i < original.length && (j >= current.length || original.slice(i, i+10) !== current.slice(j, j+10))) {
+                    if (type !== 'del') flushBuffer();
+                    type = 'del';
+                    buffer += oChar;
+                    i++;
+                } else {
+                    if (type !== 'add') flushBuffer();
+                    type = 'add';
+                    buffer += cChar;
+                    j++;
+                }
+            }
+        }
+        flushBuffer();
+        // Remove trailing <br> if present
+        if (html.endsWith('<br>')) html = html.slice(0, -4);
+        return html || '&nbsp;';
+    }
+
+    function setupEditable(element, key = null) {
+        if (key) {
+            element.dataset.key = key;
+        }
+        element.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.execCommand('insertText', false, '\n');
+            }
+        });
+        element.addEventListener('focus', () => {
+            let current = '';
+            if (key && feedbackState[key]) {
+                current = feedbackState[key].current;
+            } else {
+                current = element.dataset.original || '';
+            }
+            element.textContent = current || '';
+        });
+        element.addEventListener('blur', () => {
+            let current = element.textContent || '';
+            current = current.replace(/\r\n?/g, '\n'); // Normalize line endings
+            if (key) {
+                feedbackState[key].current = current;
+            }
+            const original = (element.dataset.original || '').replace(/\r\n?/g, '\n');
+            element.innerHTML = createDiffHtml(original, current) || '&nbsp;';
+        });
+    }
+
+    // --- Element Creation Functions ---
+    
+    function createEditableItem(originalText = '', currentText = '', isNew = false) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'field-wrapper mb-2 has-delete-btn';
+        wrapper.dataset.originalText = originalText;
+        wrapper.dataset.isNew = String(isNew);
+
+        const editableDiv = document.createElement('div');
+        editableDiv.className = 'editable-diff-field border p-2 rounded';
+        editableDiv.setAttribute('contenteditable', 'true');
+        editableDiv.dataset.fieldName = 'text'; // a generic name
+        editableDiv.innerHTML = createDiffHtml(originalText, currentText);
+        editableDiv.dataset.original = originalText;
+        setupEditable(editableDiv);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-sm btn-close delete-item-btn';
+        
+        wrapper.appendChild(editableDiv);
+        wrapper.appendChild(deleteBtn);
+        
+        return wrapper;
+    }
+
+    function createSuggestionPairCard(originalPair = {}, currentPair = {}, isNew = false) {
+        const card = document.createElement('div');
+        card.className = 'card field-wrapper suggestion-card mb-2';
+        card.dataset.isNew = String(isNew);
+        card.dataset.originalOriginal = originalPair?.original || '';
+        card.dataset.originalSuggested = originalPair?.suggested || '';
+        
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body p-2 position-relative';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-sm btn-close delete-item-btn';
+
+        const createSection = (title, fieldName, text) => {
+            const section = document.createElement('div');
+            section.innerHTML = `<small class="text-muted">${title}:</small>`;
+            const editable = document.createElement('div');
+            editable.className = 'editable-diff-field border p-1 rounded';
+            editable.setAttribute('contenteditable', 'true');
+            editable.dataset.fieldName = fieldName;
+            const original = fieldName === 'original' ? card.dataset.originalOriginal : card.dataset.originalSuggested;
+            editable.innerHTML = createDiffHtml(original, text);
+            editable.dataset.original = original;
+            setupEditable(editable);
+            section.appendChild(editable);
+            return section;
+        };
+        
+        const originalSection = createSection('原文', 'original', currentPair?.original || '');
+        const suggestedSection = createSection('建议', 'suggested', currentPair?.suggested || '');
+        suggestedSection.classList.add('mt-1');
+
+        cardBody.appendChild(deleteBtn);
+        cardBody.appendChild(originalSection);
+        cardBody.appendChild(suggestedSection);
+        card.appendChild(cardBody);
+        return card;
+    }
+
+    // --- Main Event Delegation ---
+    document.getElementById('grading-panel').addEventListener('click', e => {
+        if (e.target.closest('.delete-item-btn')) {
+            const wrapper = e.target.closest('.field-wrapper');
+            if (wrapper) {
+                if (wrapper.dataset.isNew === 'true') {
+                    wrapper.remove();
+                } else {
+                    wrapper.style.display = 'none';
+                    wrapper.dataset.deleted = 'true';
+                }
+                updateTotalScore();
+            }
+        } else if (e.target.classList.contains('add-item-btn') || e.target.classList.contains('dimension-add-btn')) {
+            const containerId = e.target.dataset.container;
+            const type = e.target.dataset.type;
+            const container = document.getElementById(containerId);
+            if (container) {
+                let newItem;
+                if (type === 'string') {
+                    newItem = createEditableItem('', '', true);
+                } else if (type === 'suggestion-pair') {
+                    newItem = createSuggestionPairCard({}, {}, true);
+                }
+                if (newItem) {
+                    container.appendChild(newItem);
+                    newItem.querySelector('[contenteditable="true"]').focus();
+                }
+            }// In the click event listener, replace the score adjustment part
+        } else if (e.target.closest('.score-btn')) {
+            const btn = e.target.closest('.score-btn');
+            const action = btn.dataset.action;
+            const scoreInput = btn.parentElement.querySelector('.dimension-score');
+            const dimensionRow = btn.closest('.dimension-row');
+            const maxScore = parseFloat(dimensionRow.dataset.maxScore);
+            const rubrics = rubricsData[dimensionRow.dataset.dimensionName] || [];
+            let currentScore = parseFloat(scoreInput.value);
+
+            let step = 0.5;
+            let newScore = currentScore + (action === 'increment' ? step : -step);
+            let direction = action === 'increment' ? 'up' : 'down';
+
+            if (newScore >= 0 && newScore <= maxScore && isValidScore(newScore, rubrics)) {
+                currentScore = newScore;
+            } else {
+                let nextValid = findNextValidScore(currentScore, maxScore, rubrics, direction);
+                if (nextValid !== null) {
+                    currentScore = nextValid;
+                }
+            }
+
+            scoreInput.value = currentScore.toFixed(1);
+            updateTotalScore();
+            updateGradeForDimension(dimensionRow);
+        }
+    });
+
+    // --- Population Functions ---
+
+    function populateSimpleList(containerId, originalItems = [], currentItems = []) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        const allItems = [...new Set([...originalItems, ...currentItems])];
+        allItems.forEach(text => {
+            const isInOriginal = originalItems.includes(text);
+            const isInCurrent = currentItems.includes(text);
+            if (isInCurrent) { // Only show items that are currently in the data
+                container.appendChild(createEditableItem(isInOriginal ? text : '', text));
+            }
+        });
+    }
+
+    function populateSuggestionList(containerId, originalItems = [], currentItems = []) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        currentItems.forEach(currentPair => {
+             const originalPair = originalItems.find(op => op.original === currentPair.original && op.suggested === currentPair.suggested);
+             container.appendChild(createSuggestionPairCard(originalPair, currentPair, !originalPair));
+        });
+    }
+    
+    function updateTotalScore() {
+        let totalScore = 0;
+        document.querySelectorAll('.dimension-row').forEach(row => {
+            totalScore += parseFloat(row.querySelector('.dimension-score').value);
+        });
+        document.getElementById('total-score-display').textContent = `${totalScore} / ${totalMaxScore}分`;
+    }
+
+    // New function to update grade badge for a dimension
+    function updateGradeForDimension(row) {
+        const name = row.dataset.dimensionName;
+        const score = parseFloat(row.querySelector('.dimension-score').value);
+        const rubrics = rubricsData[name] || [];
+        let level = '';
+        for (let r of rubrics) {
+            if (score >= r.min && score <= r.max) {
+                level = r.level;
+                break;
+            }
+        }
+        row.querySelector('.dimension-grade').textContent = level;
+    }
+
+    // New function to find next/prev valid score
+    function findNextValidScore(current, maxScore, rubrics, direction) {
+      let step = direction === 'up' ? 0.5 : -0.5;
+      let candidate = current + step;
+      while ((direction === 'up' && candidate <= maxScore) || (direction === 'down' && candidate >= 0)) {
+        if (isValidScore(candidate, rubrics)) {
+          return candidate;
+        }
+        candidate += step;
+      }
+      return null; // No valid score found
+    }
+
+    // New validation function
+    function isValidScore(score, rubrics) {
+      for (let r of rubrics) {
+        if (score >= r.min && score <= r.max) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+
+
+    // ... existing code ...
+
+    // --- Initial Data Population ---
+    function initializePage() {
+        // Overall Comment
+        const overallCommentField = document.querySelector('[data-key="overall_comment"]');
+        const originalOverallComment = originalAiScore.overall_comment || '';
+        const currentOverallComment = gradingResult.overall_comment || '';
+        feedbackState.overall_comment = {
+            original: originalOverallComment,
+            current: currentOverallComment
+        };
+        overallCommentField.innerHTML = createDiffHtml(originalOverallComment, currentOverallComment);
+        overallCommentField.dataset.original = feedbackState.overall_comment.original;
+        setupEditable(overallCommentField, 'overall_comment');
+
+        // Strengths and Improvements
+        populateSimpleList('strengths-list-container', originalAiScore.strengths, gradingResult.strengths);
+        populateSimpleList('improvements-list-container', originalAiScore.improvements, gradingResult.improvements);
+
+        // Dimensions
+        document.querySelectorAll('.dimension-row').forEach((row, index) => {
+            const dimName = row.dataset.dimensionName;
+            const originalDim = originalAiScore.dimensions.find(d => d.dimension_name === dimName) || {};
+            const currentDim = gradingResult.dimensions.find(d => d.dimension_name === dimName) || {};
+
+            // Dimension Feedback - managed by feedbackState
+            const feedbackField = row.querySelector('[data-field-name="feedback"]');
+            const feedbackKey = `dim_feedback_${dimName}`;
+            feedbackField.dataset.key = feedbackKey; // Assign key for the listener
+
+            const originalFeedback = originalDim.feedback || '';
+            const currentFeedback = currentDim.feedback || '';
+            feedbackState[feedbackKey] = {
+                original: originalFeedback,
+                current: currentFeedback,
+            };
+            feedbackField.innerHTML = createDiffHtml(originalFeedback, currentFeedback);
+            feedbackField.dataset.original = feedbackState[feedbackKey].original;
+            setupEditable(feedbackField, feedbackKey);
+
+            // Good Sentences (now a list)
+            const goodSentenceListId = `good-sentence-list-${index + 1}`;
+            const originalGood = originalDim.example_good_sentence ? [originalDim.example_good_sentence] : [];
+            const currentGood = Array.isArray(currentDim.example_good_sentence) ? currentDim.example_good_sentence : (currentDim.example_good_sentence ? [currentDim.example_good_sentence] : []);
+            populateSimpleList(goodSentenceListId, originalGood, currentGood);
+
+            // Improvement Suggestions (now a list of pairs)
+            const suggestionListId = `suggestion-list-${index + 1}`;
+            const originalSuggest = originalDim.example_improvement_suggestion ? [originalDim.example_improvement_suggestion] : [];
+            const currentSuggest = Array.isArray(currentDim.example_improvement_suggestion) ? currentDim.example_improvement_suggestion : (currentDim.example_improvement_suggestion ? [currentDim.example_improvement_suggestion] : []);
+            populateSuggestionList(suggestionListId, originalSuggest, currentSuggest);
+        });
+        
+        // Essay Content
+        const essayContentField = document.getElementById('essay-content');
+        feedbackState.essay_content = {
+            original: originalEssayContent,
+            current: currentEssayContent
+        };
+        // Fix for no changes: if current is empty but original exists, use original as current to avoid full deletion marking
+        if (!currentEssayContent && originalEssayContent) {
+          currentEssayContent = originalEssayContent;
+          feedbackState.essay_content.current = currentEssayContent;
+        }
+        let diffHtml = '';
+        if (currentEssayContent === originalEssayContent) {
+            // No teacher version: display original AI content without highlighting
+            diffHtml = originalEssayContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') || '&nbsp;';
+        } else {
+            // Has teacher version: compute diff between AI and teacher
+            diffHtml = createDiffHtml(originalEssayContent, currentEssayContent) || '&nbsp;';
+        }
+        essayContentField.innerHTML = diffHtml;
+        essayContentField.dataset.original = originalEssayContent;
+        setupEditable(essayContentField, 'essay_content');
+        
+        console.log('Computed essay diff HTML:', essayContentField.innerHTML);
+        updateTotalScore();
+        document.querySelectorAll('.dimension-row').forEach(updateGradeForDimension);
+    }
+
+    // --- Save Logic ---
+    document.getElementById('save-changes-btn').addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中...';
+        
+        const getSimpleList = id => Array.from(document.querySelectorAll(`#${id} .field-wrapper`))
+            .filter(w => w.style.display !== 'none')
+            .map(w => w.querySelector('.editable-diff-field').innerText.trim())
+            .filter(Boolean);
+
+        const fullFeedback = {
+            overall_comment: feedbackState.overall_comment.current.trim(),
+            strengths: getSimpleList('strengths-list-container'),
+            improvements: getSimpleList('improvements-list-container'),
+            dimensions: Array.from(document.querySelectorAll('.dimension-row')).map((row, index) => {
+                const dimName = row.dataset.dimensionName;
+                const feedbackKey = `dim_feedback_${dimName}`;
+                
+                const suggestionPairs = Array.from(row.querySelectorAll(`#suggestion-list-${index+1} .field-wrapper`))
+                    .filter(w => w.style.display !== 'none')
+                    .map(card => ({
+                        original: card.querySelector('[data-field-name="original"]').innerText.trim(),
+                        suggested: card.querySelector('[data-field-name="suggested"]').innerText.trim()
+                    }))
+                    .filter(p => p.original || p.suggested);
+
+                const goodSentences = getSimpleList(`good-sentence-list-${index+1}`);
+
+                return {
+                    dimension_name: row.dataset.dimensionName,
+                    score: parseFloat(row.querySelector('.dimension-score').value),
+                    feedback: feedbackState[feedbackKey].current.trim(),
+                    selected_rubric_level: JSON.parse(row.dataset.originalDim).selected_rubric_level,
+                    example_good_sentence: goodSentences,
+                    example_improvement_suggestion: suggestionPairs
+                };
+            })
+        };
+        
+        const scores = {};
+        fullFeedback.dimensions.forEach(d => scores[d.dimension_name] = d.score);
+        
+        const payload = {
+            teacher_scores: scores,
+            teacher_corrected_text: document.getElementById('essay-content').innerText.replace(/\r?\n+/g, '\n').trim(),
+            full_feedback: fullFeedback,
+        };
+
+        try {
+            const response = await fetch(`/assignments/api/submission/${this.dataset.submissionId}/update_teacher_feedback`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                alert('修改已成功保存！');
+                window.location.reload();
+            } else {
+                alert(`保存失败: ${result.message || '未知错误'}`);
+            }
+        } catch (err) {
+            alert(`保存时发生网络错误: ${err.message}`);
+        } finally {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-save me-2"></i>保存修改';
+        }
+    });
+
+    initializePage();
+});
+</script>
+{% endblock %}

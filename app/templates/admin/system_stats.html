@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}系统统计 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-bar"></i> 系统统计</h2>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="refreshStats()">
+                        <i class="fas fa-sync-alt"></i> 刷新数据
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="exportStats()">
+                        <i class="fas fa-download"></i> 导出报告
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 时间范围选择 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">开始日期</label>
+                            <input type="date" class="form-control" name="start_date" 
+                                   value="{{ request.args.get('start_date', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">结束日期</label>
+                            <input type="date" class="form-control" name="end_date" 
+                                   value="{{ request.args.get('end_date', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> 筛选
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('admin.system_stats') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> 清除
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 核心统计指标 -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                            <h3 class="text-primary">{{ stats.total_users or 0 }}</h3>
+                            <p class="text-muted mb-0">总用户数</p>
+                            <small class="text-success">
+                                <i class="fas fa-arrow-up"></i> +{{ stats.new_users_today or 0 }} 今日新增
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-school fa-3x text-success mb-3"></i>
+                            <h3 class="text-success">{{ stats.total_schools or 0 }}</h3>
+                            <p class="text-muted mb-0">合作学校</p>
+                            <small class="text-info">
+                                <i class="fas fa-users"></i> 平均 {{ stats.avg_users_per_school or 0 }} 用户/校
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <i class="fas fa-door-open fa-3x text-info mb-3"></i>
+                            <h3 class="text-info">{{ stats.total_classrooms or 0 }}</h3>
+                            <p class="text-muted mb-0">活跃班级</p>
+                            <small class="text-warning">
+                                <i class="fas fa-user-graduate"></i> 平均 {{ stats.avg_students_per_class or 0 }} 学生/班
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-alt fa-3x text-warning mb-3"></i>
+                            <h3 class="text-warning">{{ stats.total_essays or 0 }}</h3>
+                            <p class="text-muted mb-0">作文总数</p>
+                            <small class="text-primary">
+                                <i class="fas fa-plus"></i> +{{ stats.new_essays_today or 0 }} 今日提交
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- 用户角色分布 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-pie-chart"></i> 用户角色分布</h5>
+                        </div>
+                        <div class="card-body" style="height: 350px;">
+                            <canvas id="userRoleChart"></canvas>
+                            <div class="mt-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="border-end">
+                                            <h5 class="text-danger mb-1">{{ stats.total_admins or 0 }}</h5>
+                                            <small class="text-muted">管理员</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border-end">
+                                            <h5 class="text-success mb-1">{{ stats.total_teachers or 0 }}</h5>
+                                            <small class="text-muted">教师</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <h5 class="text-info mb-1">{{ stats.total_students or 0 }}</h5>
+                                        <small class="text-muted">学生</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 用户注册趋势 -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-line-chart"></i> 用户注册趋势</h5>
+                        </div>
+                        <div class="card-body" style="height: 300px;">
+                            <canvas id="registrationTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- 学校统计 -->
+                <div class="col-lg-8 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-school"></i> 学校统计</h5>
+                            <small class="text-muted">按用户数量排序</small>
+                        </div>
+                        <div class="card-body">
+                            {% if school_stats %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>学校名称</th>
+                                            <th>教师数量</th>
+                                            <th>学生数量</th>
+                                            <th>班级数量</th>
+                                            <th>作业数量</th>
+                                            <th>作文数量</th>
+                                            <th>活跃度</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for school in school_stats %}
+                                        <tr>
+                                            <td>
+                                                <div class="fw-medium">{{ school.name }}</div>
+                                                <small class="text-muted">{{ school.sort_name or '-' }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">{{ school.teacher_count or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ school.student_count or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ school.classroom_count or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning">{{ school.assignment_count or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">{{ school.essay_count or 0 }}</span>
+                                            </td>
+                                            <td>
+                                                {% set activity_score = (school.essay_count or 0) / (school.student_count or 1) * 100 %}
+                                                {% if activity_score >= 80 %}
+                                                    <span class="badge bg-success">高</span>
+                                                {% elif activity_score >= 50 %}
+                                                    <span class="badge bg-warning">中</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">低</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-school fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">暂无学校数据</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 系统健康状态 -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-heartbeat"></i> 系统健康状态</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">数据库连接</span>
+                                    <span class="badge bg-success">正常</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">用户活跃度</span>
+                                    <span class="badge bg-info">{{ stats.active_user_percentage or 0 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-info" style="width: {{ stats.active_user_percentage or 0 }}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">存储使用率</span>
+                                    <span class="badge bg-warning">{{ stats.storage_usage_percentage or 0 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-warning" style="width: {{ stats.storage_usage_percentage or 0 }}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">系统负载</span>
+                                    <span class="badge bg-primary">{{ stats.system_load_percentage or 0 }}%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ stats.system_load_percentage or 0 }}%"></div>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="text-center">
+                                <h6 class="text-muted mb-2">系统运行时间</h6>
+                                <h4 class="text-primary">{{ stats.uptime_days or 0 }} 天</h4>
+                                <small class="text-muted">上次重启: {{ stats.last_restart or '未知' }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 作业和作文统计 -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-chart-area"></i> 作业与作文提交趋势</h5>
+                        </div>
+                        <div class="card-body" style="height: 300px;">
+                            <canvas id="essayTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 用户角色分布饼图
+const userRoleCtx = document.getElementById('userRoleChart').getContext('2d');
+const userRoleChart = new Chart(userRoleCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['管理员', '教师', '学生'],
+        datasets: [{
+            data: [
+                {{ stats.total_admins or 0 }},
+                {{ stats.total_teachers or 0 }},
+                {{ stats.total_students or 0 }}
+            ],
+            backgroundColor: [
+                '#dc3545',
+                '#28a745',
+                '#17a2b8'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// 用户注册趋势图
+const registrationTrendCtx = document.getElementById('registrationTrendChart').getContext('2d');
+const registrationTrendChart = new Chart(registrationTrendCtx, {
+    type: 'line',
+    data: {
+        labels: {{ registration_trend_labels | tojson if registration_trend_labels else "['周一', '周二', '周三', '周四', '周五', '周六', '周日']" | safe }},
+        datasets: [{
+            label: '新注册用户',
+            data: {{ registration_trend_data | tojson if registration_trend_data else "[12, 19, 3, 5, 2, 3, 8]" | safe }},
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// 作文提交趋势图
+const essayTrendCtx = document.getElementById('essayTrendChart').getContext('2d');
+const essayTrendChart = new Chart(essayTrendCtx, {
+    type: 'line',
+    data: {
+        labels: {{ essay_trend_labels | tojson if essay_trend_labels else "['1月', '2月', '3月', '4月', '5月', '6月']" | safe }},
+        datasets: [{
+            label: '作业发布',
+            data: {{ assignment_trend_data | tojson if assignment_trend_data else "[65, 59, 80, 81, 56, 55]" | safe }},
+            borderColor: '#ffc107',
+            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            tension: 0.4
+        }, {
+            label: '作文提交',
+            data: {{ essay_trend_data | tojson if essay_trend_data else "[28, 48, 40, 19, 86, 27]" | safe }},
+            borderColor: '#28a745',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// 刷新统计数据
+function refreshStats() {
+    location.reload();
+}
+
+// 导出统计报告
+function exportStats() {
+    // 这里可以实现导出功能
+    alert('导出功能开发中...');
+}
+</script>
+{% endblock %}

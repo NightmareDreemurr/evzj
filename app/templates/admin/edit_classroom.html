@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}编辑班级 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-edit"></i> 编辑班级</h2>
+                <a href="{{ url_for('admin.classrooms') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回班级列表
+                </a>
+            </div>
+            
+            <div class="row">
+                <!-- 班级基本信息 -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">班级信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {{ form.hidden_tag() }}
+                                
+                                <!-- 学校选择 -->
+                                <div class="mb-3">
+                                    {{ form.school_id.label(class="form-label") }}
+                                    {{ form.school_id(class="form-select") }}
+                                    {% if form.school_id.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.school_id.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 班级名称 -->
+                                <div class="mb-3">
+                                    {{ form.class_name.label(class="form-label") }}
+                                    {{ form.class_name(class="form-control") }}
+                                    {% if form.class_name.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.class_name.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 班级编号 -->
+                                <div class="mb-3">
+                                    {{ form.class_number.label(class="form-label") }}
+                                    {{ form.class_number(class="form-control") }}
+                                    {% if form.class_number.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.class_number.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">班级编号在同一学校内应唯一</div>
+                                </div>
+                                
+                                <!-- 入学年份 -->
+                                <div class="mb-3">
+                                    {{ form.entry_year.label(class="form-label") }}
+                                    {{ form.entry_year(class="form-control") }}
+                                    {% if form.entry_year.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.entry_year.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 毕业年份 -->
+                                <div class="mb-3">
+                                    {{ form.graduate_year.label(class="form-label") }}
+                                    {{ form.graduate_year(class="form-control") }}
+                                    {% if form.graduate_year.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.graduate_year.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 描述 -->
+                                <div class="mb-4">
+                                    {{ form.description.label(class="form-label") }}
+                                    {{ form.description(class="form-control", rows="3") }}
+                                    {% if form.description.errors %}
+                                        <div class="text-danger mt-1">
+                                            {% for error in form.description.errors %}
+                                                <small>{{ error }}</small><br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 提交按钮 -->
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('admin.classrooms') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> 取消
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> 保存更改
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 班级统计信息 -->
+                <div class="col-md-4">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">班级统计</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="border-end">
+                                        <h4 class="text-primary mb-1">{{ classroom.enrollments|length }}</h4>
+                                        <small class="text-muted">学生数量</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success mb-1">{{ classroom.essay_assignments|length }}</h4>
+                                    <small class="text-muted">作业数量</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">基本信息</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td class="text-muted">班级ID:</td>
+                                    <td>{{ classroom.id }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">创建时间:</td>
+                                    <td>{{ classroom.created_at.strftime('%Y-%m-%d %H:%M') if classroom.created_at else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">更新时间:</td>
+                                    <td>{{ classroom.updated_at.strftime('%Y-%m-%d %H:%M') if classroom.updated_at else '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">学制:</td>
+                                    <td>{{ classroom.graduate_year - classroom.entry_year }}年</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 学生列表 -->
+            {% if classroom.enrollments %}
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">班级学生 ({{ classroom.enrollments|length }}人)</h6>
+                    <small class="text-muted">显示前20名学生</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>学号</th>
+                                    <th>姓名</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>入学时间</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in classroom.enrollments[:20] %}
+                                <tr>
+                                    <td>{{ enrollment.student_number or '-' }}</td>
+                                    <td>{{ enrollment.student.user.full_name or enrollment.student.user.username }}</td>
+                                    <td>{{ enrollment.student.user.username }}</td>
+                                    <td>{{ enrollment.student.user.email }}</td>
+                                    <td>{{ enrollment.enrollment_date.strftime('%Y-%m-%d') if enrollment.enrollment_date else '-' }}</td>
+                                    <td>
+                                        {% if enrollment.student.user.is_active %}
+                                            <span class="badge bg-success">正常</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">停用</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if classroom.enrollments|length > 20 %}
+                    <div class="text-center mt-2">
+                        <small class="text-muted">还有 {{ classroom.enrollments|length - 20 }} 名学生未显示</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 作业列表 -->
+            {% if classroom.assignments %}
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">班级作业 ({{ classroom.assignments|length }}个)</h6>
+                    <small class="text-muted">显示最近10个作业</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>作业标题</th>
+                                    <th>创建时间</th>
+                                    <th>截止时间</th>
+                                    <th>提交数量</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in classroom.assignments[:10] %}
+                                <tr>
+                                    <td>{{ assignment.title }}</td>
+                                    <td>{{ assignment.created_at.strftime('%Y-%m-%d') if assignment.created_at else '-' }}</td>
+                                    <td>{{ assignment.due_date.strftime('%Y-%m-%d') if assignment.due_date else '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ assignment.essays|length }}</span>
+                                    </td>
+                                    <td>
+                                        {% if assignment.due_date and assignment.due_date < moment().utc() %}
+                                            <span class="badge bg-secondary">已截止</span>
+                                        {% else %}
+                                            <span class="badge bg-success">进行中</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if classroom.essay_assignments|length > 10 %}
+                    <div class="text-center mt-2">
+                        <small class="text-muted">还有 {{ classroom.essay_assignments|length - 10 }} 个作业未显示</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// 表单验证
+document.querySelector('form').addEventListener('submit', function(e) {
+    const entryYear = parseInt(document.getElementById('entry_year').value);
+    const graduateYear = parseInt(document.getElementById('graduate_year').value);
+    
+    if (graduateYear <= entryYear) {
+        e.preventDefault();
+        alert('毕业年份必须大于入学年份');
+        return false;
+    }
+});
+</script>
+{% endblock %}

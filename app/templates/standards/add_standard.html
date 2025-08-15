@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}新增评分标准 - {{ super() }}{% endblock %}
+
+{% block page_title %}新增评分标准{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        填写评分标准信息
+    </div>
+    <div class="card-body">
+        {% set action_url = url_for('standards.add_standard') %}
+        {% set submit_text = '保存评分标准' %}
+        {% set standard_json = 'null' %}
+        {% include 'standards/_standard_form.html' %}
+    </div>
+</div>
+{% endblock %}

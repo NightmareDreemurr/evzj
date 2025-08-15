@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}年级管理 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-graduation-cap"></i> 年级管理</h2>
+    </div>
+    
+    <!-- 添加年级表单 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-plus"></i> 添加新年级</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control") }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.name.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> 添加年级
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 年级列表 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list"></i> 年级列表</h5>
+        </div>
+        <div class="card-body">
+            {% if grades %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>年级名称</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grade in grades %}
+                            <tr>
+                                <td>{{ grade.id }}</td>
+                                <td>
+                                    <strong>{{ grade.name }}</strong>
+                                </td>
+                                <td>
+                                    {% if grade.is_enabled %}
+                                        <span class="badge bg-success">启用</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">禁用</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if grade.created_at %}
+                                        {{ grade.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <!-- 切换状态按钮 -->
+                                        <form method="POST" action="{{ url_for('admin.toggle_grade_level', grade_id=grade.id) }}" style="display: inline;">
+                                            {% if grade.is_enabled %}
+                                                <button type="submit" class="btn btn-sm btn-warning" title="禁用年级">
+                                                    <i class="fas fa-pause"></i>
+                                                </button>
+                                            {% else %}
+                                                <button type="submit" class="btn btn-sm btn-success" title="启用年级">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                        
+                                        <!-- 删除按钮 -->
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="confirmDelete('{{ grade.name }}', '{{ url_for('admin.delete_grade_level', grade_id=grade.id) }}')"
+                                                title="删除年级">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">暂无年级数据</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除年级 "<span id="deleteGradeName"></span>" 吗？</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> 此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger">确认删除</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(gradeName, deleteUrl) {
+    document.getElementById('deleteGradeName').textContent = gradeName;
+    document.getElementById('confirmDeleteBtn').href = deleteUrl;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

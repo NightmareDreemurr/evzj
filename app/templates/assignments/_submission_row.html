@@ -1,0 +1,43 @@
+<tr id="submission-row-{{ submission.id }}">
+    <td>{{ submission.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+    
+    <td id="submission-status-cell-{{ submission.id }}">
+        {% set processing_statuses = ['pending', 'correcting', 'grading', 'pending_ai_processing'] %}
+        {% if submission.status in processing_statuses %}
+            <div class="progress-container" data-essay-id="{{ submission.id }}">
+                <div class="progress" style="height: 20px;">
+                    {# The initial state and text are set here, but JS will update them #}
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 10%;" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="progress-text text-muted d-block mt-1">排队等待处理...</small>
+            </div>
+        {% elif submission.status == 'graded' %}
+            <span class="badge bg-success">已评分</span>
+        {% elif submission.status and 'error' in submission.status %}
+            <span class="badge bg-danger" title="{{ submission.error_message or '无详细信息' }}">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                处理失败
+            </span>
+        {% else %}
+             <span class="badge bg-secondary">{{ submission.status }}</span>
+        {% endif %}
+    </td>
+
+    <td>
+        {% if submission.status == 'graded' and submission.ai_score and submission.ai_score.get('total_score') is not none %}
+            <strong class="text-primary">{{ submission.ai_score.total_score }}</strong> / {{ submission.assignment.grading_standard.total_score }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <td>
+        {% if submission.status == 'graded' %}
+            <a href="{{ url_for('assignments.review_submission', submission_id=submission.id, assignment_id=None) }}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-search me-1"></i>查看批阅
+            </a>
+        {% elif submission.status and 'error' in submission.status %}
+             <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="{{ submission.error_message or '无详细信息' }}">重试(不可用)</button>
+        {% endif %}
+    </td>
+</tr> 

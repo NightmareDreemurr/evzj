@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}作业管理{% endblock %}
+
+{% block head %}
+<style>
+    /* 移动端优化样式 */
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none;
+        }
+        .mobile-cards {
+            display: block;
+        }
+        .page-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        .page-header h2 {
+            font-size: 1.5rem;
+        }
+        .btn-create {
+            width: 100%;
+            justify-content: center;
+        }
+        .assignment-card {
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .assignment-card .card-body {
+            padding: 15px;
+        }
+        .assignment-meta {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .assignment-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .assignment-actions .btn {
+            flex: 1;
+            min-width: 70px;
+            font-size: 0.8rem;
+            padding: 6px 8px;
+        }
+    }
+    @media (min-width: 769px) {
+        .mobile-cards {
+            display: none;
+        }
+        .desktop-table {
+            display: block;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <h2 class="h3 mb-0 text-gray-800">作业管理</h2>
+        <a href="{{ url_for('assignments.create_assignment') }}" class="btn btn-primary btn-create">
+            <i class="fas fa-plus-circle me-2"></i>布置新作业
+        </a>
+    </div>
+
+    <!-- 桌面端表格视图 -->
+    <div class="card shadow mb-4 desktop-table">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">作业列表</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="assignmentsTable" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>作业标题</th>
+                            <th>评分标准</th>
+                            <th>发布对象</th>
+                            <th>发布时间</th>
+                            <th>截止日期</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if assignments %}
+                            {% for assignment in assignments %}
+                                <tr>
+                                    <td>{{ assignment.title }}</td>
+                                    <td>{{ assignment.grading_standard.title }}</td>
+                                    <td>
+                                        {% if assignment.classrooms %}
+                                            <div>
+                                                <strong>班级:</strong>
+                                                {{ assignment.classrooms|map(attribute='class_name')|join(', ') }}
+                                            </div>
+                                        {% endif %}
+                                        {% if assignment.students %}
+                                            <div>
+                                                <strong>学生:</strong>
+                                                {{ assignment.students|map(attribute='user.full_name')|join(', ') }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assignment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ assignment.due_date.strftime('%Y-%m-%d %H:%M') if assignment.due_date else '无' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('assignments.edit_assignment', assignment_id=assignment.id) }}" class="btn btn-sm btn-warning mb-1">编辑</a>
+                                        <a href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id) }}" class="btn btn-sm btn-info mb-1">查看详情</a>
+                                        <button type="button" class="btn btn-sm btn-danger mb-1" data-toggle="modal" data-target="#deleteModal-{{ assignment.id }}">
+                                            删除
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">暂无作业记录。</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动端卡片视图 -->
+    <div class="mobile-cards">
+        {% if assignments %}
+            {% for assignment in assignments %}
+                <div class="card assignment-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">{{ assignment.title }}</h5>
+                        <div class="assignment-meta">
+                            <div class="mb-1">
+                                <i class="fas fa-clipboard-list me-1"></i>
+                                <strong>评分标准:</strong> {{ assignment.grading_standard.title }}
+                            </div>
+                            <div class="mb-1">
+                                <i class="fas fa-users me-1"></i>
+                                <strong>发布对象:</strong>
+                                {% if assignment.classrooms %}
+                                    班级: {{ assignment.classrooms|map(attribute='class_name')|join(', ') }}
+                                {% endif %}
+                                {% if assignment.students %}
+                                    {% if assignment.classrooms %} | {% endif %}
+                                    学生: {{ assignment.students|map(attribute='user.full_name')|join(', ') }}
+                                {% endif %}
+                            </div>
+                            <div class="mb-1">
+                                <i class="fas fa-calendar me-1"></i>
+                                <strong>发布:</strong> {{ assignment.created_at.strftime('%m-%d %H:%M') }}
+                            </div>
+                            <div class="mb-2">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>截止:</strong> {{ assignment.due_date.strftime('%m-%d %H:%M') if assignment.due_date else '无' }}
+                            </div>
+                        </div>
+                        <div class="assignment-actions">
+                            <a href="{{ url_for('assignments.edit_assignment', assignment_id=assignment.id) }}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            <a href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id) }}" class="btn btn-info">
+                                <i class="fas fa-eye"></i> 查看
+                            </a>
+                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal-{{ assignment.id }}">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="card assignment-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无作业记录</h5>
+                    <p class="text-muted">点击上方按钮开始布置新作业</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

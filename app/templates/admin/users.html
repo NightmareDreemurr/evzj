@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> 用户管理</h2>
+                <a href="{{ url_for('admin.create_user') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 新增用户
+                </a>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="search" 
+                                   value="{{ request.args.get('search', '') }}" 
+                                   placeholder="搜索用户名、邮箱或姓名">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="role">
+                                <option value="">所有角色</option>
+                                <option value="admin" {{ 'selected' if request.args.get('role') == 'admin' }}>管理员</option>
+                                <option value="teacher" {{ 'selected' if request.args.get('role') == 'teacher' }}>教师</option>
+                                <option value="student" {{ 'selected' if request.args.get('role') == 'student' }}>学生</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="school_id">
+                                <option value="">所有学校</option>
+                                {% for school in schools %}
+                                <option value="{{ school.id }}" {{ 'selected' if request.args.get('school_id')|int == school.id }}>{{ school.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> 搜索
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> 清除
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 用户列表 -->
+            <div class="card">
+                <div class="card-body">
+                    {% if users.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>姓名</th>
+                                    <th>角色</th>
+                                    <th>所属学校</th>
+                                    <th>注册时间</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users.items %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        {% if user.role == 'admin' and user.admin_profile %}
+                                            {{ user.admin_profile.full_name }}
+                                        {% elif user.role == 'teacher' and user.teacher_profile %}
+                                            {{ user.teacher_profile.full_name }}
+                                        {% elif user.role == 'student' and user.student_profile %}
+                                            {{ user.student_profile.full_name }}
+                                        {% else %}
+                                            <span class="text-muted">未设置</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.role == 'admin' %}
+                                            <span class="badge bg-danger">管理员</span>
+                                        {% elif user.role == 'teacher' %}
+                                            <span class="badge bg-success">教师</span>
+                                        {% elif user.role == 'student' %}
+                                            <span class="badge bg-primary">学生</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.role == 'teacher' and user.teacher_profile and user.teacher_profile.school %}
+                                            {{ user.teacher_profile.school.name }}
+                                        {% elif user.role == 'student' and user.student_profile %}
+                                            {% set enrollments = user.student_profile.enrollments %}
+                                            {% if enrollments %}
+                                                {% for enrollment in enrollments[:2] %}
+                                                    {{ enrollment.classroom.school.name }}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                                {% if enrollments|length > 2 %}
+                                                    <span class="text-muted">等{{ enrollments|length }}个</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">未分配</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">活跃</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">禁用</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
+                               class="btn btn-outline-primary" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <button type="button" class="btn btn-outline-danger" 
+                                    onclick="confirmDelete('{{ user.username }}', '{{ url_for('admin.delete_user', user_id=user.id) }}')"
+                                    title="删除">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    {% if users.pages > 1 %}
+                    <nav aria-label="用户列表分页">
+                        <ul class="pagination justify-content-center">
+                            {% if users.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.users', page=users.prev_num, **request.args) }}">
+                                        <i class="fas fa-chevron-left"></i> 上一页
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in users.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != users.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.users', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if users.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.users', page=users.next_num, **request.args) }}">
+                                        下一页 <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">暂无用户数据</h5>
+                        <p class="text-muted">点击上方"新增用户"按钮创建第一个用户</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除用户 <strong id="deleteUserName"></strong> 吗？</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> 此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger">确认删除</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(username, deleteUrl) {
+    document.getElementById('deleteUserName').textContent = username;
+    document.getElementById('confirmDeleteBtn').href = deleteUrl;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

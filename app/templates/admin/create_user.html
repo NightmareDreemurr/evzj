@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}新增用户 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-plus"></i> 新增用户</h2>
+                <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回用户列表
+                </a>
+            </div>
+            
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">用户信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {{ form.hidden_tag() }}
+                                
+                                <!-- 基本信息 -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.email.id }}" class="form-label">{{ form.email.label.text }} <span class="text-danger">*</span></label>
+                                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                                        {% if form.email.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.email.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ form.username.id }}" class="form-label">{{ form.username.label.text }} <span class="text-danger">*</span></label>
+                                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                                        {% if form.username.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.username.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.password.id }}" class="form-label">{{ form.password.label.text }} <span class="text-danger">*</span></label>
+                                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                                        {% if form.password.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.password.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">密码长度至少6个字符</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ form.phone.id }}" class="form-label">{{ form.phone.label.text }}</label>
+                                        {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else "")) }}
+                                        {% if form.phone.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.phone.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- 角色和个人信息 -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.role.id }}" class="form-label">{{ form.role.label.text }} <span class="text-danger">*</span></label>
+                                        {{ form.role(class="form-select" + (" is-invalid" if form.role.errors else ""), id="roleSelect") }}
+                                        {% if form.role.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.role.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ form.full_name.id }}" class="form-label">{{ form.full_name.label.text }} <span class="text-danger">*</span></label>
+                                        {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else "")) }}
+                                        {% if form.full_name.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.full_name.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.nickname.id }}" class="form-label">{{ form.nickname.label.text }}</label>
+                                        {{ form.nickname(class="form-control" + (" is-invalid" if form.nickname.errors else "")) }}
+                                        {% if form.nickname.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.nickname.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6" id="schoolField">
+                                        <label for="{{ form.school_id.id }}" class="form-label">{{ form.school_id.label.text }}</label>
+                                        {{ form.school_id(class="form-select" + (" is-invalid" if form.school_id.errors else "")) }}
+                                        {% if form.school_id.errors %}
+                                            <div class="invalid-feedback">
+                                                {% for error in form.school_id.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">教师角色需要选择所属学校</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin.users') }}" class="btn btn-secondary me-md-2">
+                                        <i class="fas fa-times"></i> 取消
+                                    </a>
+                                    {{ form.submit(class="btn btn-primary") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 根据角色显示/隐藏学校选择字段
+document.getElementById('roleSelect').addEventListener('change', function() {
+    const schoolField = document.getElementById('schoolField');
+    const schoolSelect = document.querySelector('#{{ form.school_id.id }}');
+    
+    if (this.value === 'teacher') {
+        schoolField.style.display = 'block';
+        schoolSelect.required = true;
+    } else {
+        schoolField.style.display = 'block'; // 保持显示，但不是必填
+        schoolSelect.required = false;
+        if (this.value === 'admin') {
+            schoolSelect.value = '0'; // 管理员默认不选择学校
+        }
+    }
+});
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('roleSelect');
+    roleSelect.dispatchEvent(new Event('change'));
+});
+</script>
+{% endblock %}

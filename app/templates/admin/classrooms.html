@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}班级管理 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> 班级管理</h2>
+                <a href="{{ url_for('admin.create_classroom') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 新增班级
+                </a>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="search" 
+                                   value="{{ request.args.get('search', '') }}" 
+                                   placeholder="搜索班级名称">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="school_id">
+                                <option value="">所有学校</option>
+                                {% for school in schools %}
+                                <option value="{{ school.id }}" {{ 'selected' if request.args.get('school_id')|int == school.id }}>{{ school.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="entry_year">
+                                <option value="">所有入学年份</option>
+                                {% for year in entry_years %}
+                                <option value="{{ year }}" {{ 'selected' if request.args.get('entry_year')|int == year }}>{{ year }}年</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-search"></i> 搜索
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('admin.classrooms') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> 清除
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 班级列表 -->
+            <div class="card">
+                <div class="card-body">
+                    {% if classrooms.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>学校</th>
+                                    <th>班级名称</th>
+                                    <th>班级编号</th>
+                                    <th>入学年份</th>
+                                    <th>毕业年份</th>
+                                    <th>学生数量</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for classroom in classrooms.items %}
+                                <tr>
+                                    <td>{{ classroom.id }}</td>
+                                    <td>{{ classroom.school.name }}</td>
+                                    <td>{{ classroom.class_name }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ classroom.class_number }}</span>
+                                    </td>
+                                    <td>{{ classroom.entry_year }}</td>
+                                    <td>{{ classroom.graduate_year }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ classroom.enrollments|length }}</span>
+                                    </td>
+                                    <td>{{ classroom.created_at.strftime('%Y-%m-%d %H:%M') if classroom.created_at else '-' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('admin.edit_classroom', classroom_id=classroom.id) }}" 
+                                               class="btn btn-outline-primary" title="编辑">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-info" 
+                                                    onclick="showClassroomDetails({{ classroom.id }})" title="详情">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% if classroom.enrollments|length == 0 %}
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="confirmDelete('{{ classroom.class_name }}', '{{ url_for('admin.delete_classroom', classroom_id=classroom.id) }}')"
+                                                    title="删除">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% else %}
+                                            <button type="button" class="btn btn-outline-danger" disabled
+                                                    title="该班级下有学生，无法删除">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    {% if classrooms.pages > 1 %}
+                    <nav aria-label="班级列表分页">
+                        <ul class="pagination justify-content-center">
+                            {% if classrooms.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.classrooms', page=classrooms.prev_num, **request.args) }}">
+                                        <i class="fas fa-chevron-left"></i> 上一页
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in classrooms.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != classrooms.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.classrooms', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if classrooms.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.classrooms', page=classrooms.next_num, **request.args) }}">
+                                        下一页 <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">暂无班级数据</h5>
+                        <p class="text-muted">点击上方"新增班级"按钮创建第一个班级</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除班级 <strong id="deleteClassroomName"></strong> 吗？</p>
+                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> 此操作不可撤销！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger">确认删除</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 班级详情模态框 -->
+<div class="modal fade" id="classroomDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">班级详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="classroomDetailsContent">
+                <!-- 动态加载内容 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(classroomName, deleteUrl) {
+    document.getElementById('deleteClassroomName').textContent = classroomName;
+    document.getElementById('confirmDeleteBtn').href = deleteUrl;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function showClassroomDetails(classroomId) {
+    // 使用 AJAX 加载班级详情
+    fetch(`/admin/classrooms/${classroomId}/details`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('classroomDetailsContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('classroomDetailsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading classroom details:', error);
+            document.getElementById('classroomDetailsContent').innerHTML = 
+                '<div class="alert alert-danger">加载班级详情失败，请稍后重试。</div>';
+            new bootstrap.Modal(document.getElementById('classroomDetailsModal')).show();
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,958 @@
+{% extends "base.html" %}
+
+{% block title %}
+手动圈画 - {{ submission.enrollment.student.user.full_name }}
+{% endblock %}
+
+{% block head %}
+    <!-- 避免移动端缩放，保证页面适配手机屏幕 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% endblock %}
+
+{% block content %}
+<div class="annotate-container">
+    <!-- 顶部工具栏：返回、工具选择、操作按钮 -->
+    <div class="top-bar">
+        <!-- 返回按钮 -->
+        <a href="{{ url_for('assignments.review_submission', submission_id=submission.id) }}" class="back-btn" title="返回">
+            <i class="fas fa-arrow-left"></i>
+            <span>返回</span>
+        </a>
+        <!-- 工具按钮组 -->
+        <div class="tool-buttons">
+            <button class="tool-btn" type="button" data-tool="pen" title="圆珠笔">
+                <i class="fas fa-pen"></i>
+            </button>
+            <button class="tool-btn" type="button" data-tool="highlighter" title="荧光笔">
+                <i class="fas fa-highlighter"></i>
+            </button>
+            <button class="tool-btn" type="button" data-tool="wavy" title="波浪线">
+                <i class="fas fa-wave-square"></i>
+            </button>
+            <button class="tool-btn" type="button" data-tool="eraser" title="橡皮擦">
+                <i class="fas fa-eraser"></i>
+            </button>
+        </div>
+        <!-- 撤销、重做、清空、保存按钮 -->
+        <div class="action-buttons">
+            <button id="undo" type="button" class="btn" title="撤销">
+                <i class="fas fa-undo"></i>
+            </button>
+            <button id="redo" type="button" class="btn" title="重做">
+                <i class="fas fa-redo"></i>
+            </button>
+            <button id="clear" type="button" class="btn" title="清空">
+                <i class="fas fa-trash"></i>
+            </button>
+            <button id="save" type="button" class="btn" title="保存">
+                <i class="fas fa-save"></i>
+            </button>
+        </div>
+    </div>
+    <!-- 画布区域：原图和绘制画布 -->
+    <div class="canvas-wrapper">
+        <img id="original-image" src="{{ url_for('main.uploaded_file', filename=image_filename) }}" alt="原始图片">
+        <canvas id="canvas"></canvas>
+    </div>
+    <!-- 工具设置面板：根据选择的工具动态显示 -->
+    <div class="tool-dropdown" data-tool="pen">
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
+            <div class="color-picker">
+                <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
+                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+                <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
+            <input type="range" min="1" max="20" value="2" data-key="thickness">
+            <span class="slider-value">2</span>
+        </div>
+        <canvas class="preview-canvas" width="200" height="40"></canvas>
+    </div>
+    <div class="tool-dropdown" data-tool="highlighter">
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
+            <div class="color-picker">
+                <button class="color-btn active" style="background-color: #FFFF00;" data-color="#FFFF00"></button>
+                <button class="color-btn" style="background-color: #FF69B4;" data-color="#FF69B4"></button>
+                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
+            <input type="range" min="1" max="20" value="10" data-key="thickness">
+            <span class="slider-value">10</span>
+        </div>
+        <canvas class="preview-canvas" width="200" height="40"></canvas>
+    </div>
+    <div class="tool-dropdown" data-tool="wavy">
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
+            <div class="color-picker">
+                <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
+                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+                <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
+            </div>
+        </div>
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
+            <input type="range" min="1" max="20" value="2" data-key="thickness">
+            <span class="slider-value">2</span>
+        </div>
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-arrows-alt-v me-1"></i>高度</div>
+            <input type="range" min="1" max="20" value="5" data-key="height">
+            <span class="slider-value">5</span>
+        </div>
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-compress-alt me-1"></i>密度</div>
+            <input type="range" min="1" max="10" value="4" data-key="density">
+            <span class="slider-value">4</span>
+        </div>
+        <canvas class="preview-canvas" width="200" height="40"></canvas>
+    </div>
+    <div class="tool-dropdown" data-tool="eraser">
+        <div class="settings-row">
+            <div class="form-label"><i class="fas fa-eraser me-1"></i>模式</div>
+            <div class="mode-buttons">
+                <button class="btn" data-mode="object">对象</button>
+            </div>
+        </div>
+        <div class="settings-row" id="eraser-size-row" style="display:none;">
+            <div class="form-label"><i class="fas fa-expand me-1"></i>大小</div>
+            <input type="range" min="5" max="50" value="10" data-key="size">
+            <span class="slider-value">10</span>
+        </div>
+        <canvas class="preview-canvas" width="200" height="40"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* 基础布局样式，针对移动端优化 */
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.annotate-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+}
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    z-index: 1000;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #495057;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: #f1f3f5;
+}
+
+.tool-buttons {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 1;
+}
+
+.tool-btn {
+    border: 1px solid #ddd;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 18px;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+
+.tool-btn:hover {
+    background: #f8f9fa;
+}
+
+.tool-btn.active {
+    background: #007bff;
+    color: #ffffff;
+    border-color: #007bff;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.action-buttons .btn {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#undo, #redo {
+    background: #17a2b8;
+}
+#clear {
+    background: #ffc107;
+    color: #212529;
+}
+#save {
+    background: #007bff;
+}
+.action-buttons .btn:hover {
+    opacity: 0.85;
+}
+
+/* 画布容器覆盖除顶部外的全部空间 */
+.canvas-wrapper {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+#original-image {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: none;
+    max-height: none;
+}
+
+#canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    cursor: crosshair;
+}
+
+/* 工具设置面板样式 */
+.tool-dropdown {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    border-top: 1px solid #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 12px;
+    z-index: 999;
+}
+.tool-dropdown.show {
+    display: block;
+}
+
+.tool-dropdown .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.tool-dropdown .settings-row:last-child {
+    margin-bottom: 0;
+}
+
+.tool-dropdown .form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 40px;
+}
+
+.color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.color-picker .color-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s, border-color 0.2s;
+}
+.color-picker .color-btn:hover {
+    transform: scale(1.05);
+    border-color: #007bff;
+}
+.color-picker .color-btn.active {
+    border-color: #007bff;
+    border-width: 3px;
+    transform: scale(1.05);
+}
+.color-picker .color-btn.active::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffffff;
+    font-weight: bold;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    outline: none;
+    margin: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #007bff;
+    border: none;
+    cursor: pointer;
+}
+
+.slider-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    min-width: 30px;
+    text-align: center;
+}
+
+.mode-buttons {
+    display: flex;
+    gap: 8px;
+}
+.mode-buttons .btn {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid #007bff;
+    background: #ffffff;
+    color: #007bff;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.mode-buttons .btn.active {
+    background: #007bff;
+    color: #ffffff;
+}
+
+.preview-canvas {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #f8f9fa;
+    margin-top: 8px;
+}
+
+/* 隐藏基础模板中可能存在的导航栏、边栏等元素，只保留本工具栏和画布 */
+header.top-navbar,
+.sidebar,
+nav.bottom-navbar,
+header,
+nav,
+.navbar,
+aside {
+    display: none !important;
+    visibility: hidden !important;
+}
+.main-content,
+.content-area,
+.container-fluid {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const img = document.getElementById('original-image');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const toolButtons = document.querySelectorAll('.tool-btn');
+    const undoBtn = document.getElementById('undo');
+    const redoBtn = document.getElementById('redo');
+    const clearBtn = document.getElementById('clear');
+    const saveBtn = document.getElementById('save');
+    const dropdowns = document.querySelectorAll('.tool-dropdown');
+
+    // 当前绘制状态
+    let drawing = false;
+    let currentPath = [];
+    let objects = [];
+    let redoStack = [];
+    let currentTool = null;
+
+    // 工具配置
+    const settings = {
+        pen: { thickness: 2, color: '#000000' },
+        highlighter: { thickness: 10, color: '#FFFF00', alpha: 0.5 },
+        wavy: { thickness: 2, height: 5, density: 4, color: '#000000' },
+        eraser: { mode: 'partial', size: 10 }
+    };
+
+    // 缩放和移动变量
+    let scale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let lastTouchDistance = 0;
+    let lastTouchCenter = { x: 0, y: 0 };
+    let isGesturing = false;
+    let lastTapTime = 0;
+
+    // 图片加载完毕后设置画布大小
+    img.onload = function() {
+        // 设置canvas的实际大小为图片原始尺寸
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        // 设置画布的显示尺寸与图片匹配
+        const rect = img.getBoundingClientRect();
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        redraw();
+    };
+
+    // 窗口大小调整时重新调整canvas显示尺寸
+    window.addEventListener('resize', function() {
+        if (img.complete) {
+            setTimeout(() => {
+                const rect = img.getBoundingClientRect();
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = rect.height + 'px';
+            }, 100);
+        }
+    });
+
+    /* ============== 工具按钮点击逻辑 ============== */
+    toolButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tool = this.dataset.tool;
+            // 如果点击的是当前激活工具，则切换设置面板显示状态
+            if (this.classList.contains('active')) {
+                toggleDropdown(tool);
+            } else {
+                // 切换工具
+                currentTool = tool;
+                // 激活样式
+                toolButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // 隐藏所有下拉面板
+                dropdowns.forEach(dd => dd.classList.remove('show'));
+            }
+        });
+    });
+
+    // 切换特定工具的设置面板
+    function toggleDropdown(tool) {
+        dropdowns.forEach(dd => {
+            if (dd.dataset.tool === tool) {
+                dd.classList.toggle('show');
+                // 初始化预览
+                updatePreview(dd, tool);
+            } else {
+                dd.classList.remove('show');
+            }
+        });
+    }
+
+    // 点击其它地方收起所有面板
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.tool-buttons') && !e.target.closest('.tool-dropdown')) {
+            dropdowns.forEach(dd => dd.classList.remove('show'));
+        }
+    });
+
+    /* ============== 下拉面板设置逻辑 ============== */
+    dropdowns.forEach(dropdown => {
+        const tool = dropdown.dataset.tool;
+        // 颜色按钮点击
+        const colorBtns = dropdown.querySelectorAll('.color-btn');
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                settings[tool].color = this.dataset.color;
+                updatePreview(dropdown, tool);
+            });
+        });
+        // 滑块调整
+        const ranges = dropdown.querySelectorAll('input[type="range"]');
+        ranges.forEach(range => {
+            range.addEventListener('input', function() {
+                const key = this.dataset.key;
+                const value = parseInt(this.value);
+                settings[tool][key] = value;
+                // 同步数值显示
+                const display = this.nextElementSibling;
+                if (display && display.classList.contains('slider-value')) {
+                    display.textContent = value;
+                }
+                updatePreview(dropdown, tool);
+            });
+        });
+        // 橡皮擦模式按钮
+        if (tool === 'eraser') {
+            const modeButtons = dropdown.querySelectorAll('.mode-buttons .btn');
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    settings.eraser.mode = this.dataset.mode;
+                    // 根据模式显隐大小设置
+                    const sizeRow = dropdown.querySelector('#eraser-size-row');
+                    if (settings.eraser.mode === 'partial') {
+                        sizeRow.style.display = '';
+                    } else {
+                        sizeRow.style.display = 'none';
+                    }
+                    updatePreview(dropdown, tool);
+                });
+            });
+        }
+        // 初始化预览
+        updatePreview(dropdown, tool);
+    });
+
+    /* ============== 绘图逻辑 ============== */
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // 触控事件
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    function startDrawing(e) {
+        if (!currentTool) return;
+        if (currentTool === 'eraser') {
+            const mode = settings.eraser.mode;
+            if (mode === 'partial') {
+                drawing = true;
+                currentPath = [getMousePos(e)];
+                erase(e);
+                return;
+            } else if (mode === 'object') {
+                erase(e);
+                return;
+            }
+        }
+        drawing = true;
+        currentPath = [getMousePos(e)];
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        const pos = getMousePos(e);
+        currentPath.push(pos);
+        if (currentTool === 'eraser' && settings.eraser.mode === 'partial') {
+            erase(e);
+        } else {
+            redraw();
+        }
+    }
+
+    function stopDrawing() {
+        if (drawing) {
+            drawing = false;
+            if (currentTool !== 'eraser') {
+                const obj = { type: currentTool, path: currentPath.slice(), ...settings[currentTool] };
+                objects.push(obj);
+                redoStack = [];
+            }
+            redraw();
+            currentPath = [];
+        }
+    }
+
+    function erase(e) {
+        const pos = getMousePos(e);
+        const mode = settings.eraser.mode;
+        if (mode === 'partial') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, settings.eraser.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+        } else if (mode === 'object') {
+            for (let i = objects.length - 1; i >= 0; i--) {
+                if (isPointNearObject(objects[i], pos)) {
+                    redoStack.push(objects.splice(i, 1)[0]);
+                    redraw();
+                    break;
+                }
+            }
+        }
+    }
+
+    function isPointNearObject(obj, pos) {
+        for (let i = 0; i < obj.path.length - 1; i++) {
+            const p1 = obj.path[i];
+            const p2 = obj.path[i + 1];
+            const dist = distanceToSegment(pos, p1, p2);
+            if (dist < 10) return true;
+        }
+        return false;
+    }
+
+    function distanceToSegment(point, p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = dx * dx + dy * dy;
+        let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / len;
+        t = Math.max(0, Math.min(1, t));
+        const proj = { x: p1.x + t * dx, y: p1.y + t * dy };
+        return Math.sqrt((point.x - proj.x) ** 2 + (point.y - proj.y) ** 2);
+    }
+
+    function redraw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        objects.forEach(obj => {
+            ctx.strokeStyle = obj.color;
+            ctx.lineWidth = obj.thickness;
+            ctx.globalAlpha = obj.alpha || 1;
+            ctx.beginPath();
+            if (obj.path && obj.path.length > 0) {
+                ctx.moveTo(obj.path[0].x, obj.path[0].y);
+                if (obj.type === 'wavy') {
+                    const start = obj.path[0];
+                    const end = obj.path[obj.path.length - 1];
+                    const dx = end.x - start.x;
+                    const dy = end.y - start.y;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    const steps = len / 5;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const x = start.x + t * dx;
+                        const y = start.y + t * dy + Math.sin(t * Math.PI * obj.density) * obj.height;
+                        ctx.lineTo(x, y);
+                    }
+                } else {
+                    obj.path.forEach(p => ctx.lineTo(p.x, p.y));
+                }
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        });
+        if (drawing && currentPath.length > 1 && currentTool !== 'eraser') {
+            ctx.strokeStyle = settings[currentTool].color;
+            ctx.lineWidth = settings[currentTool].thickness;
+            ctx.globalAlpha = settings[currentTool].alpha || 1;
+            ctx.beginPath();
+            ctx.moveTo(currentPath[0].x, currentPath[0].y);
+            currentPath.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        if (e.touches && e.touches.length > 0) {
+            return {
+                x: (e.touches[0].clientX - rect.left) * scaleX,
+                y: (e.touches[0].clientY - rect.top) * scaleY
+            };
+        } else {
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+    }
+
+    /* ============== 撤销/重做/清空/保存 ============== */
+
+    // 撤销操作封装为函数，便于快捷键调用
+    function undoAction() {
+        if (objects.length > 0) {
+            redoStack.push(objects.pop());
+            redraw();
+        }
+    }
+
+    // 重做操作封装为函数
+    function redoAction() {
+        if (redoStack.length > 0) {
+            objects.push(redoStack.pop());
+            redraw();
+        }
+    }
+
+    // 将按钮点击事件绑定到封装函数
+    undoBtn.addEventListener('click', undoAction);
+    redoBtn.addEventListener('click', redoAction);
+    clearBtn.addEventListener('click', function() {
+        if (confirm('确定清空所有圈画?')) {
+            objects = [];
+            redoStack = [];
+            redraw();
+        }
+    });
+    
+saveBtn.addEventListener('click', function () {
+        const dataURL = canvas.toDataURL('image/png');
+        const postUrl = "{{ url_for('assignments.manual_annotate', submission_id=submission.id) }}";
+        fetch(postUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: dataURL })
+        })
+        .then(res => res.json())
+        .then(data => alert(data.message))
+        .catch(err => {
+            console.error(err);
+            // 兜底：网络错误则下载到本地
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'annotated.png';
+            link.click();
+            alert('网络错误，已下载到本地');
+        });
+});
+});
+
+
+    // 键盘快捷键支持：Ctrl+Z 撤销，Ctrl+Y 重做（支持 Windows 和 Mac）
+    document.addEventListener('keydown', function(e) {
+        const key = e.key.toLowerCase();
+        const isCtrl = e.ctrlKey || e.metaKey;
+        if (isCtrl && key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            undoAction();
+        } else if (isCtrl && (key === 'y' || (key === 'z' && e.shiftKey))) {
+            // Ctrl+Y 或 Cmd+Shift+Z 重做
+            e.preventDefault();
+            redoAction();
+        }
+    });
+
+    // 鼠标滚轮缩放（按住 Ctrl）
+    canvas.addEventListener('wheel', function(e) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            // deltaY 正值为向下滚动，负值为向上滚动
+            const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+            const newScale = scale * zoomFactor;
+            if (newScale >= 0.5 && newScale <= 3) {
+                scale = newScale;
+                applyTransform();
+            }
+        }
+    }, { passive: false });
+
+    /* ============== 触控缩放/移动逻辑 ============== */
+    function handleTouchStart(e) {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            // 单指绘画
+            isGesturing = false;
+            if (currentTool) {
+                startDrawing(e.touches[0]);
+            }
+        } else if (e.touches.length === 2) {
+            // 双指缩放/平移
+            isGesturing = true;
+            if (drawing) stopDrawing();
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            lastTouchDistance = getTouchDistance(t1, t2);
+            lastTouchCenter = getTouchCenter(t1, t2);
+        }
+    }
+    function handleTouchMove(e) {
+        e.preventDefault();
+        if (e.touches.length === 1 && !isGesturing) {
+            // 单指绘图
+            if (currentTool && drawing) draw(e.touches[0]);
+        } else if (e.touches.length === 2) {
+            isGesturing = true;
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const currentDistance = getTouchDistance(t1, t2);
+            const currentCenter = getTouchCenter(t1, t2);
+            // 缩放
+            if (lastTouchDistance > 0) {
+                const scaleChange = currentDistance / lastTouchDistance;
+                const newScale = scale * scaleChange;
+                if (newScale >= 0.5 && newScale <= 3) {
+                    scale = newScale;
+                }
+            }
+            // 平移
+            const deltaX = currentCenter.x - lastTouchCenter.x;
+            const deltaY = currentCenter.y - lastTouchCenter.y;
+            translateX += deltaX;
+            translateY += deltaY;
+            applyTransform();
+            lastTouchDistance = currentDistance;
+            lastTouchCenter = currentCenter;
+        }
+    }
+    function handleTouchEnd(e) {
+        e.preventDefault();
+        if (e.touches.length === 0) {
+            if (!isGesturing && drawing) stopDrawing();
+            isGesturing = false;
+            lastTouchDistance = 0;
+        } else if (e.touches.length === 1 && isGesturing) {
+            isGesturing = false;
+            lastTouchDistance = 0;
+        }
+        // 双击重置缩放
+        const currentTime = Date.now();
+        if (currentTime - lastTapTime < 300) {
+            resetTransform();
+        }
+        lastTapTime = currentTime;
+    }
+    function getTouchDistance(t1, t2) {
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    function getTouchCenter(t1, t2) {
+        return {
+            x: (t1.clientX + t2.clientX) / 2,
+            y: (t1.clientY + t2.clientY) / 2
+        };
+    }
+    function applyTransform() {
+        const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        img.style.transform = `translate(-50%, -50%) ${transform}`;
+        canvas.style.transform = `translate(-50%, -50%) ${transform}`;
+    }
+    function resetTransform() {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        applyTransform();
+    }
+
+    /* ============== 工具预览 ============== */
+    function updatePreview(dropdown, tool) {
+        const previewCanvas = dropdown.querySelector('.preview-canvas');
+        if (!previewCanvas) return;
+        const pCtx = previewCanvas.getContext('2d');
+        pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        const cfg = settings[tool];
+        pCtx.strokeStyle = cfg.color || '#000000';
+        pCtx.lineWidth = cfg.thickness || 2;
+        pCtx.globalAlpha = tool === 'highlighter' ? (cfg.alpha || 0.5) : 1;
+        pCtx.lineCap = 'round';
+        pCtx.lineJoin = 'round';
+        if (tool === 'wavy') {
+            pCtx.beginPath();
+            const startX = 10;
+            const endX = previewCanvas.width - 10;
+            const centerY = previewCanvas.height / 2;
+            const dx = endX - startX;
+            const steps = Math.floor(dx / 3);
+            pCtx.moveTo(startX, centerY);
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const x = startX + t * dx;
+                const y = centerY + Math.sin(t * Math.PI * (cfg.density || 4)) * (cfg.height || 5);
+                pCtx.lineTo(x, y);
+            }
+            pCtx.stroke();
+        } else if (tool === 'eraser') {
+            if (cfg.mode === 'partial') {
+                pCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                pCtx.strokeStyle = '#FF0000';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                pCtx.arc(previewCanvas.width / 2, previewCanvas.height / 2, (cfg.size || 10) / 2, 0, Math.PI * 2);
+                pCtx.fill();
+                pCtx.stroke();
+            } else {
+                pCtx.strokeStyle = '#FF0000';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                const cx = previewCanvas.width / 2;
+                const cy = previewCanvas.height / 2;
+                pCtx.moveTo(cx - 15, cy);
+                pCtx.lineTo(cx + 15, cy);
+                pCtx.moveTo(cx, cy - 15);
+                pCtx.lineTo(cx, cy + 15);
+                pCtx.stroke();
+                pCtx.fillStyle = '#666';
+                pCtx.font = '12px Arial';
+                pCtx.textAlign = 'center';
+                pCtx.fillText('点击对象删除', cx, cy + 20);
+            }
+        } else {
+            pCtx.beginPath();
+            pCtx.moveTo(10, previewCanvas.height / 2);
+            pCtx.lineTo(previewCanvas.width - 10, previewCanvas.height / 2);
+            pCtx.stroke();
+        }
+        pCtx.globalAlpha = 1;
+    }
+});
+</script>
+{% endblock %}

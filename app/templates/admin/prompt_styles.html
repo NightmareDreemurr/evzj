@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}评语风格管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">评语风格模板列表</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{{ url_for('admin.create_prompt_style') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-plus-circle me-1"></i>
+                新建模板
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>模板名称 / 默认适用</th>
+                    <th>适用年级</th>
+                    <th>创建者</th>
+                    <th>创建时间</th>
+                    <th class="text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in templates %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>
+                        <strong class="d-block">{{ t.name }}</strong>
+                        {# Filter for enabled default grades before displaying #}
+                        {% set enabled_default_assocs = t.grade_level_associations | selectattr('is_default') | selectattr('grade_level.is_enabled') | list %}
+                        {% if enabled_default_assocs %}
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-star text-warning"></i> 默认:
+                                {% for assoc in enabled_default_assocs %}
+                                    <span class="badge bg-light text-dark ms-1">{{ assoc.grade_level.name }}</span>
+                                {% endfor %}
+                            </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {# Filter for enabled applicable grades before displaying #}
+                        <div class="d-flex flex-wrap" style="max-width: 400px;">
+                        {% set enabled_assocs = t.grade_level_associations | selectattr('grade_level.is_enabled') | list %}
+                        {% for assoc in enabled_assocs %}
+                            <span class="badge bg-info text-dark me-1 mb-1">{{ assoc.grade_level.name }}</span>
+                        {% else %}
+                            <span class="text-muted">无启用年级</span>
+                        {% endfor %}
+                        </div>
+                    </td>
+                    <td>{{ t.creator.username if t.creator else '系统' }}</td>
+                    <td>{{ t.created_at.strftime('%Y-%m-%d') if t.created_at else 'N/A' }}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('admin.edit_prompt_style', template_id=t.id) }}" class="btn btn-sm btn-outline-primary">编辑</a>
+                        <form action="{{ url_for('admin.delete_prompt_style', template_id=t.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('确定要删除这个模板吗？');">
+                            <input type="submit" value="删除" class="btn btn-sm btn-outline-danger">
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">还没有任何评语风格模板。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

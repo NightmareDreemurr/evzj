@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}E文智教{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    
+    {% block head %}{% endblock %}
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .top-navbar {
+            height: 58px;
+            background: #fff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+        }
+        .page-title .h4 {
+            color: #343a40;
+            font-weight: 600;
+        }
+        .sidebar {
+            width: 250px;
+            background: #343a40;
+            color: white;
+            position: fixed;
+            top: 58px; /* Height of top-navbar */
+            bottom: 0;
+            left: 0;
+            padding-top: 20px;
+            z-index: 1020;
+        }
+        .sidebar .logo {
+            text-align: center;
+            padding: 0 20px 20px 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-decoration: none;
+        }
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 10px 20px;
+            display: block;
+        }
+        .sidebar .nav-link:hover {
+            background: #495057;
+            color: white;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding-top: 58px; /* Height of top-navbar */
+            flex-grow: 1;
+        }
+        .content-area {
+            padding: 30px;
+            flex-grow: 1;
+        }
+        /* 底部导航栏样式 */
+        .bottom-navbar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #dee2e6;
+            box-shadow: 0 -2px 4px rgba(0,0,0,.1);
+            z-index: 1030;
+            height: 60px;
+        }
+        .bottom-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #6c757d;
+            padding: 8px 4px;
+            transition: color 0.2s;
+        }
+        .bottom-nav-item:hover,
+        .bottom-nav-item.active {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .bottom-nav-item i {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+        .bottom-nav-item span {
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .top-navbar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+                padding-top: 0;
+                padding-bottom: 60px; /* 为底部导航栏留出空间 */
+            }
+            .content-area {
+                padding: 15px;
+            }
+            .bottom-navbar {
+                display: flex;
+            }
+        }
+        
+        /* 强制移动端样式 - 通过JavaScript类控制 */
+        .mobile-device .sidebar {
+            display: none !important;
+        }
+        .mobile-device .top-navbar {
+            display: none !important;
+        }
+        .mobile-device .main-content {
+            margin-left: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 60px !important;
+        }
+        .mobile-device .content-area {
+            padding: 15px !important;
+        }
+        .mobile-device .bottom-navbar {
+            display: flex !important;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+</head>
+<body>
+    <header class="top-navbar">
+        <div class="page-title">
+            <h4 class="h4 mb-0">E文智教</h4>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="https://via.placeholder.com/32" alt="" width="32" height="32" class="rounded-circle me-2">
+                    <strong>{{ current_user.username if current_user.is_authenticated else 'Guest' }}</strong>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+                    <li><a class="dropdown-item" href="#">个人资料</a></li>
+                    <li><a class="dropdown-item" href="#">设置</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">退出登录</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div class="sidebar">
+        <nav class="nav flex-column">
+            {% block sidebar %}
+                {% include '_sidebar.html' %}
+            {% endblock %}
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <main class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- 移动端底部导航栏 -->
+    <nav class="bottom-navbar">
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}" class="bottom-nav-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表盘</span>
+            </a>
+            <a href="{{ url_for('standards.manage_standards') }}" class="bottom-nav-item {% if request.endpoint == 'standards.manage_standards' %}active{% endif %}">
+                <i class="fas fa-ruler-combined"></i>
+                <span>评分标准</span>
+            </a>
+            <a href="{{ url_for('admin.manage_prompt_styles') }}" class="bottom-nav-item {% if 'prompt_style' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-quote-left"></i>
+                <span>评语风格</span>
+            </a>
+            <a href="{{ url_for('admin.manage_grade_levels') }}" class="bottom-nav-item {% if request.endpoint == 'admin.manage_grade_levels' %}active{% endif %}">
+                <i class="fas fa-layer-group"></i>
+                <span>年级管理</span>
+            </a>
+        {% elif current_user.is_authenticated and current_user.role == 'teacher' %}
+            <a href="{{ url_for('assignments.list_assignments') }}" class="bottom-nav-item {% if request.endpoint == 'assignments.list_assignments' or not request.endpoint.startswith('assignments.') %}active{% endif %}">
+                <i class="fas fa-tasks"></i>
+                <span>作业管理</span>
+            </a>
+            <a href="{{ url_for('standards.manage_standards') }}" class="bottom-nav-item {% if request.endpoint == 'standards.manage_standards' %}active{% endif %}">
+                <i class="fas fa-ruler-combined"></i>
+                <span>评分标准</span>
+            </a>
+            <a href="#" class="bottom-nav-item">
+                <i class="fas fa-user-graduate"></i>
+                <span>学生管理</span>
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="bottom-nav-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>退出</span>
+            </a>
+        {% elif current_user.is_authenticated and current_user.role == 'student' %}
+            <a href="#" class="bottom-nav-item active">
+                <i class="fas fa-home"></i>
+                <span>主页</span>
+            </a>
+            <a href="#" class="bottom-nav-item">
+                <i class="fas fa-pen-square"></i>
+                <span>我的作业</span>
+            </a>
+            <a href="#" class="bottom-nav-item">
+                <i class="fas fa-book-reader"></i>
+                <span>我的作文</span>
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="bottom-nav-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>退出</span>
+            </a>
+        {% else %}
+            <a href="/" class="bottom-nav-item active">
+                <i class="fas fa-home"></i>
+                <span>欢迎</span>
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="bottom-nav-item">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>登录</span>
+            </a>
+        {% endif %}
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    {% block scripts %}
+    {% endblock %}
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</body>
+</html>

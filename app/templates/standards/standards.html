@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}评分标准管理{% endblock %}
+
+{% block page_title %}评分标准管理{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>所有评分标准</span>
+        <a href="{{ url_for('standards.add_standard') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 新增评分标准
+        </a>
+    </div>
+    <div class="card-body">
+        {% if standards %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>标准名称</th>
+                        <th>适用年级</th>
+                        <th>总分</th>
+                        <th>创建者</th>
+                        <th>标签</th>
+                        <th>状态</th>
+                        <th style="width: 220px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for standard in standards %}
+                    <tr>
+                        <td>{{ standard.id }}</td>
+                        <td>{{ standard.title }}</td>
+                        <td>{{ standard.grade_level.name }}</td>
+                        <td>{{ standard.total_score }}</td>
+                        <td>
+                            {% if standard.creator %}
+                                {{ standard.creator.full_name }}
+                                {% if standard.creator.role == 'admin' %}<span class="badge bg-primary">管理员</span>{% endif %}
+                                {% if standard.creator.role == 'teacher' %}<span class="badge bg-info">教师</span>{% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">系统</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for tag in standard.tags %}
+                            <span class="badge bg-light text-dark">{{ tag.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if standard.is_active %}
+                            <span class="badge bg-success">已启用</span>
+                            {% else %}
+                            <span class="badge bg-warning">已禁用</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if current_user.role == 'admin' or standard.creator_id == current_user.id %}
+                            <a href="{{ url_for('standards.edit_standard', standard_id=standard.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            
+                            <form action="{{ url_for('standards.delete_standard', standard_id=standard.id) }}" method="POST" class="d-inline" onsubmit="return confirm('确定要删除 “{{ standard.title }}” 吗？此操作无法撤销。');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            {% if current_user.role == 'admin' %}
+                            <form action="{{ url_for('standards.toggle_standard_status', standard_id=standard.id) }}" method="POST" class="d-inline">
+                                {% if standard.is_active %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-toggle-off"></i> 禁用
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-toggle-on"></i> 启用
+                                </button>
+                                {% endif %}
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-4">
+            <p>目前还没有任何评分标准。</p>
+            <a href="{{ url_for('standards.add_standard') }}" class="btn btn-primary">立即创建第一个</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

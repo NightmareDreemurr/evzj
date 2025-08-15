@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}编辑评分标准 - {{ super() }}{% endblock %}
+
+{% block page_title %}编辑评分标准: {{ form.title.data }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        修改评分标准信息
+    </div>
+    <div class="card-body">
+        {% set action_url = url_for('standards.edit_standard', standard_id=standard.id) %}
+        {% set submit_text = '保存修改' %}
+        {% set standard_json = standard_json %}
+        {% include 'standards/_standard_form.html' %}
+    </div>
+</div>
+{% endblock %} 

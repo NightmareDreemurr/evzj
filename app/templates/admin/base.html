@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}管理员后台 - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+.admin-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0.5rem;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.admin-breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.admin-breadcrumb .breadcrumb-item {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.admin-breadcrumb .breadcrumb-item.active {
+    color: white;
+}
+
+.admin-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.stats-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.stats-card .card-body {
+    padding: 1.5rem;
+}
+
+.stats-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+}
+
+.stats-icon.bg-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.stats-icon.bg-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.stats-icon.bg-info {
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+}
+
+.stats-icon.bg-warning {
+    background: linear-gradient(45deg, #ffc107, #d39e00);
+}
+
+.stats-icon.bg-danger {
+    background: linear-gradient(45deg, #dc3545, #bd2130);
+}
+
+.table-responsive {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem 0.75rem;
+}
+
+.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.25rem;
+    margin: 0 0.125rem;
+}
+
+.search-form {
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.search-form .form-control {
+    border-radius: 0.375rem;
+}
+
+.pagination {
+    margin-bottom: 0;
+}
+
+.pagination .page-link {
+    border-radius: 0.375rem;
+    margin: 0 0.125rem;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0.75rem 0.75rem 0 0 !important;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .admin-header {
+        text-align: center;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-action {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col">
+                <nav aria-label="breadcrumb" class="admin-breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}" class="text-white-50">管理后台</a></li>
+                        {% block breadcrumb %}{% endblock %}
+                    </ol>
+                </nav>
+                <h1>{% block page_title %}管理员后台{% endblock %}</h1>
+            </div>
+            <div class="col-auto">
+                {% block header_actions %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% block admin_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// 通用的确认删除功能
+function confirmDelete(url, itemName) {
+    if (confirm(`确定要删除 "${itemName}" 吗？此操作不可撤销。`)) {
+        window.location.href = url;
+    }
+}
+
+// 批量操作功能
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('input[name="selected_items"]');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBatchActions();
+}
+
+function updateBatchActions() {
+    const selected = document.querySelectorAll('input[name="selected_items"]:checked');
+    const batchActions = document.querySelector('.batch-actions');
+    if (batchActions) {
+        batchActions.style.display = selected.length > 0 ? 'block' : 'none';
+    }
+}
+
+// 搜索表单自动提交
+function setupAutoSubmit() {
+    const searchInputs = document.querySelectorAll('.auto-submit');
+    searchInputs.forEach(input => {
+        let timeout;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                this.form.submit();
+            }, 500);
+        });
+    });
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    setupAutoSubmit();
+    
+    // 初始化所有复选框事件
+    document.querySelectorAll('input[name="selected_items"]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateBatchActions);
+    });
+    
+    // 初始化工具提示
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+
+{% block title %}作文管理 - 管理员后台{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-file-alt"></i> 作文管理</h2>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="batchGrade()">
+                        <i class="fas fa-star"></i> 批量评分
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="exportEssays()">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                    <button type="button" class="btn btn-outline-info" onclick="showStatistics()">
+                        <i class="fas fa-chart-bar"></i> 统计
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">搜索</label>
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="学生姓名、作文标题" 
+                                   value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">学校</label>
+                            <select class="form-select" name="school_id">
+                                <option value="">全部学校</option>
+                                {% for school in schools %}
+                                <option value="{{ school.id }}" 
+                                        {% if request.args.get('school_id') == school.id|string %}selected{% endif %}>
+                                    {{ school.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">班级</label>
+                            <select class="form-select" name="classroom_id">
+                                <option value="">全部班级</option>
+                                {% for classroom in classrooms %}
+                                <option value="{{ classroom.id }}" 
+                                        {% if request.args.get('classroom_id') == classroom.id|string %}selected{% endif %}>
+                                    {{ classroom.school.name }} - {{ classroom.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">作业</label>
+                            <select class="form-select" name="assignment_id">
+                                <option value="">全部作业</option>
+                                {% for assignment in assignments %}
+                                <option value="{{ assignment.id }}" 
+                                        {% if request.args.get('assignment_id') == assignment.id|string %}selected{% endif %}>
+                                    {{ assignment.title }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">评分状态</label>
+                            <select class="form-select" name="grade_status">
+                                <option value="">全部状态</option>
+                                <option value="graded" {% if request.args.get('grade_status') == 'graded' %}selected{% endif %}>已评分</option>
+                                <option value="ungraded" {% if request.args.get('grade_status') == 'ungraded' %}selected{% endif %}>未评分</option>
+                                <option value="excellent" {% if request.args.get('grade_status') == 'excellent' %}selected{% endif %}>优秀作文</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 作文列表 -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">作文列表 (共 {{ pagination.total }} 篇)</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="view" id="listView" checked>
+                        <label class="btn btn-outline-secondary" for="listView">
+                            <i class="fas fa-list"></i> 列表
+                        </label>
+                        <input type="radio" class="btn-check" name="view" id="cardView">
+                        <label class="btn btn-outline-secondary" for="cardView">
+                            <i class="fas fa-th"></i> 卡片
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if essays %}
+                    <!-- 列表视图 -->
+                    <div id="listViewContent">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="5%">
+                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                        </th>
+                                        <th width="20%">学生信息</th>
+                                        <th width="25%">作文信息</th>
+                                        <th width="15%">作业信息</th>
+                                        <th width="10%">提交时间</th>
+                                        <th width="10%">评分</th>
+                                        <th width="10%">状态</th>
+                                        <th width="5%">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for essay in essays %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input essay-checkbox" 
+                                                   value="{{ essay.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                    {{ essay.enrollment.student.user.full_name[0] if essay.enrollment.student.user.full_name else essay.enrollment.student.user.username[0] }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-medium">{{ essay.enrollment.student.user.full_name or essay.enrollment.student.user.username }}</div>
+                                                    <small class="text-muted">{{ essay.enrollment.student.user.email }}</small>
+                                                    <div>
+                                                        <small class="text-muted">{{ essay.enrollment.classroom.school.name }} - {{ essay.enrollment.classroom.name }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">{{ essay.title or '无标题' }}</div>
+                                            <small class="text-muted">{{ essay.content[:60] }}{% if essay.content|length > 60 %}...{% endif %}</small>
+                                            <div class="mt-1">
+                                                <span class="badge bg-secondary">{{ essay.content|length }} 字</span>
+                                                {% if essay.word_count %}
+                                                <span class="badge bg-info">{{ essay.word_count }} 词</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-medium">{{ essay.assignment.title }}</div>
+                                            <small class="text-muted">
+                                                {% if essay.assignment.classrooms %}
+                                                    {% for classroom in essay.assignment.classrooms %}
+                                                        {{ classroom.name }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    无班级
+                                                {% endif %}
+                                            </small>
+                                            {% if essay.assignment.prompt_style %}
+                                            <div>
+                                                <span class="badge bg-outline-primary">{{ essay.assignment.prompt_style.name }}</span>
+                                            </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <div>{{ essay.created_at.strftime('%Y-%m-%d') }}</div>
+                                                <div class="text-muted">{{ essay.created_at.strftime('%H:%M') }}</div>
+                                                {% if essay.assignment.due_date and essay.created_at > essay.assignment.due_date %}
+                                                <span class="badge bg-danger">迟交</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if essay.final_score is not none %}
+                                            <div class="text-center">
+                                                <div class="fw-bold 
+                                                    {% if essay.final_score >= 90 %}text-success
+                                                    {% elif essay.final_score >= 80 %}text-primary
+                                                    {% elif essay.final_score >= 70 %}text-warning
+                                                    {% else %}text-danger{% endif %}">
+                                                    {{ essay.final_score }}
+                                                </div>
+                                                <small class="text-muted">分</small>
+                                                {% if essay.feedback %}
+                                                <div>
+                                                    <i class="fas fa-comment text-info" title="有评语"></i>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            {% else %}
+                                            <span class="badge bg-warning">未评分</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if essay.final_score is not none %}
+                                                {% if essay.final_score >= 90 %}
+                                                    <span class="badge bg-success">优秀</span>
+                                                {% elif essay.final_score >= 80 %}
+                                                    <span class="badge bg-primary">良好</span>
+                                                {% elif essay.final_score >= 70 %}
+                                                    <span class="badge bg-warning">中等</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">需改进</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">待评分</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-info" 
+                                                        onclick="viewEssay({{ essay.id }})" 
+                                                        title="查看详情">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-primary" 
+                                                        onclick="gradeEssay({{ essay.id }})" 
+                                                        title="评分">
+                                                    <i class="fas fa-star"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-danger" 
+                                                        onclick="deleteEssay({{ essay.id }})" 
+                                                        title="删除">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- 卡片视图 -->
+                    <div id="cardViewContent" style="display: none;">
+                        <div class="row p-3">
+                            {% for essay in essays %}
+                            <div class="col-lg-4 col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ essay.title or '无标题' }}</h6>
+                                        {% if essay.final_score is not none %}
+                                            {% if essay.final_score >= 90 %}
+                                                <span class="badge bg-success">{{ essay.final_score }}分</span>
+                                            {% elif essay.final_score >= 80 %}
+                                                <span class="badge bg-primary">{{ essay.final_score }}分</span>
+                                            {% elif essay.final_score >= 70 %}
+                                                <span class="badge bg-warning">{{ essay.final_score }}分</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ essay.final_score }}分</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">未评分</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                {{ essay.enrollment.student.user.full_name[0] if essay.enrollment.student.user.full_name else essay.enrollment.student.user.username[0] }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">{{ essay.enrollment.student.user.full_name or essay.enrollment.student.user.username }}</div>
+                                                <small class="text-muted">{{ essay.enrollment.classroom.name }}</small>
+                                            </div>
+                                        </div>
+                                        <p class="card-text small text-muted">{{ essay.content[:100] }}{% if essay.content|length > 100 %}...{% endif %}</p>
+                                        <div class="mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-tasks"></i> {{ essay.assignment.title }}<br>
+                                                <i class="fas fa-clock"></i> {{ essay.created_at.strftime('%Y-%m-%d %H:%M') }}<br>
+                                                <i class="fas fa-font"></i> {{ essay.content|length }} 字
+                                                {% if essay.assignment.due_date and essay.created_at > essay.assignment.due_date %}
+                                                <br><span class="text-danger"><i class="fas fa-exclamation-triangle"></i> 迟交</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% if essay.feedback %}
+                                        <div class="mb-2">
+                                            <span class="badge bg-info"><i class="fas fa-comment"></i> 有评语</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="btn-group w-100" role="group">
+                                            <button type="button" class="btn btn-outline-info" 
+                                                    onclick="viewEssay({{ essay.id }})">
+                                                <i class="fas fa-eye"></i> 查看
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary" 
+                                                    onclick="gradeEssay({{ essay.id }})">
+                                                <i class="fas fa-star"></i> 评分
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="deleteEssay({{ essay.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">暂无作文数据</h5>
+                        <p class="text-muted">学生提交作文后将在此显示</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="作文分页" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.essays', page=pagination.prev_num, **request.args) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != pagination.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.essays', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.essays', page=pagination.next_num, **request.args) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 作文详情模态框 -->
+<div class="modal fade" id="essayDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">作文详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="essayDetailContent">
+                <!-- 通过AJAX加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 评分模态框 -->
+<div class="modal fade" id="gradeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">作文评分</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="gradeContent">
+                <!-- 通过AJAX加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量评分模态框 -->
+<div class="modal fade" id="batchGradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">批量评分</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="batchGradeForm">
+                    <div class="mb-3">
+                        <label class="form-label">选择评分方式</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="gradeType" id="uniformGrade" value="uniform" checked>
+                            <label class="form-check-label" for="uniformGrade">
+                                统一评分
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="gradeType" id="autoGrade" value="auto">
+                            <label class="form-check-label" for="autoGrade">
+                                AI自动评分
+                            </label>
+                        </div>
+                    </div>
+                    <div id="uniformGradeSection">
+                        <div class="mb-3">
+                            <label class="form-label">分数 (0-100)</label>
+                            <input type="number" class="form-control" name="score" min="0" max="100" step="0.1">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">评语</label>
+                            <textarea class="form-control" name="feedback" rows="3" placeholder="可选的统一评语"></textarea>
+                        </div>
+                    </div>
+                    <div id="autoGradeSection" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-robot"></i>
+                            将使用AI系统根据评分标准自动为选中的作文评分。
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">选中的作文</label>
+                        <div id="selectedEssaysList" class="border rounded p-2 bg-light">
+                            <!-- 动态填充 -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmBatchGrade">开始评分</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这篇作文吗？此操作不可撤销。</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    删除作文将同时删除所有相关的评分和评语！
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 视图切换
+document.getElementById('listView').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('listViewContent').style.display = 'block';
+        document.getElementById('cardViewContent').style.display = 'none';
+    }
+});
+
+document.getElementById('cardView').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('listViewContent').style.display = 'none';
+        document.getElementById('cardViewContent').style.display = 'block';
+    }
+});
+
+// 全选功能
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.essay-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+});
+
+// 批量评分方式切换
+document.querySelectorAll('input[name="gradeType"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.value === 'uniform') {
+            document.getElementById('uniformGradeSection').style.display = 'block';
+            document.getElementById('autoGradeSection').style.display = 'none';
+        } else {
+            document.getElementById('uniformGradeSection').style.display = 'none';
+            document.getElementById('autoGradeSection').style.display = 'block';
+        }
+    });
+});
+
+// 查看作文详情
+function viewEssay(essayId) {
+    fetch(`/admin/essays/${essayId}/detail`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('essayDetailContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('essayDetailModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('加载作文详情失败');
+        });
+}
+
+// 评分作文
+function gradeEssay(essayId) {
+    fetch(`/admin/essays/${essayId}/grade`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('gradeContent').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('gradeModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('加载评分界面失败');
+        });
+}
+
+// 批量评分
+function batchGrade() {
+    const selectedEssays = document.querySelectorAll('.essay-checkbox:checked');
+    if (selectedEssays.length === 0) {
+        alert('请先选择要评分的作文');
+        return;
+    }
+    
+    // 显示选中的作文
+    const essaysList = document.getElementById('selectedEssaysList');
+    essaysList.innerHTML = `已选择 ${selectedEssays.length} 篇作文`;
+    
+    new bootstrap.Modal(document.getElementById('batchGradeModal')).show();
+}
+
+// 确认批量评分
+document.getElementById('confirmBatchGrade').addEventListener('click', function() {
+    const selectedEssays = Array.from(document.querySelectorAll('.essay-checkbox:checked')).map(cb => cb.value);
+    const formData = new FormData(document.getElementById('batchGradeForm'));
+    
+    const data = {
+        essay_ids: selectedEssays,
+        grade_type: formData.get('gradeType'),
+        score: formData.get('score'),
+        feedback: formData.get('feedback')
+    };
+    
+    fetch('/admin/essays/batch_grade', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || '批量评分失败');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('批量评分失败');
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('batchGradeModal')).hide();
+});
+
+// 删除作文
+let deleteEssayId = null;
+
+function deleteEssay(essayId) {
+    deleteEssayId = essayId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (deleteEssayId) {
+        fetch(`/admin/essays/${deleteEssayId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败');
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+    }
+});
+
+// 导出作文
+function exportEssays() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/admin/essays/export?${params.toString()}`);
+}
+
+// 显示统计
+function showStatistics() {
+    // 这里可以实现统计功能
+    alert('统计功能开发中...');
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+}
+</style>
+{% endblock %}
