@@ -528,6 +528,55 @@
                 </div>
             </form>
 
+            <!-- File Upload JavaScript - Immediate initialization -->
+            <script>
+            (function() {
+                // Immediate initialization to ensure file upload works
+                const fileInput = document.getElementById('submission_images');
+                const uploadBtn = document.getElementById('upload-btn');
+                const filePreviewList = document.getElementById('file-preview-list');
+                
+                if (!fileInput || !uploadBtn || !filePreviewList) {
+                    console.log('File upload elements missing, skipping initialization');
+                    return;
+                }
+                
+                let selectedFiles = [];
+                
+                function updatePreview() {
+                    filePreviewList.innerHTML = '';
+                    selectedFiles.forEach((fileObj, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'file-preview-item d-flex align-items-center mb-2 p-2 border rounded';
+                        item.innerHTML = `
+                            <div class="file-info flex-grow-1">
+                                <strong>${fileObj.name}</strong>
+                                <small class="text-muted d-block">${(fileObj.size / 1024).toFixed(1)} KB</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                        filePreviewList.appendChild(item);
+                    });
+                    uploadBtn.disabled = selectedFiles.length === 0;
+                }
+                
+                // Make removeFile function global
+                window.removeFile = function(index) {
+                    selectedFiles.splice(index, 1);
+                    updatePreview();
+                };
+                
+                fileInput.addEventListener('change', function() {
+                    selectedFiles = Array.from(this.files).filter(file => file.type.startsWith('image/'));
+                    updatePreview();
+                });
+                
+                console.log('File upload initialized successfully');
+            })();
+            </script>
+
             {% if pending_submissions_count > 0 %}
             <div class="alert alert-info mt-3">
                 您有 <strong>{{ pending_submissions_count }}</strong> 张图片正在等待处理或审核。
