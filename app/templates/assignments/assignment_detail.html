@@ -1025,6 +1025,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const progressWrapper = document.getElementById('upload-progress-wrapper');
     const progressBar = document.getElementById('upload-progress');
 
+    // Only proceed if all required elements exist
+    if (!form || !dropZone || !fileInput || !filePreviewList || !uploadBtn || !progressWrapper || !progressBar) {
+        console.log('File upload elements not found, skipping file upload initialization');
+        return;
+    }
+
     let uploadedFiles = []; // Use a more robust array to store file info
 
     function renderPreviews() {
