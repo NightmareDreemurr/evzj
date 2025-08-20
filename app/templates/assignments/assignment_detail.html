@@ -291,9 +291,6 @@
             <a href="{{ url_for('assignments.assignment_report', assignment_id=assignment.id) }}" class="btn btn-info">
                 <i class="fas fa-chart-bar mr-2"></i>作业报告
             </a>
-            <a href="{{ url_for('assignments.export_assignment_word', assignment_id=assignment.id) }}" class="btn btn-success">
-                <i class="fas fa-file-word mr-2"></i>全部导出
-            </a>
         </div>
         {% endif %}
     </div>
@@ -801,14 +798,19 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     // Render markdown for rubric descriptions
-    document.querySelectorAll('.rubric-description').forEach(function(elem) {
-        elem.innerHTML = marked.parse(elem.innerText || elem.textContent);
-    });
+    // 防御：CDN 失败时跳过 marked 渲染，避免阻断后续脚本
+    if (window.marked && typeof marked.parse === 'function') {
+        document.querySelectorAll('.rubric-description').forEach(function(elem) {
+            elem.innerHTML = marked.parse(elem.innerText || elem.textContent);
+        });
+    }
 
     // Render markdown for dimension names
-    document.querySelectorAll('.dimension-name-cell').forEach(function(elem) {
-        elem.innerHTML = marked.parseInline(elem.innerText || elem.textContent);
-    });
+    if (window.marked && typeof marked.parseInline === 'function') {
+        document.querySelectorAll('.dimension-name-cell').forEach(function(elem) {
+            elem.innerHTML = marked.parseInline(elem.innerText || elem.textContent);
+        });
+    }
 
     {% if current_user.role in ['admin', 'teacher'] %}
     
@@ -819,7 +821,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // 1. Status Chart
     const statusChartDom = document.getElementById('status-chart');
-    if (statusChartDom) {
+    if (statusChartDom && window.echarts) {
         const statusChart = echarts.init(statusChartDom);
         const statusChartData = JSON.parse('{{ status_chart_data_json|safe }}');
         
@@ -871,11 +873,14 @@ document.addEventListener("DOMContentLoaded", function() {
         } else {
             showNoDataMessage(statusChartDom);
         }
+    } else if (statusChartDom) {
+        // echarts 不可用时给出占位
+        showNoDataMessage(statusChartDom);
     }
 
     // 2. Score Distribution Chart
     const scoreChartDom = document.getElementById('score-chart');
-    if (scoreChartDom) {
+    if (scoreChartDom && window.echarts) {
         const scoreData = JSON.parse('{{ score_chart_data_json|safe }}');
         if (scoreData && scoreData.scores && scoreData.scores.length > 0) {
             const scoreChart = echarts.init(scoreChartDom);
@@ -945,7 +950,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // 3. Dimension Chart
     const dimensionChartDom = document.getElementById('dimension-chart');
-    if (dimensionChartDom) {
+    if (dimensionChartDom && window.echarts) {
         const dimensionData = JSON.parse('{{ dimension_chart_data_json|safe }}');
         if (dimensionData && dimensionData.labels && dimensionData.labels.length > 0) {
             const dimensionChart = echarts.init(dimensionChartDom);
@@ -1002,11 +1007,13 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    // Resize charts on window resize
+    // Resize charts on window resize（保护 echarts 未加载时的场景）
     window.addEventListener('resize', function() {
-        if (statusChartDom) echarts.getInstanceByDom(statusChartDom)?.resize();
-        if (scoreChartDom) echarts.getInstanceByDom(scoreChartDom)?.resize();
-        if (dimensionChartDom) echarts.getInstanceByDom(dimensionChartDom)?.resize();
+        if (window.echarts) {
+            if (statusChartDom) echarts.getInstanceByDom(statusChartDom)?.resize();
+            if (scoreChartDom) echarts.getInstanceByDom(scoreChartDom)?.resize();
+            if (dimensionChartDom) echarts.getInstanceByDom(dimensionChartDom)?.resize();
+        }
     });
 
     // --- New File Upload Logic ---
@@ -1082,9 +1089,15 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Trigger file input click
     dropZone.addEventListener('click', (e) => {
-        if(e.target.id !== 'submission_images' && e.target.tagName !== 'LABEL') {
-             fileInput.click();
+        // 如果点击的是label元素或其子元素，让浏览器默认行为处理
+        // 如果点击的是其他区域，手动触发文件选择
+        // 注意：label的for属性会自动触发对应input的点击，所以不需要额外处理
+        if (e.target.tagName === 'LABEL' || e.target.closest('label')) {
+            // 让浏览器的默认行为处理label点击
+            return;
         }
+        // 点击其他区域时手动触发文件选择
+        fileInput.click();
     });
 
     // Handle drag and drop

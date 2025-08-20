@@ -406,7 +406,7 @@ class AssignmentReport(db.Model):
     generated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, comment="报告生成者")
     
     # 关系
-    assignment = db.relationship('EssayAssignment', backref='report')
+    assignment = db.relationship('EssayAssignment', backref=db.backref('report', uselist=False))
     generator = db.relationship('User')
     
     def __repr__(self):

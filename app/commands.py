@@ -230,7 +230,7 @@ def seed_prompt_styles():
 **所有评语都需遵循的通用原则**:
 1.  **优点优先**: 无论哪个年级，评语都必须先从原文中找到一个具体的优点进行表扬。
 2.  **结合原文**: 所有的评价和建议都必须有原文的词句作为依据，不能空泛地评论。
-3.  **启发式提问**: 多使用开放式问题来引导学生自己思考，而不是直接给出“标准答案”。
+3.  **启发式提问**: 多使用开放式问题来让学生自己思考，而不是直接给出“标准答案”。
 """
     universal_template = PromptStyleTemplate(
         name="通用自适应风格",
@@ -303,7 +303,7 @@ def seed_prompt_styles():
             "instructions": """你是一位严谨深刻、具有学术视野和思想高度的高中语文老师/学者。
 你的核心任务是引导学生形成独立的思想和成熟的写作风格，追求表达的深度和思想的锐度。
 - **评语重点**:
-  1.  **思想深度**: 重点评析文章的思想内涵、人文关怀和批判性思考的深度。引导学生思考现象背后的本质。
+  1.  **思想深度**: 重点评析文章的思想内涵、人文关怀和批判性思考的深度。让学生思考现象背后的本质。
   2.  **结构艺术**: 分析文章的谋篇布局之妙，如叙事视角（全知、限制）、线索设置、伏笔照应等手法的运用效果。
   3.  **风格与语言**: 鉴赏作者的语言风格（豪放、婉约、平实、犀利），分析其如何通过句式、词汇、修辞等形成独特风格。
   4.  **审美价值**: 从文学审美或哲学思辨的高度，探讨文章的价值和启发意义，提出可供深入研究的开放性问题。
@@ -369,9 +369,60 @@ def seed_assignments():
     # To prevent duplicates, delete any existing assignment with the same title first.
     existing_assignment = EssayAssignment.query.filter_by(title=DEFAULT_ASSIGNMENT_TITLE).first()
     if existing_assignment:
-        db.session.delete(existing_assignment)
-        db.session.commit()
-        click.echo(f"已删除旧的默认作业 '{DEFAULT_ASSIGNMENT_TITLE}'。")
+        # 在删除旧作业之前，必须清理所有依赖，避免外键约束阻塞：
+        # 1) 删除 AssignmentReport（1:1，assignment_id 唯一且非空）
+        # 2) 清空作业与班级、作业与学生的多对多关联表
+        # 3) 将该作业下所有 Essay 的 assignment_id 置为 NULL（保留作文数据）
+        # 4) 删除 PendingSubmission（该表 assignment_id 非空，无法置 NULL）
+        try:
+            from app.models import Essay, PendingSubmission, AssignmentReport  # 局部导入，减少全局改动
+            from sqlalchemy.orm.collections import InstrumentedList
+
+            # 1) 删除 AssignmentReport（如果存在）
+            report = getattr(existing_assignment, 'report', None)
+            if report:
+                try:
+                    if isinstance(report, InstrumentedList):
+                        deleted_count = 0
+                        for r in list(report):
+                            db.session.delete(r)
+                            deleted_count += 1
+                        click.echo(f"已删除旧作业的 {deleted_count} 条 AssignmentReport 记录。")
+                    else:
+                        db.session.delete(report)
+                        click.echo("已删除旧作业的 AssignmentReport。")
+                except Exception as de:
+                    click.echo(f"删除旧作业报告时发生错误：{de}", err=True)
+                    raise
+            # 2) 清空多对多关联
+            if existing_assignment.classrooms:
+                existing_assignment.classrooms.clear()
+                click.echo("已清空作业与班级的关联。")
+            if existing_assignment.students:
+                existing_assignment.students.clear()
+                click.echo("已清空作业与学生的直接关联。")
+
+            # 3) 将 Essay.assignment_id 置为 NULL（不删除作文，避免数据丢失）
+            updated_essays = Essay.query.filter_by(assignment_id=existing_assignment.id).update({Essay.assignment_id: None}, synchronize_session=False)
+            if updated_essays:
+                click.echo(f"已将 {updated_essays} 篇作文从该作业中解除关联（assignment_id 置 NULL）。")
+
+            # 4) 删除该作业的 PendingSubmission 记录
+            deleted_pending = PendingSubmission.query.filter_by(assignment_id=existing_assignment.id).delete(synchronize_session=False)
+            if deleted_pending:
+                click.echo(f"已删除 {deleted_pending} 条待处理提交记录（PendingSubmission）。")
+
+            # 先 flush 以确保上述更改落库，避免后续 delete 受约束影响
+            db.session.flush()
+
+            # 最后删除旧作业本身
+            db.session.delete(existing_assignment)
+            db.session.commit()
+            click.echo(f"已删除旧的默认作业 '{DEFAULT_ASSIGNMENT_TITLE}'。")
+        except Exception as e:
+            db.session.rollback()
+            click.echo(f"删除旧作业时发生错误，已回滚：{e}", err=True)
+            return
 
     # --- Prerequisite Lookup ---
     # Find the grading standard
@@ -399,7 +450,7 @@ def seed_assignments():
     # --- Creation Step ---
     new_assignment = EssayAssignment(
         title=DEFAULT_ASSIGNMENT_TITLE,
-        description="这是一个默认的示例作业，请选择一本书阅读，并撰写一篇读后感，分享你的见解与体会。",
+        description="这是一个默认的示例作业，请选择一本书阅读，并撰写一篇读后感，分享你的见解与感受。",
         teacher_profile_id=teacher_user.teacher_profile.id,
         grading_standard_id=grading_standard.id,
         due_date=datetime(2099, 12, 31) # A far-future due date
@@ -672,4 +723,4 @@ def register_commands(app):
                     ai_score_content = f"Invalid JSON in database: {essay.ai_score}"
             
             click.echo(f"  - AI Score Content:\n{ai_score_content}")
-            click.echo("-" * 20) 
+            click.echo("-" * 20)
