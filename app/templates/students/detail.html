@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.user.full_name }} - 学生详情{% endblock %}
+
+{% block head %}
+<style>
+    .info-card {
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .info-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .status-active { background-color: #28a745; }
+    .status-graduated { background-color: #6c757d; }
+    .status-withdrawn { background-color: #dc3545; }
+    .status-transferred { background-color: #ffc107; color: #212529; }
+    .stat-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .essay-item {
+        border-left: 4px solid #007bff;
+        padding-left: 15px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        border-radius: 0 5px 5px 0;
+        padding: 15px;
+    }
+    .essay-score {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #28a745;
+    }
+    .essay-status {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+    .essay-status.graded { background-color: #d4edda; color: #155724; }
+    .essay-status.pending { background-color: #fff3cd; color: #856404; }
+    .essay-status.error { background-color: #f8d7da; color: #721c24; }
+    @media (max-width: 768px) {
+        .stat-card {
+            margin-bottom: 15px;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+        }
+        .info-card {
+            margin-bottom: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('students.list_students') }}">学生管理</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ student.user.full_name }}</li>
+                </ol>
+            </nav>
+            <h2 class="h3 mb-0 text-gray-800">{{ student.user.full_name }} - 学生详情</h2>
+        </div>
+        <div>
+            <a href="{{ url_for('students.transfer_student', student_id=student.id) }}" class="btn btn-warning me-2">
+                <i class="fas fa-exchange-alt me-1"></i>班级转移
+            </a>
+            <a href="{{ url_for('students.list_students') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>返回列表
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 基本信息卡片 -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>基本信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <strong>姓名:</strong>
+                        </div>
+                        <div class="col-8">
+                            {{ student.user.full_name }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <strong>邮箱:</strong>
+                        </div>
+                        <div class="col-8">
+                            <a href="mailto:{{ student.user.email }}">{{ student.user.email }}</a>
+                        </div>
+                    </div>
+                    {% if student.user.phone %}
+                        <div class="row mb-3">
+                            <div class="col-4">
+                                <strong>手机:</strong>
+                            </div>
+                            <div class="col-8">
+                                <a href="tel:{{ student.user.phone }}">{{ student.user.phone }}</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <strong>注册时间:</strong>
+                        </div>
+                        <div class="col-8">
+                            {{ student.user.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 入学信息卡片 -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-school me-2"></i>入学信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for enrollment in student.enrollments %}
+                        <div class="mb-3 {% if not loop.last %}border-bottom pb-3{% endif %}">
+                            <div class="row mb-2">
+                                <div class="col-4">
+                                    <strong>班级:</strong>
+                                </div>
+                                <div class="col-8">
+                                    {{ enrollment.classroom.class_name }}
+                                </div>
+                            </div>
+                            {% if enrollment.student_number %}
+                                <div class="row mb-2">
+                                    <div class="col-4">
+                                        <strong>学号:</strong>
+                                    </div>
+                                    <div class="col-8">
+                                        {{ enrollment.student_number }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="row mb-2">
+                                <div class="col-4">
+                                    <strong>入学时间:</strong>
+                                </div>
+                                <div class="col-8">
+                                    {{ enrollment.enrollment_date.strftime('%Y-%m-%d') }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-4">
+                                    <strong>状态:</strong>
+                                </div>
+                                <div class="col-8">
+                                    {% set status_class = 'status-' + enrollment.status %}
+                                    <span class="badge status-badge {{ status_class }}">
+                                        {% if enrollment.status == 'active' %}在读
+                                        {% elif enrollment.status == 'graduated' %}毕业
+                                        {% elif enrollment.status == 'withdrawn' %}退学
+                                        {% elif enrollment.status == 'transferred' %}转学
+                                        {% else %}{{ enrollment.status }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">暂无入学记录</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 作文统计卡片 -->
+        <div class="col-lg-4 col-md-12">
+            {% if essay_stats and essay_stats.total_essays > 0 %}
+                <div class="row">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ essay_stats.total_essays }}</div>
+                            <div class="stat-label">总作文数</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ essay_stats.graded_essays }}</div>
+                            <div class="stat-label">已评分</div>
+                        </div>
+                    </div>
+                    {% if essay_stats.graded_essays > 0 %}
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ "%.1f"|format(essay_stats.average_score or 0) }}</div>
+                            <div class="stat-label">平均分</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ "%.1f"|format(essay_stats.highest_score or 0) }}</div>
+                            <div class="stat-label">最高分</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="card info-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>作文统计
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">该学生还没有提交过作文</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 最近作文记录 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>最近作文记录
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_essays %}
+                        <div class="row">
+                            {% for essay in recent_essays %}
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="essay-item">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-0">
+                                                {% if essay.assignment %}
+                                                <a href="{{ url_for('assignments.review_submission', submission_id=essay.id) }}" 
+                                                   class="text-decoration-none" title="查看作文详情">
+                                                    {{ essay.assignment.title }}
+                                                </a>
+                                            {% else %}
+                                                <a href="{{ url_for('assignments.review_submission', submission_id=essay.id) }}" 
+                                                   class="text-decoration-none" title="查看作文详情">
+                                                    自主练习
+                                                </a>
+                                            {% endif %}
+                                            </h6>
+                                            <span class="essay-status {{ essay.status }}">
+                                                {% if essay.status == 'graded' %}已评分
+                                                {% elif essay.status == 'pending' %}待评分
+                                                {% elif essay.status == 'pending_ai_processing' %}AI处理中
+                                                {% elif essay.status == 'correcting' %}校对中
+                                                {% elif essay.status == 'grading' %}评分中
+                                                {% elif essay.status == 'error' %}评分失败
+                                                {% elif essay.status.startswith('error_') %}处理失败
+                                                {% else %}{{ essay.status }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ essay.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                                </small>
+                                            </div>
+                                            {% if essay.final_score %}
+                                                <div class="essay-score">
+                                                    {{ "%.1f"|format(essay.final_score) }} 分
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if recent_essays|length >= 10 %}
+                            <div class="text-center mt-3">
+                                <button class="btn btn-outline-primary" onclick="loadMoreEssays()">
+                                    <i class="fas fa-plus me-1"></i>查看更多作文记录
+                                </button>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center">
+                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">暂无作文记录</h5>
+                            <p class="text-muted">该学生还没有提交过作文</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadMoreEssays() {
+    // AJAX加载更多作文记录
+    fetch(`{{ url_for('students.student_essays', student_id=student.id) }}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('作文数据:', data);
+            // 这里可以实现动态加载更多作文记录的逻辑
+            alert('功能开发中，敬请期待！');
+        })
+        .catch(error => {
+            console.error('加载失败:', error);
+            alert('加载失败，请稍后重试。');
+        });
+}
+</script>
+{% endblock %}

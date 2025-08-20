@@ -200,8 +200,14 @@ def grade_essay_with_ai(essay_id: int) -> None:
             content_str = ai_result_json["choices"][0]["message"]["content"]
             parsed_content = json.loads(content_str)
             essay.ai_score = parsed_content
+            
+            # 计算总分并设置final_score
+            if parsed_content and 'dimensions' in parsed_content:
+                total_score = sum(dim.get('score', 0) for dim in parsed_content['dimensions'])
+                essay.final_score = total_score
+            
             essay.status = 'graded'
-            current_app.logger.info(f"Essay ID {essay.id} successfully graded by AI.")
+            current_app.logger.info(f"Essay ID {essay.id} successfully graded by AI with total score: {essay.final_score}")
             db.session.commit()
         else:
             raise ValueError("AI response JSON is empty or malformed.")
@@ -229,4 +235,4 @@ def grade_essay_with_ai(essay_id: int) -> None:
             essay_to_update.status = 'error_unknown'
             essay_to_update.error_message = f"AI评分时发生未知错误: {str(e)[:500]}"
             current_app.logger.error(f"An unknown error occurred during AI grading for Essay ID {essay_id}: {e}", exc_info=True)
-            db.session.commit() 
+            db.session.commit()

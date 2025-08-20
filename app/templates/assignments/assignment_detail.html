@@ -291,6 +291,9 @@
             <a href="{{ url_for('assignments.assignment_report', assignment_id=assignment.id) }}" class="btn btn-info">
                 <i class="fas fa-chart-bar mr-2"></i>作业报告
             </a>
+            <a href="{{ url_for('assignments.export_assignment_word', assignment_id=assignment.id) }}" class="btn btn-success">
+                <i class="fas fa-file-word mr-2"></i>全部导出
+            </a>
         </div>
         {% endif %}
     </div>

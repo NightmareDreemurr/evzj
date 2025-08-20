@@ -62,6 +62,9 @@ def create_app(config_name=None):
     from .blueprints.assignments import assignments_bp
     app.register_blueprint(assignments_bp, url_prefix='/assignments')
 
+    from .blueprints.students import students_bp
+    app.register_blueprint(students_bp, url_prefix='/students')
+
     # Register CLI commands
     register_commands(app)
 

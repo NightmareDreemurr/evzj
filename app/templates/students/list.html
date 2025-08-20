@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}学生管理{% endblock %}
+
+{% block head %}
+<style>
+    /* 移动端优化样式 */
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none;
+        }
+        .mobile-cards {
+            display: block;
+        }
+        .page-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        .page-header h2 {
+            font-size: 1.5rem;
+        }
+        .btn-create {
+            width: 100%;
+            justify-content: center;
+        }
+        .student-card {
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .student-card .card-body {
+            padding: 15px;
+        }
+        .student-meta {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .student-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .student-actions .btn {
+            flex: 1;
+            min-width: 70px;
+            font-size: 0.8rem;
+            padding: 6px 8px;
+        }
+        .search-filters {
+            flex-direction: column;
+            gap: 10px;
+        }
+        .search-filters .form-group {
+            margin-bottom: 10px;
+        }
+    }
+    @media (min-width: 769px) {
+        .mobile-cards {
+            display: none;
+        }
+        .desktop-table {
+            display: block;
+        }
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .status-active { background-color: #28a745; }
+    .status-graduated { background-color: #6c757d; }
+    .status-withdrawn { background-color: #dc3545; }
+    .status-transferred { background-color: #ffc107; color: #212529; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <h2 class="h3 mb-0 text-gray-800">学生管理</h2>
+        <a href="{{ url_for('students.add_student') }}" class="btn btn-primary btn-create">
+            <i class="fas fa-user-plus me-2"></i>添加学生
+        </a>
+    </div>
+
+    <!-- 搜索和筛选区域 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">搜索和筛选</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('students.list_students') }}">
+                <div class="row search-filters">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="search">搜索关键词</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search }}" placeholder="输入学生姓名或学号">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="classroom">班级筛选</label>
+                            <select class="form-control" id="classroom" name="classroom">
+                                <option value="">-- 所有班级 --</option>
+                                {% for classroom in classrooms %}
+                                    <option value="{{ classroom.id }}" 
+                                            {% if classroom_filter == classroom.id|string %}selected{% endif %}>
+                                        {{ classroom.class_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="status">状态筛选</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">-- 所有状态 --</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>在读</option>
+                                <option value="graduated" {% if status_filter == 'graduated' %}selected{% endif %}>毕业</option>
+                                <option value="withdrawn" {% if status_filter == 'withdrawn' %}selected{% endif %}>退学</option>
+                                <option value="transferred" {% if status_filter == 'transferred' %}selected{% endif %}>转学</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-search me-1"></i>搜索
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 桌面端表格视图 -->
+    <div class="card shadow mb-4 desktop-table">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                学生列表 
+                {% if students.total %}
+                    <span class="badge badge-secondary">共 {{ students.total }} 名学生</span>
+                {% endif %}
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>姓名</th>
+                            <th>学号</th>
+                            <th>班级</th>
+                            <th>邮箱</th>
+                            <th>手机</th>
+                            <th>状态</th>
+                            <th>入学时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if students.items %}
+                            {% for student in students.items %}
+                                {% set enrollment = student.enrollments|selectattr('status', 'equalto', 'active')|first or student.enrollments|first %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" 
+                                           class="text-decoration-none">
+                                            {{ student.user.full_name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ enrollment.student_number if enrollment else '-' }}</td>
+                                    <td>{{ enrollment.classroom.class_name if enrollment else '-' }}</td>
+                                    <td>{{ student.user.email }}</td>
+                                    <td>{{ student.user.phone or '-' }}</td>
+                                    <td>
+                                        {% if enrollment %}
+                                            {% set status_class = 'status-' + enrollment.status %}
+                                            <span class="badge status-badge {{ status_class }}">
+                                                {% if enrollment.status == 'active' %}在读
+                                                {% elif enrollment.status == 'graduated' %}毕业
+                                                {% elif enrollment.status == 'withdrawn' %}退学
+                                                {% elif enrollment.status == 'transferred' %}转学
+                                                {% else %}{{ enrollment.status }}
+                                                {% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">未知</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ enrollment.enrollment_date.strftime('%Y-%m-%d') if enrollment else '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" 
+                                           class="btn btn-sm btn-info mb-1">查看</a>
+                                        <a href="{{ url_for('students.transfer_student', student_id=student.id) }}" 
+                                           class="btn btn-sm btn-warning mb-1">转移</a>
+                                        <button type="button" class="btn btn-sm btn-danger mb-1" 
+                                                data-bs-toggle="modal" data-bs-target="#deleteModal-{{ student.id }}">
+                                            删除
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center">暂无学生记录。</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            {% if students.pages > 1 %}
+                <nav aria-label="学生列表分页">
+                    <ul class="pagination justify-content-center">
+                        {% if students.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('students.list_students', page=students.prev_num, search=search, classroom=classroom_filter, status=status_filter) }}">
+                                    上一页
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in students.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != students.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('students.list_students', page=page_num, search=search, classroom=classroom_filter, status=status_filter) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if students.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('students.list_students', page=students.next_num, search=search, classroom=classroom_filter, status=status_filter) }}">
+                                    下一页
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 移动端卡片视图 -->
+    <div class="mobile-cards">
+        {% if students.items %}
+            {% for student in students.items %}
+                {% set enrollment = student.enrollments|selectattr('status', 'equalto', 'active')|first or student.enrollments|first %}
+                <div class="card student-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2">
+                            <a href="{{ url_for('students.student_detail', student_id=student.id) }}" 
+                               class="text-decoration-none">
+                                {{ student.user.full_name }}
+                            </a>
+                        </h5>
+                        <div class="student-meta">
+                            <div class="mb-1">
+                                <i class="fas fa-id-card me-1"></i>
+                                <strong>学号:</strong> {{ enrollment.student_number if enrollment else '-' }}
+                            </div>
+                            <div class="mb-1">
+                                <i class="fas fa-school me-1"></i>
+                                <strong>班级:</strong> {{ enrollment.classroom.class_name if enrollment else '-' }}
+                            </div>
+                            <div class="mb-1">
+                                <i class="fas fa-envelope me-1"></i>
+                                <strong>邮箱:</strong> {{ student.user.email }}
+                            </div>
+                            {% if student.user.phone %}
+                                <div class="mb-1">
+                                    <i class="fas fa-phone me-1"></i>
+                                    <strong>手机:</strong> {{ student.user.phone }}
+                                </div>
+                            {% endif %}
+                            <div class="mb-2">
+                                <i class="fas fa-calendar me-1"></i>
+                                <strong>入学:</strong> {{ enrollment.enrollment_date.strftime('%Y-%m-%d') if enrollment else '-' }}
+                                {% if enrollment %}
+                                    {% set status_class = 'status-' + enrollment.status %}
+                                    <span class="badge status-badge {{ status_class }} ms-2">
+                                        {% if enrollment.status == 'active' %}在读
+                                        {% elif enrollment.status == 'graduated' %}毕业
+                                        {% elif enrollment.status == 'withdrawn' %}退学
+                                        {% elif enrollment.status == 'transferred' %}转学
+                                        {% else %}{{ enrollment.status }}
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="student-actions">
+                            <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-info">
+                                <i class="fas fa-eye"></i> 查看
+                            </a>
+                            <a href="{{ url_for('students.transfer_student', student_id=student.id) }}" class="btn btn-warning">
+                                <i class="fas fa-exchange-alt"></i> 转移
+                            </a>
+                            <button type="button" class="btn btn-danger" 
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal-{{ student.id }}">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="card student-card">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无学生记录</h5>
+                    <p class="text-muted">点击上方按钮开始添加学生</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+{% for student in students.items %}
+    <div class="modal fade" id="deleteModal-{{ student.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ student.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel-{{ student.id }}">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    确定要删除学生 <strong>{{ student.user.full_name }}</strong> 吗？此操作将把学生状态设为退学。
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <form method="POST" action="{{ url_for('students.delete_student', student_id=student.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">确认删除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}

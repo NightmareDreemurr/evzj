@@ -48,7 +48,7 @@
     <a class="nav-link {% if request.endpoint == 'standards.manage_standards' %}active{% endif %}" href="{{ url_for('standards.manage_standards') }}">
         <i class="fas fa-fw fa-ruler-combined"></i> 评分标准库
     </a>
-     <a class="nav-link disabled" href="#">
+    <a class="nav-link {% if request.endpoint.startswith('students.') %}active{% endif %}" href="{{ url_for('students.list_students') }}">
         <i class="fas fa-fw fa-user-graduate"></i> 学生管理
     </a>
 

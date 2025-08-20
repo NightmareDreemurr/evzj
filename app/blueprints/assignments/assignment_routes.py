@@ -20,6 +20,7 @@ from app.models import (EssayAssignment, GradingStandard, Classroom, StudentProf
 from app.services.ai_grader import grade_essay_with_ai
 from app.services.ocr_service import (recognize_text_from_image_stream, OCRError)
 from app.services.ai_corrector import (correct_text_with_ai, AIConnectionError)
+from app.services.word_export_service import WordExportService
 
 from . import assignments_bp
 from .forms import EssayAssignmentForm, SubmissionForm
@@ -896,3 +897,45 @@ def _generate_report_background(app, assignment_id, task_key, user_id):
                 'message': '报告生成失败',
                 'error': str(e)
             })
+
+
+@assignments_bp.route('/<int:assignment_id>/export-word')
+@login_required
+def export_assignment_word(assignment_id):
+    """
+    导出作业的所有学生作文到Word文档
+    """
+    # 检查权限
+    assignment = EssayAssignment.query.get_or_404(assignment_id)
+    if current_user.role != 'teacher' or assignment.teacher_profile_id != current_user.teacher_profile.id:
+        flash('您没有权限导出此作业。', 'danger')
+        return redirect(url_for('assignments.assignment_detail', assignment_id=assignment_id))
+    
+    try:
+        # 创建Word导出服务实例
+        export_service = WordExportService()
+        
+        # 导出Word文档
+        output_path = export_service.export_assignment_essays(assignment_id)
+        
+        # 检查文件是否生成成功
+        if not os.path.exists(output_path):
+            flash('Word文档生成失败，请重试。', 'danger')
+            return redirect(url_for('assignments.assignment_detail', assignment_id=assignment_id))
+        
+        # 返回文件下载
+        from flask import send_file
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=os.path.basename(output_path),
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        
+    except ValueError as e:
+        flash(f'导出失败：{str(e)}', 'warning')
+        return redirect(url_for('assignments.assignment_detail', assignment_id=assignment_id))
+    except Exception as e:
+        current_app.logger.error(f'Word导出异常: {str(e)}')
+        flash('导出过程中发生错误，请重试。', 'danger')
+        return redirect(url_for('assignments.assignment_detail', assignment_id=assignment_id))
