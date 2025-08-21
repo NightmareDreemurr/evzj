@@ -20,8 +20,10 @@ from app.models import (EssayAssignment, GradingStandard, Classroom, StudentProf
                         assignment_student_profiles_association)
 from app.services.ai_grader import grade_essay_with_ai
 from app.services.eval_pipeline import evaluate_essay
+from app.services.meta_resolver import resolve_meta
 from app.services.ocr_service import (recognize_text_from_image_stream, OCRError)
 from app.services.ai_corrector import (correct_text_with_ai, AIConnectionError)
+from app.utils.text_stats import count_words_zh
 
 from . import assignments_bp
 from .forms import EssayAssignmentForm, SubmissionForm
@@ -255,14 +257,11 @@ def assignment_detail(assignment_id):
                 # NOTE: This is a synchronous call for demonstration.
                 # In production, this should be offloaded to a background worker (e.g., Celery).
                 try:
-                    # Prepare metadata for the evaluation pipeline
-                    meta = {
-                        'student_id': str(current_user.student_profile.id),
-                        'grade': '五年级',  # TODO: Get from enrollment or assignment
-                        'topic': assignment.title,
-                        'words': len(final_content.strip()),
-                        'genre': 'narrative'  # TODO: Get from assignment
-                    }
+                    # Resolve metadata from database records
+                    meta = resolve_meta(new_essay.id)
+                    
+                    # Calculate accurate word count for Chinese text
+                    meta['words'] = count_words_zh(final_content)
                     
                     # Run the structured evaluation pipeline
                     result = evaluate_essay(final_content, meta)

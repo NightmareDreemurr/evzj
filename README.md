@@ -167,15 +167,46 @@ make clean
 
 ### 报告生成
 
-支持从新的JSON格式生成Word报告：
+支持从新的JSON格式生成Word/DOCX和文本报告：
 
 ```bash
-# 生成作文评估报告
-python regenerate_report.py --essay <essay_id> --output <output_path>
+# 生成作文评估报告（DOCX格式，默认）
+python regenerate_report.py --essay-id <essay_id> --format docx --output <output_path>
+
+# 生成作文评估报告（文本格式）
+python regenerate_report.py --essay-id <essay_id> --format txt --output <output_path>
 
 # 生成作业整体报告（向后兼容）
 python regenerate_report.py --assignment <assignment_id>
 ```
+
+**新特性说明：**
+- **DOCX默认格式**: 使用`python-docx`生成格式化的Word文档，包含标题、分段、加粗等样式
+- **CLI增强**: 支持`--essay-id`、`--format`和`--output`参数
+- **向后兼容**: 保持原有`--assignment`参数的支持
+
+### 智能元数据解析
+
+系统现在自动从数据库解析作文元数据，无需硬编码：
+
+**元数据来源：**
+- **年级**: 从作业的评分标准→年级等级表获取
+- **文体**: 从评分标准标题智能识别（记叙文、说明文、议论文）
+- **题目**: 从作业标题获取
+- **字数**: 使用智能中文字数统计
+
+**中文字数统计特性：**
+- 准确识别CJK字符（中日韩字符）
+- 混合中英文本的词数统计  
+- 自动处理标点符号和空白字符
+
+### LLM提供器优化
+
+评估流水线针对不同步骤进行了专门优化：
+
+- **分析步骤**: 温度0.2，超时20秒，1次重试
+- **评分步骤**: 温度0.1，超时30秒，2次重试
+- **JSON验证**: 严格的JSON格式验证和错误重试
 
 ### 评分标准管理
 
@@ -186,11 +217,14 @@ python regenerate_report.py --assignment <assignment_id>
 
 ### 测试覆盖
 
-项目包含完整的测试套件（13个测试用例）：
+项目包含完整的测试套件（30个测试用例）：
 
-- 标准数据访问测试
-- 评估流水线组件测试  
-- 端到端集成测试
-- 报告生成测试
+- **评估流水线测试**: 分析、评分、组装等核心组件测试
+- **元数据解析测试**: 数据库驱动的年级/文体解析测试  
+- **文本统计测试**: 中文字数统计和综合文本分析测试
+- **JSON存储测试**: ai_score字段的序列化/反序列化一致性测试
+- **报告生成测试**: DOCX和文本格式报告生成测试
+- **标准数据访问测试**: 评分标准的数据库和YAML回退测试
+- **端到端集成测试**: 完整评估流程测试
 
 运行 `make test` 查看完整测试结果。 

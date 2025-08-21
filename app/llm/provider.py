@@ -28,7 +28,7 @@ class LLMProvider:
             raise LLMConnectionError("DeepSeek API key or URL is not configured.")
     
     def call_llm(self, prompt: str, max_retries: int = 2, timeout: int = 120, 
-                 require_json: bool = True) -> Dict[str, Any]:
+                 require_json: bool = True, temperature: float = 0.3) -> Dict[str, Any]:
         """
         Call LLM API with exponential backoff retry.
         
@@ -52,7 +52,7 @@ class LLMProvider:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3
+            "temperature": temperature
         }
         
         if require_json:
