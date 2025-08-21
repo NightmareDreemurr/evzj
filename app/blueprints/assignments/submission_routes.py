@@ -461,6 +461,7 @@ def review_submission(submission_id):
             grading_result = submission.ai_score
 
     image_filename = os.path.basename(submission.original_image_path) if submission.original_image_path else None
+    overlay_filename = os.path.basename(submission.annotated_overlay_path) if submission.annotated_overlay_path else None
 
     # Fetch rubrics and standard info for the grading panel
     standard = submission.assignment.grading_standard
@@ -493,6 +494,7 @@ def review_submission(submission_id):
                            submission=submission,
                            assignment=assignment,
                            image_filename=image_filename,
+                           overlay_filename=overlay_filename,
                            grading_result=grading_result,
                            original_ai_score=submission.ai_score or {},
                            rubrics_data=rubrics_by_dimension,
