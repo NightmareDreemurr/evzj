@@ -1301,8 +1301,21 @@ nav:not(.mobile-tools),
     }
 </style>
 <script>
-// 强制应用移动端样式
-document.body.classList.add('mobile-device');
+// 检测移动设备
+function detectMobileDevice() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isTouch = 'ontouchstart' in window;
+    const isSmallScreen = window.innerWidth <= 768;
+    
+    if (isMobile || isTouch || isSmallScreen) {
+        document.body.classList.add('mobile-device');
+    } else {
+        document.body.classList.remove('mobile-device');
+    }
+    
+    console.log('Device detection:', { isMobile, isTouch, isSmallScreen, userAgent });
+}
 
 // 检测微信浏览器
 function isWeixinBrowser() {
@@ -1313,6 +1326,9 @@ function isWeixinBrowser() {
 if (isWeixinBrowser()) {
     document.body.classList.add('weixin-browser');
 }
+
+// 初始设备检测
+detectMobileDevice();
 
 // 现代化横竖屏检测和处理 - 配合新的设备检测逻辑
 function handleOrientationChange() {
