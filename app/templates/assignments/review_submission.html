@@ -33,9 +33,14 @@
                 </div>
                 <div class="card-body text-center">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#imageModal">
-                        <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image" style="max-height: 500px; cursor: pointer;">
+                        <div class="position-relative d-inline-block">
+                            <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image" style="max-height: 500px; cursor: pointer;">
+                            {% if overlay_filename %}
+                            <img src="{{ url_for('main.uploaded_file', filename=overlay_filename) }}" class="img-fluid position-absolute" alt="Annotation Overlay" style="max-height: 500px; cursor: pointer; top: 0; left: 0; width: 100%; height: 100%;">
+                            {% endif %}
+                        </div>
                     </a>
-                    <p class="mt-2 text-muted small">点击图片查看大图</p>
+                    <p class="mt-2 text-muted small">点击图片查看大图{% if overlay_filename %} - 包含圈画标注{% endif %}</p>
                 </div>
             </div>
             {% endif %}
@@ -182,7 +187,12 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center">
-            <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image">
+            <div class="position-relative d-inline-block">
+                <img src="{{ url_for('main.uploaded_file', filename=image_filename) }}" class="img-fluid" alt="Student Submission Image">
+                {% if overlay_filename %}
+                <img src="{{ url_for('main.uploaded_file', filename=overlay_filename) }}" class="img-fluid position-absolute" alt="Annotation Overlay" style="top: 0; left: 0; width: 100%; height: 100%;">
+                {% endif %}
+            </div>
           </div>
         </div>
       </div>

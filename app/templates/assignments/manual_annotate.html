@@ -1568,8 +1568,26 @@ document.addEventListener('DOMContentLoaded', function () {
             canvas.style.height = img.height + 'px';
         }
         
+        // 加载现有的标注（如果存在）
+        loadExistingAnnotations();
+        
         redraw();
     };
+
+    // 加载现有标注的函数
+    function loadExistingAnnotations() {
+        {% if overlay_filename %}
+        const overlayImg = new Image();
+        overlayImg.onload = function() {
+            // 将现有的标注绘制到canvas上
+            ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+        };
+        overlayImg.onerror = function() {
+            console.warn('无法加载现有标注图片:', '{{ overlay_filename }}');
+        };
+        overlayImg.src = "{{ url_for('main.uploaded_file', filename=overlay_filename) }}";
+        {% endif %}
+    }
     
     // 监听窗口大小变化，重新调整canvas尺寸
     window.addEventListener('resize', function() {
