@@ -334,51 +334,7 @@ def generate_docx_report_from_evaluation(evaluation: EvaluationResult, essay, ou
         raise
 
 
-if __name__ == '__main__':
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='重新生成报告')
-    parser.add_argument('--assignment', type=int, help='作业ID（生成作业报告）')
-    parser.add_argument('--essay-id', type=int, help='作文ID（生成作文报告）')
-    parser.add_argument('--format', choices=['txt', 'docx'], default='docx', help='输出格式（默认：docx）')
-    parser.add_argument('--output', type=str, help='输出路径')
-    
-    args = parser.parse_args()
-    
-    if args.assignment:
-        success = regenerate_assignment_report(args.assignment)
-        if success:
-            print(f"\n作业报告重新生成完成！")
-        else:
-            print(f"\n作业报告生成失败！")
-            sys.exit(1)
-    
-    elif args.essay_id:
-        if args.format == 'docx':
-            result = generate_word_report_from_evaluation(args.essay_id, args.output)
-        else:
-            # Generate text format for backward compatibility
-            result = generate_text_report_from_evaluation(args.essay_id, args.output)
-        
-        if result:
-            print(f"\n作文报告生成完成: {result}")
-        else:
-            print(f"\n作文报告生成失败！")
-            sys.exit(1)
-    
-    else:
-        # 向后兼容：默认行为
-        assignment_id = 2  # 作业ID
-        success = regenerate_assignment_report(assignment_id)
-        
-        if success:
-            print("\n报告重新生成完成！")
-        else:
-            print("\n报告生成失败！")
-            sys.exit(1)
-
-
-def generate_text_report_from_evaluation(essay_id, output_path=None, app=None):
+def _generate_text_report_from_evaluation(essay_id, output_path=None, app=None):
     """Generate text report from EvaluationResult JSON - for backward compatibility"""
     
     if app is None:
@@ -435,3 +391,47 @@ def generate_text_report_from_evaluation(essay_id, output_path=None, app=None):
             return _do_work()
     else:
         return _do_work()
+
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='重新生成报告')
+    parser.add_argument('--assignment', type=int, help='作业ID（生成作业报告）')
+    parser.add_argument('--essay-id', type=int, help='作文ID（生成作文报告）')
+    parser.add_argument('--format', choices=['txt', 'docx'], default='docx', help='输出格式（默认：docx）')
+    parser.add_argument('--output', type=str, help='输出路径')
+    
+    args = parser.parse_args()
+    
+    if args.assignment:
+        success = regenerate_assignment_report(args.assignment)
+        if success:
+            print(f"\n作业报告重新生成完成！")
+        else:
+            print(f"\n作业报告生成失败！")
+            sys.exit(1)
+    
+    elif args.essay_id:
+        if args.format == 'docx':
+            result = generate_word_report_from_evaluation(args.essay_id, args.output)
+        else:
+            # Generate text format for backward compatibility - define function below
+            result = _generate_text_report_from_evaluation(args.essay_id, args.output)
+        
+        if result:
+            print(f"\n作文报告生成完成: {result}")
+        else:
+            print(f"\n作文报告生成失败！")
+            sys.exit(1)
+    
+    else:
+        # 向后兼容：默认行为
+        assignment_id = 2  # 作业ID
+        success = regenerate_assignment_report(assignment_id)
+        
+        if success:
+            print("\n报告重新生成完成！")
+        else:
+            print("\n报告生成失败！")
+            sys.exit(1)
