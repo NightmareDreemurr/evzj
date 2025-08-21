@@ -1598,37 +1598,37 @@ document.addEventListener('DOMContentLoaded', function () {
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     
     // 新的工具按钮事件处理
-toolBtns.forEach(btn => {
-    btn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const tool = this.dataset.tool;
-        if (this.classList.contains('active')) {
-            // 如果已激活，打开下拉菜单
-            const dropdown = this.nextElementSibling;
-            if (dropdown && dropdown.classList.contains('dropdown-menu')) {
-                dropdown.classList.toggle('show');
+    toolBtns.forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const tool = this.dataset.tool;
+            if (this.classList.contains('active')) {
+                // 如果已激活，打开下拉菜单
+                const dropdown = this.nextElementSibling;
+                if (dropdown && dropdown.classList.contains('dropdown-menu')) {
+                    dropdown.classList.toggle('show');
+                }
+            } else {
+                // 如果未激活，激活它并关闭其他下拉
+                toolBtns.forEach(b => {
+                    b.classList.remove('active');
+                    const dd = b.nextElementSibling;
+                    if (dd && dd.classList.contains('dropdown-menu')) dd.classList.remove('show');
+                });
+                this.classList.add('active');
+                currentTool = tool;
+                console.log('选择工具:', tool);
             }
-        } else {
-            // 如果未激活，激活它并关闭其他下拉
-            toolBtns.forEach(b => {
-                b.classList.remove('active');
-                const dd = b.nextElementSibling;
-                if (dd && dd.classList.contains('dropdown-menu')) dd.classList.remove('show');
-            });
-            this.classList.add('active');
-            currentTool = tool;
-            console.log('选择工具:', tool);
+        });
+    });
+
+    // 点击文档其他地方关闭下拉
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu.show').forEach(dd => dd.classList.remove('show'));
         }
     });
-});
-
-// 点击文档其他地方关闭下拉
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-menu.show').forEach(dd => dd.classList.remove('show'));
-    }
-});
     
     // 处理下拉菜单中的设置变更
     toolDropdowns.forEach(dropdown => {
@@ -1691,7 +1691,6 @@ document.addEventListener('click', function(e) {
         
         // 初始化预览
         updatePreview(dropdown, tool);
-    });
     });
 
     undoBtn.addEventListener('click', function(e) {
