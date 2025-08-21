@@ -1584,6 +1584,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // 新的工具按钮事件处理
 toolBtns.forEach(btn => {
     btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
         const tool = this.dataset.tool;
         if (this.classList.contains('active')) {
             // 如果已激活，打开下拉菜单
@@ -1619,7 +1621,9 @@ document.addEventListener('click', function(e) {
         // 颜色选择
         const colorBtns = dropdown.querySelectorAll('.color-btn');
         colorBtns.forEach(colorBtn => {
-            colorBtn.addEventListener('click', function() {
+            colorBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 // 移除其他颜色的激活状态
                 colorBtns.forEach(btn => btn.classList.remove('active'));
                 // 激活当前颜色
@@ -1674,22 +1678,48 @@ document.addEventListener('click', function(e) {
     });
     });
 
-    undoBtn.addEventListener('click', undo);
-    redoBtn.addEventListener('click', redo);
-    clearBtn.addEventListener('click', function () {
+    undoBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        undo();
+    });
+    redoBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        redo();
+    });
+    clearBtn.addEventListener('click', function (e) {
+        e.preventDefault();
         if (confirm('确定清空所有圈画?')) {
             objects = [];
             redoStack = [];
             redraw();
         }
     });
-    saveBtn.addEventListener('click', function () {
+    saveBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="btn-text">保存中...</span>';
+        
         const data = canvas.toDataURL('image/png');
         fetch('{{ url_for("assignments.manual_annotate", submission_id=submission.id) }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ image: data })
-        }).then(res => res.json()).then(data => alert(data.message));
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            console.log('保存成功:', data);
+        })
+        .catch(error => {
+            console.error('保存失败:', error);
+            alert('保存失败，请重试。');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> <span class="btn-text">保存</span>';
+        });
     });
 
     // 设备模式切换按钮事件处理器
