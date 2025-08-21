@@ -924,3 +924,85 @@ def _generate_report_background(app, assignment_id, task_key, user_id):
                 'message': '报告生成失败',
                 'error': str(e)
             })
+
+
+# DOCX Export Routes
+@assignments_bp.route('/essays/<int:essay_id>/report/download')
+@login_required
+def download_essay_report(essay_id):
+    """Download DOCX report for a single essay"""
+    from flask import send_file
+    from app.dao.evaluation_dao import load_evaluation_by_essay
+    from app.reporting.docx_renderer import render_essay_docx
+    
+    try:
+        # Load evaluation data
+        evaluation = load_evaluation_by_essay(essay_id)
+        if not evaluation:
+            flash('无法加载作文评估数据', 'danger')
+            return redirect(url_for('assignments.list_assignments'))
+        
+        # Render DOCX
+        output_path = render_essay_docx(evaluation)
+        
+        # Generate filename for download
+        student = evaluation.meta.student.replace(' ', '_').replace('/', '_')
+        topic = str(evaluation.meta.topic).replace(' ', '_').replace('/', '_')
+        date_str = str(evaluation.meta.date).replace('-', '').replace('/', '')
+        filename = f"{student}_{topic}_{date_str}.docx"
+        
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to download essay report {essay_id}: {e}")
+        flash(f'下载报告失败: {str(e)}', 'danger')
+        return redirect(url_for('assignments.list_assignments'))
+
+
+@assignments_bp.route('/<int:assignment_id>/report/download')
+@login_required  
+def download_assignment_report(assignment_id):
+    """Download DOCX report for assignment (currently returns first essay as representative)"""
+    from flask import send_file
+    from app.dao.evaluation_dao import load_evaluations_by_assignment
+    from app.reporting.docx_renderer import render_assignment_docx
+    
+    try:
+        # Load all evaluations for the assignment
+        evaluations = load_evaluations_by_assignment(assignment_id)
+        if not evaluations:
+            flash('该作业暂无可导出的评估数据', 'warning')
+            return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))
+        
+        # Render assignment DOCX (currently exports first essay as representative)
+        output_path = render_assignment_docx(assignment_id, evaluations)
+        
+        # Generate filename
+        assignment = db.session.get(EssayAssignment, assignment_id)
+        assignment_title = assignment.title.replace(' ', '_').replace('/', '_') if assignment else f"assignment_{assignment_id}"
+        filename = f"{assignment_title}_report.docx"
+        
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        
+    except NotImplementedError:
+        flash('作业汇总导出功能暂未实现，已为您导出代表作文', 'info')
+        # Try to export first essay instead
+        if evaluations:
+            return redirect(url_for('assignments.download_essay_report', essay_id=evaluations[0].meta.student_id))
+        else:
+            flash('无可导出的作文数据', 'warning')
+            return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))
+    except Exception as e:
+        logger.error(f"Failed to download assignment report {assignment_id}: {e}")
+        flash(f'下载报告失败: {str(e)}', 'danger')
+        return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))

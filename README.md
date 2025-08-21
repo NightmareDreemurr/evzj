@@ -226,5 +226,142 @@ python regenerate_report.py --assignment <assignment_id>
 - **报告生成测试**: DOCX和文本格式报告生成测试
 - **标准数据访问测试**: 评分标准的数据库和YAML回退测试
 - **端到端集成测试**: 完整评估流程测试
+- **DOCX导出测试**: 网页端DOCX报告下载功能测试
+
+---
+
+## DOCX 导出功能
+
+本项目支持将作文评估报告导出为 DOCX 格式文档，方便教师下载和分享评估结果。
+
+### 功能特性
+
+- **单篇作文导出**: 为每篇作文生成包含详细评估信息的 DOCX 文档
+- **作业汇总导出**: 为整个作业生成汇总报告（当前版本导出代表作文）
+- **模板自动生成**: 首次使用时自动创建最小报告模板
+- **兼容性处理**: 自动处理历史评分数据格式差异
+- **文件名优化**: 自动处理特殊字符，确保文件名合法性
+
+### 依赖安装
+
+确保已安装必要的依赖包：
+
+```bash
+pip install python-docx==1.1.2 docxtpl==0.16.7
+```
+
+### 使用方法
+
+#### 网页端下载
+
+1. **作业报告页面**: 
+   - 访问作业报告页面
+   - 点击"下载 DOCX 报告"按钮获取作业汇总报告
+
+2. **单篇作文导出**:
+   - 在作业报告页面的作文示例中
+   - 点击每篇作文旁的下载按钮获取单篇作文报告
+
+#### API 接口
+
+```python
+# 下载单篇作文报告
+GET /assignments/essays/<essay_id>/report/download
+
+# 下载作业汇总报告  
+GET /assignments/<assignment_id>/report/download
+```
+
+### 报告内容
+
+生成的 DOCX 报告包含以下内容：
+
+1. **基本信息**
+   - 学生姓名、班级、教师、日期
+   - 作文题目和字数统计
+
+2. **评分结果**
+   - 总分和各维度评分详情
+   - 评分理由和权重信息
+
+3. **文本内容**
+   - 作文原文
+   - 清洗后文本（如有AI校对）
+
+4. **高亮摘要**
+   - 按类型（语法、拼写、风格等）分组的问题统计
+   - 严重程度分类和示例展示
+
+5. **诊断建议**
+   - 问题诊断和改进建议
+   - 针对性的写作指导
+
+### 模板自定义
+
+#### 自动生成模板
+
+首次运行时，系统会在 `templates/word/ReportTemplate.docx` 自动生成最小模板。
+
+#### 自定义模板
+
+1. 编辑 `templates/word/ReportTemplate.docx` 文件
+2. 使用以下模板变量：
+
+```jinja2
+{{ meta.student }}          # 学生姓名
+{{ meta.class_ }}           # 班级名称  
+{{ meta.teacher }}          # 教师姓名
+{{ meta.topic }}            # 作文题目
+{{ meta.date }}             # 评估日期
+{{ scores.total }}          # 总分
+{{ text.original }}         # 原文内容
+{{ text.cleaned }}          # 清洗后文本
+{% for r in scores.rubrics %}{{ r.name }}: {{ r.score }}/{{ r.max }}{% endfor %}
+```
+
+#### 高级模板功能（需要 docxtpl）
+
+如果安装了 `docxtpl==0.16.7`，可以使用更强大的模板功能：
+
+```jinja2
+# 循环显示评分维度
+{% for rubric in scores.rubrics %}
+{{ rubric.name }}: {{ rubric.score }}/{{ rubric.max }} (权重{{ rubric.weight }})
+理由：{{ rubric.reason }}
+{% endfor %}
+
+# 高亮摘要统计
+{% for type, data in highlight_summary.items %}
+{{ type }}问题: 低{{ data.low }}个, 中{{ data.medium }}个, 高{{ data.high }}个
+示例: {{ data.examples|join(', ') }}
+{% endfor %}
+```
+
+### 故障排除
+
+#### 常见问题
+
+1. **模板文件丢失**: 系统会自动重新生成最小模板
+2. **历史数据兼容**: DAO层自动处理不同格式的评分数据
+3. **字体问题**: Linux环境建议安装中文字体（如思源黑体）
+
+#### 错误处理
+
+- 评估数据缺失时会提供友好的错误提示
+- 文件生成失败时会回退到安全的默认处理
+- 网络或权限问题会显示具体的错误信息
+
+#### 调试建议
+
+```bash
+# 检查DOCX生成功能
+python -c "from app.reporting.docx_renderer import render_essay_docx; print('DOCX功能可用')"
+
+# 运行DOCX相关测试
+pytest tests/test_docx_renderer.py -v
+
+# 检查模板生成
+python -c "from app.reporting.docx_renderer import ensure_template_exists; print(ensure_template_exists())"
+```
 
 运行 `make test` 查看完整测试结果。 
