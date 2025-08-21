@@ -79,4 +79,118 @@
 - 将 `utils` 中的函数适配新的数据库模型。
 - 搭建 Celery 任务队列。
 - 使用蓝图重构路由。
-- 更新前端模板以适配新的数据结构。 
+- 更新前端模板以适配新的数据结构。
+
+---
+
+## 新增功能：结构化LLM评估流水线
+
+本项目已集成了新的结构化LLM评估流水线，替代了原有的一次性评分方式。
+
+### 流水线架构
+
+新的评估流水线采用以下结构化步骤：
+
+1. **结构化解析 (analyze)**: 分析作文段落意图和问题清单
+2. **动态评分标准加载 (load_standard)**: 从数据库或YAML文件加载评分标准
+3. **多维度评分 (score)**: 基于标准和分析结果进行评分
+4. **内容合规审核 (moderate)**: 内容安全和合规检查
+5. **结果装配 (assemble)**: 组装统一的JSON输出格式
+
+### JSON输出格式
+
+评估结果采用统一的JSON格式：
+
+```json
+{
+  "meta": {
+    "student_id": "学生ID",
+    "grade": "五年级", 
+    "topic": "作文题目",
+    "words": 字数统计
+  },
+  "analysis": {
+    "outline": [
+      {"para": 1, "intent": "段落意图描述"}
+    ],
+    "issues": ["问题清单"]
+  },
+  "scores": {
+    "content": 内容分,
+    "structure": 结构分,
+    "language": 语言分,
+    "aesthetics": 文采分,
+    "norms": 规范分,
+    "total": 总分,
+    "rationale": "评分理由"
+  },
+  "diagnostics": [
+    {
+      "para": 段落号,
+      "issue": "问题类型",
+      "evidence": "问题证据", 
+      "advice": ["改进建议"]
+    }
+  ],
+  "exercises": [
+    {
+      "type": "练习类型",
+      "prompt": "练习提示",
+      "hint": ["练习要点"],
+      "sample": "示例"
+    }
+  ],
+  "summary": "给家长的总结"
+}
+```
+
+### 开发命令
+
+项目提供了便捷的开发命令：
+
+```bash
+# 安装依赖
+make install
+
+# 启动开发服务器
+make dev
+
+# 运行测试
+make test
+
+# 初始化数据库
+make seed
+
+# 清理临时文件
+make clean
+```
+
+### 报告生成
+
+支持从新的JSON格式生成Word报告：
+
+```bash
+# 生成作文评估报告
+python regenerate_report.py --essay <essay_id> --output <output_path>
+
+# 生成作业整体报告（向后兼容）
+python regenerate_report.py --assignment <assignment_id>
+```
+
+### 评分标准管理
+
+评分标准支持数据库动态加载和YAML文件回退：
+
+- 数据库优先：从`GradingStandard`、`Dimension`、`Rubric`表加载
+- YAML回退：从`data/standards/`目录加载（如`grade5_narrative.yaml`）
+
+### 测试覆盖
+
+项目包含完整的测试套件（13个测试用例）：
+
+- 标准数据访问测试
+- 评估流水线组件测试  
+- 端到端集成测试
+- 报告生成测试
+
+运行 `make test` 查看完整测试结果。 
