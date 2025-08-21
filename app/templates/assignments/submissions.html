@@ -117,14 +117,14 @@
 
     <div class="accordion" id="studentsAccordion">
         {% for student in submissions %}
-            <div class="accordion-item mb-2 status-{{ student.status_key }}">
-                <h2 class="accordion-header" id="heading-{{ student.student_id }}">
+            <div class="accordion-item mb-2 status-{{ student['status_key'] }}">
+                <h2 class="accordion-header" id="heading-{{ student['student_id'] }}">
                     
                     {# CASE: Student has NOT submitted -> Static, non-interactive header #}
-                    {% if student.submission_count == 0 %}
+                    {% if student['submission_count'] == 0 %}
                         <div class="accordion-button non-expandable collapsed">
                             <div class="student-info">
-                                <strong class="fs-6">{{ student.student_name }}</strong>
+                                <strong class="fs-6">{{ student['student_name'] }}</strong>
                             </div>
                             <div class="submission-summary">
                                 <span class="text-muted"><i class="fas fa-times-circle me-1"></i>未提交</span>
@@ -133,20 +133,20 @@
 
                     {# CASE: Student has submitted (1 or more times) -> Collapsible Button, potentially expanded #}
                     {% else %}
-                        <button class="accordion-button {% if not student.is_processing %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ student.student_id }}" aria-expanded="{{ 'true' if student.is_processing else 'false' }}" aria-controls="collapse-{{ student.student_id }}">
+                        <button class="accordion-button {% if not student['is_processing'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ student['student_id'] }}" aria-expanded="{{ 'true' if student['is_processing'] else 'false' }}" aria-controls="collapse-{{ student['student_id'] }}">
                             <div class="student-info">
-                                <strong class="fs-6">{{ student.student_name }}</strong>
+                                <strong class="fs-6">{{ student['student_name'] }}</strong>
                             </div>
                             
                             <div class="submission-summary">
-                                {% if student.is_processing %}
+                                {% if student['is_processing'] %}
                                     <span class="badge bg-warning text-dark"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 处理中...</span>
                                 {% else %}
                                     <span class="text-success"><i class="fas fa-check-circle me-1"></i>已提交</span>
-                                    {% if student.latest_score is not none %}
-                                        <span class="badge bg-primary">分数: {{ "%.1f"|format(student.latest_score) }} / {{ assignment.grading_standard.total_score|round(0) }}</span>
+                                    {% if student['latest_score'] is not none %}
+                                        <span class="badge bg-primary">分数: {{ "%.1f"|format(student['latest_score']) }} / {{ assignment.grading_standard.total_score|round(0) }}</span>
                                     {% endif %}
-                                    <span class="badge rounded-pill bg-info text-dark">{{ student.submission_count }} 次</span>
+                                    <span class="badge rounded-pill bg-info text-dark">{{ student['submission_count'] }} 次</span>
                                 {% endif %}
                             </div>
                         </button>
@@ -154,8 +154,8 @@
                 </h2>
 
                 {# Details for any submitted student (1 or more), potentially shown by default #}
-                {% if student.submission_count > 0 %}
-                    <div id="collapse-{{ student.student_id }}" class="accordion-collapse collapse {% if student.is_processing %}show{% endif %}" aria-labelledby="heading-{{ student.student_id }}">
+                {% if student['submission_count'] > 0 %}
+                    <div id="collapse-{{ student['student_id'] }}" class="accordion-collapse collapse {% if student['is_processing'] %}show{% endif %}" aria-labelledby="heading-{{ student['student_id'] }}">
                         <div class="accordion-body">
                             <table class="table table-hover mb-0">
                                 <thead>
@@ -167,7 +167,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for submission in student.submissions %}
+                                    {% for submission in student['submissions'] %}
                                         {% include 'assignments/_submission_row.html' %}
                                     {% endfor %}
                                 </tbody>

@@ -378,13 +378,13 @@
                     <strong>具体示例：</strong>
                     <div class="list-group mt-2">
                         {% for example in problem.detailed_examples %}
-                        <a href="{{ url_for('assignments.review_submission', submission_id=example.essay_id) }}" target="_blank" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('assignments.review_submission', submission_id=example['essay_id']) }}" target="_blank" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ example.student_name }}</h6>
+                                <h6 class="mb-1">{{ example['student_name'] }}</h6>
                                 <small><i class="fas fa-external-link-alt"></i></small>
                             </div>
-                            <p class="mb-1">{{ example.problem_sentence }}</p>
-                            <small class="text-muted">位置: {{ example.sentence_position }} | {{ example.problem_explanation }}</small>
+                            <p class="mb-1">{{ example['problem_sentence'] }}</p>
+                            <small class="text-muted">位置: {{ example['sentence_position'] }} | {{ example['problem_explanation'] }}</small>
                         </a>
                         {% endfor %}
                     </div>
@@ -422,13 +422,13 @@
                     <strong>具体示例：</strong>
                     <div class="list-group mt-2">
                         {% for example in strength.detailed_examples %}
-                        <a href="{{ url_for('assignments.review_submission', submission_id=example.essay_id) }}" target="_blank" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('assignments.review_submission', submission_id=example['essay_id']) }}" target="_blank" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">{{ example.student_name }}</h6>
+                                <h6 class="mb-1">{{ example['student_name'] }}</h6>
                                 <small><i class="fas fa-external-link-alt"></i></small>
                             </div>
-                            <p class="mb-1">{{ example.excellent_sentence }}</p>
-                            <small class="text-muted">位置: {{ example.sentence_position }} | {{ example.excellence_explanation }}</small>
+                            <p class="mb-1">{{ example['excellent_sentence'] }}</p>
+                            <small class="text-muted">位置: {{ example['sentence_position'] }} | {{ example['excellence_explanation'] }}</small>
                         </a>
                         {% endfor %}
                     </div>
@@ -483,18 +483,18 @@
                         </div>
                         <div class="card-body">
                             {% for example in report_data.top_essays %}
-                            <div class="mb-3 clickable-essay" data-essay-id="{{ example.essay_id }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
+                            <div class="mb-3 clickable-essay" data-essay-id="{{ example['essay_id'] }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="flex-grow-1">
-                                        <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
+                                        <h6><strong>{{ example['student_name'] }}</strong> - 得分：{{ example['score'] or '未评分' }}/{{ assignment.grading_standard.total_score }}
                                             <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
                                         </h6>
                                         <div class="example-text">
-                                            {{ example.content_preview }}
+                                            {{ example['content_preview'] }}
                                         </div>
                                     </div>
                                     <div class="ml-2">
-                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example.essay_id) }}" 
+                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example['essay_id']) }}" 
                                            class="btn btn-sm btn-outline-success" title="下载此作文的DOCX报告">
                                             <i class="fas fa-download"></i>
                                         </a>
@@ -516,18 +516,18 @@
                         </div>
                         <div class="card-body">
                             {% for example in report_data.bottom_essays %}
-                            <div class="mb-3 clickable-essay" data-essay-id="{{ example.essay_id }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
+                            <div class="mb-3 clickable-essay" data-essay-id="{{ example['essay_id'] }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="flex-grow-1">
-                                        <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
+                                        <h6><strong>{{ example['student_name'] }}</strong> - 得分：{{ example['score'] or '未评分' }}/{{ assignment.grading_standard.total_score }}
                                             <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
                                         </h6>
                                         <div class="example-text">
-                                            {{ example.content_preview }}
+                                            {{ example['content_preview'] }}
                                         </div>
                                     </div>
                                     <div class="ml-2">
-                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example.essay_id) }}" 
+                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example['essay_id']) }}" 
                                            class="btn btn-sm btn-outline-success" title="下载此作文的DOCX报告">
                                             <i class="fas fa-download"></i>
                                         </a>
