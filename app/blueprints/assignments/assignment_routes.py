@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from collections import Counter
 from datetime import datetime
 import threading
@@ -18,11 +19,14 @@ from app.models import (EssayAssignment, GradingStandard, Classroom, StudentProf
                         assignment_classrooms_association, 
                         assignment_student_profiles_association)
 from app.services.ai_grader import grade_essay_with_ai
+from app.services.eval_pipeline import evaluate_essay
 from app.services.ocr_service import (recognize_text_from_image_stream, OCRError)
 from app.services.ai_corrector import (correct_text_with_ai, AIConnectionError)
 
 from . import assignments_bp
 from .forms import EssayAssignmentForm, SubmissionForm
+
+logger = logging.getLogger(__name__)
 
 
 @assignments_bp.route('/new', methods=['GET', 'POST'])
@@ -247,10 +251,33 @@ def assignment_detail(assignment_id):
                 db.session.add(new_essay)
                 db.session.commit()
 
-                # Trigger AI grading task. 
+                # Trigger AI grading task using new structured pipeline
                 # NOTE: This is a synchronous call for demonstration.
                 # In production, this should be offloaded to a background worker (e.g., Celery).
-                grade_essay_with_ai(new_essay.id)
+                try:
+                    # Prepare metadata for the evaluation pipeline
+                    meta = {
+                        'student_id': str(current_user.student_profile.id),
+                        'grade': '五年级',  # TODO: Get from enrollment or assignment
+                        'topic': assignment.title,
+                        'words': len(final_content.strip()),
+                        'genre': 'narrative'  # TODO: Get from assignment
+                    }
+                    
+                    # Run the structured evaluation pipeline
+                    result = evaluate_essay(final_content, meta)
+                    
+                    # Store the structured result in the Essay.ai_score field
+                    new_essay.ai_score = result.model_dump()
+                    new_essay.final_score = result.scores.total
+                    new_essay.status = 'graded'
+                    
+                    db.session.commit()
+                    
+                except Exception as e:
+                    # Fall back to original grading on pipeline failure
+                    logger.error(f"Evaluation pipeline failed for essay {new_essay.id}: {e}")
+                    grade_essay_with_ai(new_essay.id)
                 
                 flash('作业提交成功！AI正在批改中，请稍后刷新查看结果。', 'success')
                 return redirect(url_for('assignments.assignment_detail', assignment_id=assignment.id))
