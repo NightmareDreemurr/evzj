@@ -244,6 +244,9 @@
                         作业报告：{{ assignment.title }}
                     </h3>
                     <div class="card-tools">
+                        <a href="{{ url_for('assignments.download_assignment_report', assignment_id=assignment.id) }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-download"></i> 下载 DOCX 报告
+                        </a>
                         <a href="{{ url_for('assignments.generate_report', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-sync-alt"></i> 重新生成报告
                         </a>
@@ -481,11 +484,21 @@
                         <div class="card-body">
                             {% for example in report_data.top_essays %}
                             <div class="mb-3 clickable-essay" data-essay-id="{{ example.essay_id }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
-                                <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
-                                    <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
-                                </h6>
-                                <div class="example-text">
-                                    {{ example.content_preview }}
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
+                                            <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
+                                        </h6>
+                                        <div class="example-text">
+                                            {{ example.content_preview }}
+                                        </div>
+                                    </div>
+                                    <div class="ml-2">
+                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example.essay_id) }}" 
+                                           class="btn btn-sm btn-outline-success" title="下载此作文的DOCX报告">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             {% endfor %}
@@ -504,11 +517,21 @@
                         <div class="card-body">
                             {% for example in report_data.bottom_essays %}
                             <div class="mb-3 clickable-essay" data-essay-id="{{ example.essay_id }}" style="cursor: pointer; border: 1px solid #e9ecef; border-radius: 5px; padding: 10px; transition: background-color 0.2s;">
-                                <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
-                                    <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
-                                </h6>
-                                <div class="example-text">
-                                    {{ example.content_preview }}
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6><strong>{{ example.student_name }}</strong> - 得分：{{ example.score or '未评分' }}/{{ assignment.grading_standard.total_score }}
+                                            <i class="fas fa-external-link-alt ml-2 text-muted" style="font-size: 12px;"></i>
+                                        </h6>
+                                        <div class="example-text">
+                                            {{ example.content_preview }}
+                                        </div>
+                                    </div>
+                                    <div class="ml-2">
+                                        <a href="{{ url_for('assignments.download_essay_report', essay_id=example.essay_id) }}" 
+                                           class="btn btn-sm btn-outline-success" title="下载此作文的DOCX报告">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             {% endfor %}
