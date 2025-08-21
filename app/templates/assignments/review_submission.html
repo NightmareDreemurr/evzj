@@ -10,6 +10,49 @@
         返回提交列表
     </a>
     
+    <!-- 评分标准展示按钮 -->
+    <button id="grading-standard-toggle" class="grading-standard-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#gradingStandardSidebar" aria-expanded="false" aria-controls="gradingStandardSidebar">
+        <i class="fas fa-chevron-right" id="grading-standard-arrow"></i>
+        <span class="toggle-text">评分标准</span>
+    </button>
+    
+    <!-- 评分标准侧边栏 -->
+    <div class="collapse grading-standard-sidebar" id="gradingStandardSidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <h5 class="mb-0">{{ assignment.grading_standard.title }}</h5>
+                <small class="text-muted">总分: {{ assignment.grading_standard.total_score }}分</small>
+            </div>
+            <div class="sidebar-body">
+                {% if assignment.grading_standard.dimensions %}
+                    {% for dimension in assignment.grading_standard.dimensions %}
+                    <div class="dimension-detail mb-4">
+                        <h6 class="dimension-title">{{ dimension.name }}</h6>
+                        <div class="dimension-score-info mb-2">
+                            <span class="badge bg-primary">满分: {{ dimension.max_score }}分</span>
+                        </div>
+                        {% if dimension.rubrics %}
+                        <div class="rubrics-list">
+                            {% for rubric in dimension.rubrics %}
+                            <div class="rubric-item">
+                                <div class="rubric-level">
+                                    <strong>{{ rubric.level_name }}</strong>
+                                    <span class="score-range">({{ rubric.min_score }}-{{ rubric.max_score }}分)</span>
+                                </div>
+                                <div class="rubric-description">{{ rubric.description }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">该评分标准暂无详细维度信息。</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
     <!-- Page Heading -->
     <div class="page-heading mb-4">
         <h1 class="h3 mb-1 text-gray-800">批阅作业</h1>
@@ -592,6 +635,177 @@
         text-align: center;
     }
 }
+
+/* 评分标准显示组件样式 */
+.grading-standard-toggle {
+    position: fixed;
+    top: 70px;
+    left: 10px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 10px 15px;
+    border-radius: 0 25px 25px 0;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1050;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+}
+
+.grading-standard-toggle:hover {
+    background: #f8f9fa;
+    color: #495057;
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.grading-standard-toggle #grading-standard-arrow {
+    transition: transform 0.3s ease;
+}
+
+.grading-standard-toggle[aria-expanded="true"] #grading-standard-arrow {
+    transform: rotate(90deg);
+}
+
+.grading-standard-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 350px;
+    background: #fff;
+    border-right: 1px solid #dee2e6;
+    z-index: 1040;
+    overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+
+.grading-standard-sidebar .sidebar-content {
+    padding: 80px 20px 20px 20px;
+    height: 100%;
+}
+
+.grading-standard-sidebar .sidebar-header {
+    padding-bottom: 15px;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.grading-standard-sidebar .sidebar-header h5 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.dimension-detail {
+    border-left: 3px solid #007bff;
+    padding-left: 15px;
+}
+
+.dimension-title {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.dimension-score-info {
+    margin-bottom: 10px;
+}
+
+.rubrics-list {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.rubric-item {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.rubric-item:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.rubric-level {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.rubric-level strong {
+    color: #495057;
+}
+
+.score-range {
+    font-size: 0.85rem;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.rubric-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .grading-standard-toggle {
+        top: 60px;
+        left: 5px;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-width: 100px;
+        border-radius: 0 20px 20px 0;
+    }
+    
+    .grading-standard-toggle .toggle-text {
+        font-size: 12px;
+    }
+    
+    .grading-standard-sidebar {
+        width: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .grading-standard-sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .grading-standard-sidebar .sidebar-content {
+        padding: 70px 15px 15px 15px;
+    }
+    
+    .dimension-detail {
+        margin-bottom: 20px;
+        border-left: 2px solid #007bff;
+        padding-left: 10px;
+    }
+    
+    .rubrics-list {
+        padding: 10px;
+    }
+    
+    .rubric-level {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
@@ -1093,6 +1307,64 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     initializePage();
+});
+
+// 评分标准侧边栏控制
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('grading-standard-toggle');
+    const sidebar = document.getElementById('gradingStandardSidebar');
+    const arrow = document.getElementById('grading-standard-arrow');
+    
+    // 检测移动设备
+    function isMobileDevice() {
+        return window.innerWidth <= 768;
+    }
+    
+    // 移动端使用自定义显示隐藏逻辑，桌面端使用Bootstrap collapse
+    if (isMobileDevice()) {
+        // 移动端：不使用Bootstrap collapse，使用自定义逻辑
+        toggleBtn.removeAttribute('data-bs-toggle');
+        toggleBtn.removeAttribute('data-bs-target');
+        
+        toggleBtn.addEventListener('click', function() {
+            const isShown = sidebar.classList.contains('show');
+            if (isShown) {
+                sidebar.classList.remove('show');
+                arrow.style.transform = 'rotate(0deg)';
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            } else {
+                sidebar.classList.add('show');
+                arrow.style.transform = 'rotate(90deg)';
+                toggleBtn.setAttribute('aria-expanded', 'true');
+            }
+        });
+        
+        // 移动端点击侧边栏外部关闭
+        document.addEventListener('click', function(e) {
+            if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target) && sidebar.classList.contains('show')) {
+                sidebar.classList.remove('show');
+                arrow.style.transform = 'rotate(0deg)';
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    } else {
+        // 桌面端：使用Bootstrap collapse
+        sidebar.addEventListener('show.bs.collapse', function() {
+            arrow.style.transform = 'rotate(90deg)';
+        });
+        
+        sidebar.addEventListener('hide.bs.collapse', function() {
+            arrow.style.transform = 'rotate(0deg)';
+        });
+    }
+    
+    // 响应窗口大小变化
+    window.addEventListener('resize', function() {
+        // 重新加载页面以重新初始化适当的行为
+        if ((window.innerWidth <= 768) !== isMobileDevice()) {
+            location.reload();
+        }
+    });
 });
 </script>
 {% endblock %}
