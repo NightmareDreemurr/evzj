@@ -1,589 +1,1969 @@
 {% extends "base.html" %}
 
-{% block title %}
-手动圈画 - {{ submission.enrollment.student.user.full_name }}
-{% endblock %}
+{% block title %}手动圈画 - {{ submission.enrollment.student.user.full_name }}{% endblock %}
 
 {% block head %}
-    <!-- 避免移动端缩放，保证页面适配手机屏幕 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 {% endblock %}
 
 {% block content %}
-<div class="annotate-container">
-    <!-- 顶部工具栏：返回、工具选择、操作按钮 -->
-    <div class="top-bar">
-        <!-- 返回按钮 -->
-        <a href="{{ url_for('assignments.review_submission', submission_id=submission.id) }}" class="back-btn" title="返回">
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3 top-bar">
+        <a href="{{ url_for('assignments.review_submission', submission_id=submission.id) }}" class="back-btn">
             <i class="fas fa-arrow-left"></i>
-            <span>返回</span>
+            <span class="back-text">返回</span>
         </a>
-        <!-- 工具按钮组 -->
-        <div class="tool-buttons">
-            <button class="tool-btn" type="button" data-tool="pen" title="圆珠笔">
-                <i class="fas fa-pen"></i>
-            </button>
-            <button class="tool-btn" type="button" data-tool="highlighter" title="荧光笔">
-                <i class="fas fa-highlighter"></i>
-            </button>
-            <button class="tool-btn" type="button" data-tool="wavy" title="波浪线">
-                <i class="fas fa-wave-square"></i>
-            </button>
-            <button class="tool-btn" type="button" data-tool="eraser" title="橡皮擦">
-                <i class="fas fa-eraser"></i>
-            </button>
+        
+        <!-- 工具栏 -->
+        <div class="tools-section d-flex gap-2 align-items-center">
+            <!-- 工具按钮组 -->
+            <div class="tool-buttons d-flex gap-1">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary tool-btn" type="button" data-tool="pen" title="圆珠笔">
+                        <i class="fas fa-pen"></i>
+                        <span class="tool-name d-none d-md-inline ms-1">圆珠笔</span>
+                    </button>
+                    <div class="dropdown-menu tool-settings-dropdown" data-tool="pen">
+                        <div class="p-3">
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-palette me-1"></i>颜色</label>
+                                <div class="color-picker d-flex gap-1">
+                                    <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
+                                    <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                                    <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+                                    <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-pen me-1"></i>粗细</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="1" max="20" value="2" data-key="thickness">
+                                    <span class="slider-value">2</span>
+                                </div>
+                            </div>
+                            <canvas class="preview-canvas border rounded" width="200" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary tool-btn" type="button" data-tool="highlighter" title="荧光笔">
+                        <i class="fas fa-highlighter"></i>
+                        <span class="tool-name d-none d-md-inline ms-1">荧光笔</span>
+                    </button>
+                    <div class="dropdown-menu tool-settings-dropdown" data-tool="highlighter">
+                        <div class="p-3">
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-palette me-1"></i>颜色</label>
+                                <div class="color-picker d-flex gap-1">
+                                    <button class="color-btn active" style="background-color: #FFFF00;" data-color="#FFFF00"></button>
+                                    <button class="color-btn" style="background-color: #FF69B4;" data-color="#FF69B4"></button>
+                                    <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                                    <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-pen me-1"></i>粗细</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="1" max="20" value="10" data-key="thickness">
+                                    <span class="slider-value">10</span>
+                                </div>
+                            </div>
+                            <canvas class="preview-canvas border rounded" width="200" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary tool-btn" type="button" data-tool="wavy" title="波浪线">
+                        <i class="fas fa-wave-square"></i>
+                        <span class="tool-name d-none d-md-inline ms-1">波浪线</span>
+                    </button>
+                    <div class="dropdown-menu tool-settings-dropdown" data-tool="wavy">
+                        <div class="p-3">
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-palette me-1"></i>颜色</label>
+                                <div class="color-picker d-flex gap-1">
+                                    <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
+                                    <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
+                                    <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
+                                    <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-pen me-1"></i>粗细</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="1" max="20" value="2" data-key="thickness">
+                                    <span class="slider-value">2</span>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-arrows-alt-v me-1"></i>高度</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="1" max="20" value="5" data-key="height">
+                                    <span class="slider-value">5</span>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-compress-alt me-1"></i>密度</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="1" max="10" value="4" data-key="density">
+                                    <span class="slider-value">4</span>
+                                </div>
+                            </div>
+                            <canvas class="preview-canvas border rounded" width="200" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary tool-btn" type="button" data-tool="eraser" title="橡皮擦">
+                        <i class="fas fa-eraser"></i>
+                        <span class="tool-name d-none d-md-inline ms-1">橡皮擦</span>
+                    </button>
+                    <div class="dropdown-menu tool-settings-dropdown" data-tool="eraser">
+                        <div class="p-3">
+                            <div class="settings-row mb-2">
+                                <label class="form-label"><i class="fas fa-eraser me-1"></i>模式</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="eraser-mode" id="mode-partial" value="partial" checked>
+                                    <label class="btn btn-outline-primary" for="mode-partial">部分擦除</label>
+                                    <input type="radio" class="btn-check" name="eraser-mode" id="mode-object" value="object">
+                                    <label class="btn btn-outline-primary" for="mode-object">对象擦除</label>
+                                </div>
+                            </div>
+                            <div class="settings-row mb-2" id="eraser-size-row">
+                                <label class="form-label"><i class="fas fa-expand me-1"></i>大小</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" class="form-range flex-grow-1" min="5" max="50" value="10" data-key="size">
+                                    <span class="slider-value">10</span>
+                                </div>
+                            </div>
+                            <canvas class="preview-canvas border rounded" width="200" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 设备模式切换按钮 -->
+            <!-- <div class="device-mode-toggle ms-2">
+                <button id="device-toggle" class="btn btn-outline-secondary" title="切换设备模式">
+                    <i class="fas fa-mobile-alt" id="device-mode-icon"></i>
+                    <span class="device-mode-text d-none d-md-inline ms-1" id="device-mode-text">移动端</span>
+                </button>
+            </div> -->
         </div>
-        <!-- 撤销、重做、清空、保存按钮 -->
+        
         <div class="action-buttons">
-            <button id="undo" type="button" class="btn" title="撤销">
-                <i class="fas fa-undo"></i>
+            <button id="undo" class="btn btn-info" title="撤销">
+                <i class="fas fa-undo"></i> <span class="btn-text">撤销</span>
             </button>
-            <button id="redo" type="button" class="btn" title="重做">
-                <i class="fas fa-redo"></i>
+            <button id="redo" class="btn btn-info" title="重做">
+                <i class="fas fa-redo"></i> <span class="btn-text">重做</span>
             </button>
-            <button id="clear" type="button" class="btn" title="清空">
-                <i class="fas fa-trash"></i>
+            <button id="clear" class="btn btn-warning" title="清空">
+                <i class="fas fa-trash"></i> <span class="btn-text">清空</span>
             </button>
-            <button id="save" type="button" class="btn" title="保存">
-                <i class="fas fa-save"></i>
+            <button id="save" class="btn btn-primary" title="保存">
+                <i class="fas fa-save"></i> <span class="btn-text">保存</span>
             </button>
         </div>
     </div>
-    <!-- 画布区域：原图和绘制画布 -->
-    <div class="canvas-wrapper">
-        <img id="original-image" src="{{ url_for('main.uploaded_file', filename=image_filename) }}" alt="原始图片">
-        <canvas id="canvas"></canvas>
-    </div>
-    <!-- 工具设置面板：根据选择的工具动态显示 -->
-    <div class="tool-dropdown" data-tool="pen">
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
-            <div class="color-picker">
-                <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
-                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
-                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
-                <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
-            </div>
-        </div>
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
-            <input type="range" min="1" max="20" value="2" data-key="thickness">
-            <span class="slider-value">2</span>
-        </div>
-        <canvas class="preview-canvas" width="200" height="40"></canvas>
-    </div>
-    <div class="tool-dropdown" data-tool="highlighter">
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
-            <div class="color-picker">
-                <button class="color-btn active" style="background-color: #FFFF00;" data-color="#FFFF00"></button>
-                <button class="color-btn" style="background-color: #FF69B4;" data-color="#FF69B4"></button>
-                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
-                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
-            </div>
-        </div>
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
-            <input type="range" min="1" max="20" value="10" data-key="thickness">
-            <span class="slider-value">10</span>
-        </div>
-        <canvas class="preview-canvas" width="200" height="40"></canvas>
-    </div>
-    <div class="tool-dropdown" data-tool="wavy">
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-palette me-1"></i>颜色</div>
-            <div class="color-picker">
-                <button class="color-btn" style="background-color: #FF0000;" data-color="#FF0000"></button>
-                <button class="color-btn" style="background-color: #00FF00;" data-color="#00FF00"></button>
-                <button class="color-btn" style="background-color: #0000FF;" data-color="#0000FF"></button>
-                <button class="color-btn active" style="background-color: #000000;" data-color="#000000"></button>
-            </div>
-        </div>
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-pen me-1"></i>粗细</div>
-            <input type="range" min="1" max="20" value="2" data-key="thickness">
-            <span class="slider-value">2</span>
-        </div>
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-arrows-alt-v me-1"></i>高度</div>
-            <input type="range" min="1" max="20" value="5" data-key="height">
-            <span class="slider-value">5</span>
-        </div>
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-compress-alt me-1"></i>密度</div>
-            <input type="range" min="1" max="10" value="4" data-key="density">
-            <span class="slider-value">4</span>
-        </div>
-        <canvas class="preview-canvas" width="200" height="40"></canvas>
-    </div>
-    <div class="tool-dropdown" data-tool="eraser">
-        <div class="settings-row">
-            <div class="form-label"><i class="fas fa-eraser me-1"></i>模式</div>
-            <div class="mode-buttons">
-                <button class="btn" data-mode="object">对象</button>
-            </div>
-        </div>
-        <div class="settings-row" id="eraser-size-row" style="display:none;">
-            <div class="form-label"><i class="fas fa-expand me-1"></i>大小</div>
-            <input type="range" min="5" max="50" value="10" data-key="size">
-            <span class="slider-value">10</span>
-        </div>
-        <canvas class="preview-canvas" width="200" height="40"></canvas>
+    <div class="position-relative image-container">
+        <img id="original-image" src="{{ url_for('main.uploaded_file', filename=image_filename) }}" alt="Original Image" style="display: block; width: 100%; height: auto;">
+        <canvas id="canvas" style="position: absolute; top: 0; left: 0; touch-action: none; width: 100%; height: 100%;"></canvas>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <style>
-/* 基础布局样式，针对移动端优化 */
-body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-.annotate-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #f8f9fa;
-}
-
-.top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: #ffffff;
-    border-bottom: 1px solid #e0e0e0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    z-index: 1000;
-}
-
-.back-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: #495057;
-    text-decoration: none;
-    font-size: 14px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    transition: background 0.2s;
-}
-
-.back-btn:hover {
-    background: #f1f3f5;
-}
-
-.tool-buttons {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 1;
-}
-
-.tool-btn {
-    border: 1px solid #ddd;
-    background: #ffffff;
-    border-radius: 6px;
-    padding: 6px;
-    font-size: 18px;
-    color: #555;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s, color 0.2s;
-}
-
-.tool-btn:hover {
-    background: #f8f9fa;
-}
-
-.tool-btn.active {
-    background: #007bff;
-    color: #ffffff;
-    border-color: #007bff;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 6px;
-}
-
-.action-buttons .btn {
-    border: none;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-#undo, #redo {
-    background: #17a2b8;
-}
-#clear {
-    background: #ffc107;
-    color: #212529;
-}
-#save {
-    background: #007bff;
-}
-.action-buttons .btn:hover {
-    opacity: 0.85;
-}
-
-/* 画布容器覆盖除顶部外的全部空间 */
-.canvas-wrapper {
-    position: relative;
-    flex: 1;
-    overflow: hidden;
-    background: #f8f9fa;
-}
-
-#original-image {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: none;
-    max-height: none;
-}
-
-#canvas {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    touch-action: none;
-    cursor: crosshair;
-}
-
-/* 工具设置面板样式 */
-.tool-dropdown {
-    display: none;
-    position: absolute;
-    top: 60px;
-    left: 0;
-    width: 100%;
-    background: #ffffff;
-    border-top: 1px solid #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    padding: 12px;
-    z-index: 999;
-}
-.tool-dropdown.show {
-    display: block;
-}
-
-.tool-dropdown .settings-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-}
-.tool-dropdown .settings-row:last-child {
-    margin-bottom: 0;
-}
-
-.tool-dropdown .form-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-width: 40px;
-}
-
-.color-picker {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-.color-picker .color-btn {
-    width: 32px;
-    height: 32px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
-    cursor: pointer;
-    position: relative;
-    transition: transform 0.2s, border-color 0.2s;
-}
-.color-picker .color-btn:hover {
-    transform: scale(1.05);
-    border-color: #007bff;
-}
-.color-picker .color-btn.active {
-    border-color: #007bff;
-    border-width: 3px;
-    transform: scale(1.05);
-}
-.color-picker .color-btn.active::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #ffffff;
-    font-weight: bold;
-    text-shadow: 0 0 2px rgba(0,0,0,0.5);
-}
-
-input[type="range"] {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 6px;
-    background: #e9ecef;
-    border-radius: 3px;
-    outline: none;
-    margin: 0;
-}
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #007bff;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-}
-input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #007bff;
-    border: none;
-    cursor: pointer;
-}
-
-.slider-value {
-    font-size: 14px;
-    font-weight: 600;
-    color: #666;
-    min-width: 30px;
-    text-align: center;
-}
-
-.mode-buttons {
-    display: flex;
-    gap: 8px;
-}
-.mode-buttons .btn {
-    flex: 1;
-    padding: 6px 10px;
-    font-size: 14px;
-    border: 1px solid #007bff;
-    background: #ffffff;
-    color: #007bff;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-.mode-buttons .btn.active {
-    background: #007bff;
-    color: #ffffff;
-}
-
-.preview-canvas {
-    width: 100%;
-    height: 40px;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    background: #f8f9fa;
-    margin-top: 8px;
-}
-
-/* 隐藏基础模板中可能存在的导航栏、边栏等元素，只保留本工具栏和画布 */
-header.top-navbar,
+    /* 基础样式 */
+    body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+    
+    .container-fluid {
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* 返回按钮 */
+    .back-btn {
+        background: transparent;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .back-btn:hover {
+        background: #f8f9fa;
+        color: #495057;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 顶部操作栏 */
+    .top-bar {
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        padding: 8px;
+        border-radius: 12px;
+    }
+    
+    .action-buttons .btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+        color: #333;
+    }
+    
+    .action-buttons .btn-info {
+        background: #17a2b8;
+        color: white;
+        border-color: #17a2b8;
+    }
+    
+    .action-buttons .btn-info:hover {
+        background: #138496;
+        border-color: #117a8b;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .action-buttons .btn-warning {
+        background: #ffc107;
+        color: #212529;
+        border-color: #ffc107;
+    }
+    
+    .action-buttons .btn-warning:hover {
+        background: #e0a800;
+        border-color: #d39e00;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .action-buttons .btn-primary {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .action-buttons .btn-primary:hover {
+        background: #0056b3;
+        border-color: #004085;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* 设备模式切换按钮 */
+    .device-mode-toggle {
+        display: flex;
+        align-items: center;
+    }
+    
+    #device-toggle {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        border: 2px solid #e0e7ff;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        color: #64748b;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    #device-toggle::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.5s;
+    }
+    
+    #device-toggle:hover::before {
+        left: 100%;
+    }
+    
+    #device-toggle:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        border-color: #c7d2fe;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    #device-toggle:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* 强制移动端模式样式 */
+    #device-toggle.mobile-mode {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-color: #3b82f6;
+        color: #1d4ed8;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+    }
+    
+    #device-toggle.mobile-mode:hover {
+        background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+        border-color: #1d4ed8;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* 强制桌面端模式样式 */
+    #device-toggle.desktop-mode {
+        background: linear-gradient(135deg, #fae8ff 0%, #f3e8ff 100%);
+        border-color: #a855f7;
+        color: #7c3aed;
+        box-shadow: 0 2px 8px rgba(168, 85, 247, 0.2);
+    }
+    
+    #device-toggle.desktop-mode:hover {
+        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+        border-color: #7c3aed;
+        box-shadow: 0 4px 16px rgba(168, 85, 247, 0.3);
+    }
+    
+    /* 自动检测模式样式 */
+    #device-toggle.auto-mode {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        border-color: #22c55e;
+        color: #15803d;
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+    }
+    
+    #device-toggle.auto-mode:hover {
+        background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
+        border-color: #15803d;
+        box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+    }
+    
+    /* 图片容器 */
+    .image-container {
+        flex: 1;
+        position: relative;
+        overflow: auto;
+        background: #f8f9fa;
+    }
+    
+    #original-image {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+    }
+    
+    #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: crosshair;
+    }
+    
+    /* 工具栏 */
+    .tool-bar {
+        background: #fff;
+        border-top: 1px solid #e9ecef;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-shrink: 0;
+        z-index: 100;
+    }
+    
+    .tool-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .tool-btn i {
+        font-size: 1.2rem;
+        color: #495057;
+    }
+    
+    .tool-btn:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .tool-btn.active {
+        background: #007bff;
+        border-color: #007bff;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+    }
+    
+    .tool-btn.active i {
+        color: white;
+    }
+    
+    /* 新工具按钮样式 */
+    .tools-section .tool-btn {
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 16px;
+        color: #666;
+        padding: 8px 12px;
+        width: auto;
+        height: auto;
+    }
+    
+    .tools-section .tool-btn:hover {
+        border-color: #007bff;
+        background: #f8f9fa;
+        transform: translateY(-1px);
+    }
+    
+    .tools-section .tool-btn.active {
+        border-color: #007bff;
+        background: #007bff;
+        color: white;
+        box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+    }
+    
+    .tools-section .tool-btn.dropdown-toggle::after {
+        margin-left: 0.5em;
+    }
+    
+    /* 工具设置下拉菜单样式 */
+    .tool-settings-dropdown {
+        min-width: 250px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .tool-settings-dropdown .settings-row {
+        margin-bottom: 12px;
+    }
+    
+    .tool-settings-dropdown .form-label {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #333;
+    }
+    
+    /* 颜色选择器样式 */
+    .color-picker .color-btn {
+        width: 30px;
+        height: 30px;
+        border: 2px solid #ddd;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .color-picker .color-btn:hover {
+        transform: scale(1.1);
+        border-color: #007bff;
+    }
+    
+    .color-picker .color-btn.active {
+        border-color: #007bff;
+        border-width: 3px;
+        transform: scale(1.1);
+    }
+    
+    /* 滑块样式 */
+    .form-range {
+        height: 6px;
+    }
+    
+    .slider-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        min-width: 30px;
+        text-align: center;
+    }
+    
+    /* 预览画布样式 */
+    .preview-canvas {
+        background: #f8f9fa;
+        margin-top: 8px;
+    }
+    
+    /* 橡皮擦模式按钮组 */
+    .btn-group .btn {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
+    /* 设置下拉框 */
+    .settings-dropdown {
+        position: fixed;
+        top: 70px;
+        left: 12px;
+        right: 12px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        z-index: 1001;
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+        color: #212529;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .settings-dropdown.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .settings-dropdown:before {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        margin-left: -10px;
+        border: 10px solid transparent;
+        border-top-color: white;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+    
+    /* 设置项横向布局 */
+    .settings-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .settings-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .settings-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+        min-width: 40px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .settings-label i {
+        font-size: 16px;
+    }
+    
+    .color-picker {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .color-picker button {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .color-picker button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .color-picker button.active {
+        border-color: #007bff;
+        transform: scale(1.05);
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+    
+    .color-picker button.active::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-weight: bold;
+        text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    }
+    
+    /* 滑块样式优化 */
+    .settings-slider {
+        flex: 1;
+        min-width: 100px;
+        max-width: 150px;
+    }
+    
+    .settings-slider input[type="range"] {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: #dee2e6;
+        outline: none;
+        -webkit-appearance: none;
+    }
+    
+    .settings-slider input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #007bff;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .settings-slider input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #007bff;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .slider-value {
+        font-size: 12px;
+        color: #6c757d;
+        min-width: 24px;
+        text-align: center;
+    }
+    
+    .mode-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .mode-buttons button {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+    
+    .mode-buttons button.active {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+    }
+    
+    /* 滑块样式 */
+    input[type="range"] {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 6px;
+        background: #e9ecef;
+        border-radius: 3px;
+        outline: none;
+        margin: 8px 0;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #007bff;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        transition: all 0.2s ease;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    }
+    
+    input[type="range"]::-moz-range-track {
+        background: #e9ecef;
+        border-radius: 3px;
+        height: 6px;
+        border: none;
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #007bff;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    
+    /* 预览画布 */
+    canvas[data-preview="true"] {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background: #f8f9fa;
+    }
+    
+    /* 移动设备优化 - 顶部控制栏布局 */
+    .mobile-device .top-bar {
+        padding: 8px 12px !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        background: #fff !important;
+        border-bottom: 1px solid #e9ecef !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        height: 60px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    
+    .mobile-device .back-btn {
+        padding: 8px 12px !important;
+        font-size: 14px !important;
+        background: #6c757d !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+    }
+    
+    .mobile-device .back-text {
+        display: inline !important;
+    }
+    
+    .mobile-device .action-buttons {
+        display: flex !important;
+        gap: 8px !important;
+        padding: 0 !important;
+    }
+    
+    .mobile-device .action-buttons .btn {
+         font-size: 12px !important;
+         padding: 6px 8px !important;
+         border-radius: 6px !important;
+         min-width: 50px !important;
+         height: 36px !important;
+     }
+     
+     .mobile-device .action-buttons .btn .btn-text {
+         display: none !important;
+     }
+     
+     /* 移动端显示工具选择器，隐藏桌面端工具 */
+     .mobile-device .mobile-tools {
+         display: flex !important;
+         gap: 8px !important;
+     }
+     
+     header.top-navbar,
 .sidebar,
-nav.bottom-navbar,
-header,
-nav,
-.navbar,
-aside {
+nav.bottom-navbar {
     display: none !important;
     visibility: hidden !important;
 }
-.main-content,
-.content-area,
-.container-fluid {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-}
-</style>
 
+.main-content {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    width: 100% !important;
+}
+
+.content-area {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.container-fluid {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* 强制隐藏所有可能的导航元素 */
+header,
+nav:not(.mobile-tools),
+.navbar {
+    display: none !important;
+}
+
+/* 桌面端隐藏工具选择器 */
+.desktop-tools {
+    display: none !important;
+}
+
+.mobile-tools {
+    display: flex !important;
+    gap: 8px !important;
+}
+     
+     .mobile-device .top-bar {
+         position: fixed !important;
+         top: 0 !important;
+         left: 0 !important;
+         right: 0 !important;
+         z-index: 1000 !important;
+         padding: 8px 12px !important;
+         display: flex !important;
+         justify-content: space-between !important;
+         align-items: center !important;
+         background: #ffffff !important;
+         border-bottom: 1px solid #dee2e6 !important;
+         box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+         height: 56px !important;
+     }
+     
+     .mobile-device .back-btn {
+         padding: 8px 16px !important;
+         font-size: 14px !important;
+         background: #6c757d !important;
+         color: white !important;
+         border-radius: 8px !important;
+         display: flex !important;
+         align-items: center !important;
+         text-decoration: none !important;
+         border: none !important;
+         font-weight: 500 !important;
+     }
+     
+     .mobile-device .back-btn:hover {
+         background: #5a6268 !important;
+         color: white !important;
+         text-decoration: none !important;
+     }
+     
+     .mobile-device .action-buttons {
+         display: flex !important;
+         gap: 8px !important;
+     }
+     
+     .mobile-device .action-buttons .btn {
+         padding: 6px 12px !important;
+         font-size: 12px !important;
+         border-radius: 6px !important;
+         min-width: 50px !important;
+         height: 36px !important;
+         font-weight: 500 !important;
+     }
+     
+     .mobile-device .tool-bar {
+         display: none !important;
+     }
+     
+     /* 移动端工具栏 */
+     .mobile-device .mobile-tools {
+         position: fixed !important;
+         bottom: 0 !important;
+         left: 0 !important;
+         right: 0 !important;
+         background: white !important;
+         border-top: 1px solid #dee2e6 !important;
+         padding: 12px !important;
+         display: flex !important;
+         justify-content: center !important;
+         gap: 12px !important;
+         z-index: 1000 !important;
+         box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
+         height: 70px !important;
+         align-items: center !important;
+     }
+     
+     .mobile-device .image-container {
+         position: fixed !important;
+         top: 56px !important;
+         left: 0 !important;
+         right: 0 !important;
+         bottom: 70px !important;
+         overflow: auto !important;
+         padding: 0 !important;
+         background: #f8f9fa !important;
+         display: flex !important;
+         align-items: center !important;
+         justify-content: center !important;
+     }
+     
+     .mobile-device #original-image {
+         display: block !important;
+         max-width: 100% !important;
+         max-height: 100% !important;
+         width: auto !important;
+         height: auto !important;
+         object-fit: contain !important;
+     }
+     
+     .mobile-device #canvas {
+         position: absolute !important;
+         top: 0 !important;
+         left: 0 !important;
+         touch-action: none !important;
+         pointer-events: auto !important;
+     }
+     
+     .mobile-device .settings-dropdown {
+         position: absolute !important;
+         top: 100% !important;
+         right: 0 !important;
+         max-height: 200px !important;
+         overflow-y: auto !important;
+     }
+     
+     .mobile-device .color-picker {
+         width: 25px !important;
+         height: 25px !important;
+     }
+     
+     /* Hide button text on mobile */
+     .mobile-device .btn-text {
+         display: none !important;
+     }
+     
+     /* Mobile tool buttons styling */
+     .mobile-device .mobile-tool-btn {
+         border: 1px solid #dee2e6 !important;
+         background: #ffffff !important;
+         transition: all 0.2s ease !important;
+     }
+     
+     .mobile-device .mobile-tool-btn:hover {
+         background: #f8f9fa !important;
+         border-color: #adb5bd !important;
+     }
+     
+     .mobile-device .mobile-tool-btn.active {
+         background: #007bff !important;
+         border-color: #007bff !important;
+         color: white !important;
+     }
+    
+    /* 隐藏工具栏，将工具集成到顶部 */
+    .mobile-device .tool-bar {
+        display: none !important;
+    }
+    
+    /* 图片容器全屏显示 */
+    .mobile-device .image-container {
+        position: fixed !important;
+        top: 60px !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: #f8f9fa !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+    }
+    
+    /* Canvas 全屏适配 */
+    .mobile-device #original-image {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        max-width: none !important;
+        max-height: none !important;
+        width: auto !important;
+        height: auto !important;
+        touch-action: none !important;
+    }
+    
+    .mobile-device #canvas {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        touch-action: none !important;
+        cursor: crosshair !important;
+    }
+    
+    /* 设置下拉框适配 */
+    .mobile-device .settings-dropdown {
+        position: fixed !important;
+        top: 70px !important;
+        left: 8px !important;
+        right: 8px !important;
+        max-height: calc(100vh - 80px) !important;
+        z-index: 1001 !important;
+    }
+    
+    .mobile-device .color-picker button {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    /* 强制移动端样式 - 通过JavaScript类控制 */
+    .mobile-device .top-bar {
+        padding: 8px 12px !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+    }
+    
+    .mobile-device .back-btn {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+    
+    .mobile-device .back-text {
+        display: none !important;
+    }
+    
+    .mobile-device .action-buttons {
+        gap: 4px !important;
+        padding: 4px !important;
+    }
+    
+    .mobile-device .action-buttons .btn {
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    .mobile-device .tool-bar {
+        padding: 8px 12px !important;
+        gap: 12px !important;
+    }
+    
+    .mobile-device .tool-btn {
+        width: 48px !important;
+        height: 48px !important;
+    }
+    
+    /* 超小屏幕优化 - 移动设备竖屏 */
+    @media screen and (max-width: 480px) and (orientation: portrait),
+           screen and (max-width: 480px) and (pointer: coarse) {
+        .top-bar {
+            flex-direction: column;
+            gap: 8px;
+            padding: 8px;
+        }
+        
+        .back-btn {
+            align-self: flex-start;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+        
+        .action-buttons {
+            width: 100%;
+            justify-content: space-between;
+            padding: 4px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            margin: 0 1px;
+            font-size: 0.65rem;
+            padding: 3px 6px;
+        }
+        
+        .tool-bar {
+            gap: 8px;
+            padding: 6px 8px;
+        }
+        
+        .tool-btn {
+            width: 44px;
+            height: 44px;
+        }
+        
+        .tool-btn i {
+            font-size: 1rem;
+        }
+        
+        .settings-dropdown {
+            width: calc(100vw - 16px);
+            padding: 16px;
+        }
+        
+        .image-container {
+            padding-bottom: 90px;
+        }
+    }
+    
+    /* 横屏模式优化 - 移动设备横屏 */
+    @media screen and (orientation: landscape) and (max-height: 500px),
+           screen and (orientation: landscape) and (pointer: coarse),
+           screen and (orientation: landscape) and (hover: none) {
+        .top-bar {
+            padding: 4px 8px;
+            flex-direction: row;
+        }
+        
+        .back-btn {
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+        
+        .back-text {
+            display: none;
+        }
+        
+        .action-buttons {
+            gap: 2px;
+            padding: 2px;
+        }
+        
+        .action-buttons .btn {
+            font-size: 0.6rem;
+            padding: 2px 4px;
+        }
+        
+        .tool-bar {
+            padding: 4px 8px;
+        }
+        
+        .tool-btn {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .image-container {
+            padding-bottom: 50px;
+        }
+    }
+    
+    /* 强制横屏移动端样式 - 通过JavaScript类控制 */
+    .mobile-device.landscape-mode .top-bar {
+        padding: 4px 8px !important;
+        flex-direction: row !important;
+    }
+    
+    .mobile-device.landscape-mode .back-btn {
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+    }
+    
+    .mobile-device.landscape-mode .back-text {
+        display: none !important;
+    }
+    
+    .mobile-device.landscape-mode .action-buttons {
+        gap: 2px !important;
+        padding: 2px !important;
+    }
+    
+    .mobile-device.landscape-mode .action-buttons .btn {
+        font-size: 0.6rem !important;
+        padding: 2px 4px !important;
+    }
+    
+    .mobile-device.landscape-mode .tool-bar {
+        padding: 4px 8px !important;
+    }
+    
+    .mobile-device.landscape-mode .tool-btn {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    
+    .mobile-device.landscape-mode .image-container {
+        padding-bottom: 50px !important;
+    }
+    
+    /* 移动设备横屏特殊样式 - 强制保持移动端UI */
+    .mobile-device.mobile-landscape {
+        /* 确保横屏时仍然使用移动端布局，不被桌面端样式覆盖 */
+    }
+    
+    .mobile-device.mobile-landscape .top-bar {
+        padding: 4px 8px !important;
+        flex-direction: row !important;
+        height: 40px !important;
+    }
+    
+    .mobile-device.mobile-landscape .back-btn {
+        padding: 3px 6px !important;
+        font-size: 10px !important;
+        height: 28px !important;
+    }
+    
+    .mobile-device.mobile-landscape .back-text {
+        display: none !important;
+    }
+    
+    .mobile-device.mobile-landscape .action-buttons {
+        gap: 2px !important;
+        padding: 2px !important;
+    }
+    
+    .mobile-device.mobile-landscape .action-buttons .btn {
+        font-size: 0.55rem !important;
+        padding: 2px 4px !important;
+        height: 28px !important;
+    }
+    
+    .mobile-device.mobile-landscape .mobile-tools {
+        height: 50px !important;
+        padding: 8px !important;
+    }
+    
+    .mobile-device.mobile-landscape .tool-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    .mobile-device.mobile-landscape .image-container {
+        top: 40px !important;
+        bottom: 50px !important;
+    }
+    
+        
+    /* 微信浏览器特殊优化 */
+    .weixin-browser .top-bar {
+        padding: 6px 10px !important;
+    }
+    
+    .weixin-browser.landscape-mode .top-bar {
+        padding: 3px 6px !important;
+    }
+    
+    .weixin-browser.landscape-mode .action-buttons .btn {
+        font-size: 0.55rem !important;
+        padding: 1px 3px !important;
+    }
+    
+    .weixin-browser.mobile-landscape .top-bar {
+        padding: 2px 4px !important;
+        height: 35px !important;
+    }
+    
+    .weixin-browser.mobile-landscape .action-buttons .btn {
+        font-size: 0.5rem !important;
+        padding: 1px 2px !important;
+        height: 25px !important;
+    }
+</style>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// 强制应用移动端样式
+document.body.classList.add('mobile-device');
+
+// 检测微信浏览器
+function isWeixinBrowser() {
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.indexOf('micromessenger') !== -1;
+}
+
+if (isWeixinBrowser()) {
+    document.body.classList.add('weixin-browser');
+}
+
+// 现代化横竖屏检测和处理 - 配合新的设备检测逻辑
+function handleOrientationChange() {
+    // 延迟执行确保尺寸更新完成
+    setTimeout(() => {
+        console.log('🔄 开始处理屏幕方向变化...');
+        
+        // 使用多种方法进行更准确的横竖屏判断
+        let isLandscape = false;
+        let orientationMethod = 'unknown';
+        
+        // 方法1：使用screen.orientation API（现代浏览器）
+        if (screen.orientation && screen.orientation.angle !== undefined) {
+            const angle = screen.orientation.angle;
+            isLandscape = (angle === 90 || angle === 270);
+            orientationMethod = 'screen.orientation';
+        }
+        // 方法2：使用window.orientation（iOS Safari等）
+        else if (typeof window.orientation !== 'undefined') {
+            const orientation = window.orientation;
+            isLandscape = (orientation === 90 || orientation === -90);
+            orientationMethod = 'window.orientation';
+        }
+        // 方法3：使用CSS媒体查询检测
+        else if (window.matchMedia) {
+            isLandscape = window.matchMedia('(orientation: landscape)').matches;
+            orientationMethod = 'matchMedia';
+        }
+        // 方法4：降级方案 - 使用宽高比判断（移动设备特殊处理）
+        else {
+            // 移动设备：更严格的横屏判断
+            const aspectRatio = window.innerWidth / window.innerHeight;
+            isLandscape = (aspectRatio > 1.3) && (window.innerHeight <= 600);
+            orientationMethod = 'aspect-ratio';
+        }
+        
+        // 清除所有方向相关类名，避免冲突
+        document.body.classList.remove('landscape-mode', 'portrait-mode', 'mobile-landscape');
+        
+        // 应用新的方向类名
+        if (isLandscape) {
+            document.body.classList.add('landscape-mode');
+            
+            // 移动设备横屏时的特殊处理
+            document.body.classList.add('mobile-landscape');
+            console.log('📱🔄 移动设备横屏 - 保持移动端UI');
+        } else {
+            document.body.classList.add('portrait-mode');
+            console.log('📱📱 移动设备竖屏');
+        }
+        
+        // 输出详细调试信息
+        console.log('🔄 方向变化检测完成:', {
+            检测方法: orientationMethod,
+            方向: isLandscape ? '🔄 横屏' : '📱 竖屏',
+            窗口尺寸: `${window.innerWidth}x${window.innerHeight}`,
+            屏幕尺寸: `${screen.width}x${screen.height}`,
+            宽高比: (window.innerWidth / window.innerHeight).toFixed(2),
+            当前CSS类名: Array.from(document.body.classList).filter(cls => 
+                cls.includes('mobile') || cls.includes('desktop') || cls.includes('landscape') || cls.includes('portrait')
+            ),
+            最终结果: `📱 ${isLandscape ? '🔄' : '📱'}`
+        });
+    }, 150); // 150ms延迟确保所有更新完成
+}
+
+// 页面加载时进行初始检测
+handleOrientationChange();
+
+// 监听方向变化事件 - 使用多种事件确保检测准确性
+
+// 1. orientationchange事件（主要用于移动设备）
+if ('onorientationchange' in window) {
+    window.addEventListener('orientationchange', function() {
+        // 延迟执行，确保orientation值已更新
+        setTimeout(handleOrientationChange, 150);
+    }, false);
+}
+
+// 2. resize事件（通用，包括桌面和移动设备）
+window.addEventListener('resize', function() {
+    // 延迟检测方向变化
+    setTimeout(handleOrientationChange, 100);
+}, false);
+
+// 3. screen.orientation change事件（现代浏览器）
+if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', function() {
+        setTimeout(handleOrientationChange, 50);
+    });
+}
+
+// 4. 媒体查询监听器（CSS orientation变化）
+if (window.matchMedia) {
+    const landscapeQuery = window.matchMedia('(orientation: landscape)');
+    const portraitQuery = window.matchMedia('(orientation: portrait)');
+    
+    // 现代浏览器使用addEventListener
+    if (landscapeQuery.addEventListener) {
+        landscapeQuery.addEventListener('change', handleOrientationChange);
+        portraitQuery.addEventListener('change', handleOrientationChange);
+    }
+    // 旧浏览器使用addListener
+    else if (landscapeQuery.addListener) {
+        landscapeQuery.addListener(handleOrientationChange);
+        portraitQuery.addListener(handleOrientationChange);
+    }
+}
+
+// 5. 页面可见性变化时重新检测（从后台切换回来时）
+if (typeof document.visibilityState !== 'undefined') {
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            setTimeout(function() {
+                detectMobileDevice();
+                handleOrientationChange();
+            }, 200);
+        }
+    });
+}
+        
+        // 调试功能：双击左上角可以重置移动端检测
+        let clickCount = 0;
+        document.querySelector('.back-btn').addEventListener('click', function(e) {
+            clickCount++;
+            if (clickCount === 1) {
+                setTimeout(() => {
+                    if (clickCount === 1) {
+                        // 单击正常跳转
+                        window.location.href = this.href;
+                    }
+                    clickCount = 0;
+                }, 300);
+            } else if (clickCount === 2) {
+                // 双击重置
+                
+                if (confirm('重置移动端检测设置？')) {
+                    localStorage.removeItem('forceMobileMode');
+                    document.body.classList.remove('mobile-device', 'weixin-browser', 'landscape-mode', 'portrait-mode');
+                    location.reload();
+                }
+                clickCount = 0;
+            }
+        });
+        
+        // 强制重新检测函数（调试用）
+        window.forceRedetectDevice = function() {
+            console.log('=== 强制重新检测设备和方向 ===');
+            detectMobileDevice();
+            handleOrientationChange();
+        };
+        
+        // 页面获得焦点时重新检测（从其他应用切换回来）
+        window.addEventListener('focus', function() {
+            setTimeout(function() {
+                detectMobileDevice();
+                handleOrientationChange();
+                console.log('页面获得焦点: 重新检测设备和方向');
+            }, 100);
+        });
+        
+        // 控制台调试信息
+         console.log('设备检测信息:', {
+             userAgent: navigator.userAgent,
+             isWeixin: isWeixinBrowser(),
+             orientation: window.orientation,
+             screenSize: `${window.innerWidth}x${window.innerHeight}`,
+             forceMobileMode: localStorage.getItem('forceMobileMode'),
+             touchSupport: 'ontouchstart' in window,
+             pointerType: window.matchMedia('(pointer: coarse)').matches ? 'coarse' : 'fine',
+             hoverSupport: window.matchMedia('(hover: hover)').matches
+         });
+         
+         // 提示用户可以使用的调试命令
+         console.log('调试命令: 在控制台输入 forceRedetectDevice() 可强制重新检测设备');
+
+document.addEventListener('DOMContentLoaded', function () {
+    // 页面加载完成后立即重新检测设备和方向
+    setTimeout(function() {
+        detectMobileDevice();
+        handleOrientationChange();
+        console.log('DOMContentLoaded: 重新检测设备和方向');
+    }, 50);
+    
     const img = document.getElementById('original-image');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const toolButtons = document.querySelectorAll('.tool-btn');
+    const toolBtns = document.querySelectorAll('.tool-btn');
     const undoBtn = document.getElementById('undo');
     const redoBtn = document.getElementById('redo');
     const clearBtn = document.getElementById('clear');
     const saveBtn = document.getElementById('save');
-    const dropdowns = document.querySelectorAll('.tool-dropdown');
+    const imageContainer = document.querySelector('.image-container');
+    const toolDropdowns = document.querySelectorAll('.tool-settings-dropdown');
 
-    // 当前绘制状态
     let drawing = false;
     let currentPath = [];
     let objects = [];
     let redoStack = [];
     let currentTool = null;
-
-    // 工具配置
-    const settings = {
+    let settings = {
         pen: { thickness: 2, color: '#000000' },
         highlighter: { thickness: 10, color: '#FFFF00', alpha: 0.5 },
         wavy: { thickness: 2, height: 5, density: 4, color: '#000000' },
         eraser: { mode: 'partial', size: 10 }
     };
-
-    // 缩放和移动变量
+    
+    // 触控手势变量
     let scale = 1;
     let translateX = 0;
     let translateY = 0;
     let lastTouchDistance = 0;
     let lastTouchCenter = { x: 0, y: 0 };
     let isGesturing = false;
-    let lastTapTime = 0;
+    let touchStartTime = 0;
 
-    // 图片加载完毕后设置画布大小
-    img.onload = function() {
-        // 设置canvas的实际大小为图片原始尺寸
+    img.onload = function () {
+        // 设置canvas的实际分辨率
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
-        // 设置画布的显示尺寸与图片匹配
-        const rect = img.getBoundingClientRect();
-        canvas.style.width = rect.width + 'px';
-        canvas.style.height = rect.height + 'px';
+        
+        // 设置canvas的显示尺寸
+        if (document.body.classList.contains('mobile-device')) {
+            // 移动端：canvas应该覆盖整个图片显示区域
+            const rect = img.getBoundingClientRect();
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            
+            // 确保canvas位置正确
+            const containerRect = imageContainer.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            canvas.style.left = (imgRect.left - containerRect.left) + 'px';
+            canvas.style.top = (imgRect.top - containerRect.top) + 'px';
+        } else {
+            // 桌面端：使用原有逻辑
+            canvas.style.width = img.width + 'px';
+            canvas.style.height = img.height + 'px';
+        }
+        
         redraw();
     };
-
-    // 窗口大小调整时重新调整canvas显示尺寸
+    
+    // 监听窗口大小变化，重新调整canvas尺寸
     window.addEventListener('resize', function() {
-        if (img.complete) {
+        if (document.body.classList.contains('mobile-device') && img.complete) {
             setTimeout(() => {
                 const rect = img.getBoundingClientRect();
                 canvas.style.width = rect.width + 'px';
                 canvas.style.height = rect.height + 'px';
+                
+                const containerRect = imageContainer.getBoundingClientRect();
+                const imgRect = img.getBoundingClientRect();
+                canvas.style.left = (imgRect.left - containerRect.left) + 'px';
+                canvas.style.top = (imgRect.top - containerRect.top) + 'px';
             }, 100);
         }
     });
 
-    /* ============== 工具按钮点击逻辑 ============== */
-    toolButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tool = this.dataset.tool;
-            // 如果点击的是当前激活工具，则切换设置面板显示状态
-            if (this.classList.contains('active')) {
-                toggleDropdown(tool);
-            } else {
-                // 切换工具
-                currentTool = tool;
-                // 激活样式
-                toolButtons.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                // 隐藏所有下拉面板
-                dropdowns.forEach(dd => dd.classList.remove('show'));
-            }
-        });
-    });
-
-    // 切换特定工具的设置面板
-    function toggleDropdown(tool) {
-        dropdowns.forEach(dd => {
-            if (dd.dataset.tool === tool) {
-                dd.classList.toggle('show');
-                // 初始化预览
-                updatePreview(dd, tool);
-            } else {
-                dd.classList.remove('show');
-            }
-        });
-    }
-
-    // 点击其它地方收起所有面板
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.tool-buttons') && !e.target.closest('.tool-dropdown')) {
-            dropdowns.forEach(dd => dd.classList.remove('show'));
-        }
-    });
-
-    /* ============== 下拉面板设置逻辑 ============== */
-    dropdowns.forEach(dropdown => {
-        const tool = dropdown.dataset.tool;
-        // 颜色按钮点击
-        const colorBtns = dropdown.querySelectorAll('.color-btn');
-        colorBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                colorBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                settings[tool].color = this.dataset.color;
-                updatePreview(dropdown, tool);
-            });
-        });
-        // 滑块调整
-        const ranges = dropdown.querySelectorAll('input[type="range"]');
-        ranges.forEach(range => {
-            range.addEventListener('input', function() {
-                const key = this.dataset.key;
-                const value = parseInt(this.value);
-                settings[tool][key] = value;
-                // 同步数值显示
-                const display = this.nextElementSibling;
-                if (display && display.classList.contains('slider-value')) {
-                    display.textContent = value;
-                }
-                updatePreview(dropdown, tool);
-            });
-        });
-        // 橡皮擦模式按钮
-        if (tool === 'eraser') {
-            const modeButtons = dropdown.querySelectorAll('.mode-buttons .btn');
-            modeButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    modeButtons.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    settings.eraser.mode = this.dataset.mode;
-                    // 根据模式显隐大小设置
-                    const sizeRow = dropdown.querySelector('#eraser-size-row');
-                    if (settings.eraser.mode === 'partial') {
-                        sizeRow.style.display = '';
-                    } else {
-                        sizeRow.style.display = 'none';
-                    }
-                    updatePreview(dropdown, tool);
-                });
-            });
-        }
-        // 初始化预览
-        updatePreview(dropdown, tool);
-    });
-
-    /* ============== 绘图逻辑 ============== */
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseout', stopDrawing);
 
-    // 触控事件
+    // 触控事件处理
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    // 新的工具按钮事件处理
+toolBtns.forEach(btn => {
+    btn.addEventListener('click', function (e) {
+        const tool = this.dataset.tool;
+        if (this.classList.contains('active')) {
+            // 如果已激活，打开下拉菜单
+            const dropdown = this.nextElementSibling;
+            if (dropdown && dropdown.classList.contains('dropdown-menu')) {
+                dropdown.classList.toggle('show');
+            }
+        } else {
+            // 如果未激活，激活它并关闭其他下拉
+            toolBtns.forEach(b => {
+                b.classList.remove('active');
+                const dd = b.nextElementSibling;
+                if (dd && dd.classList.contains('dropdown-menu')) dd.classList.remove('show');
+            });
+            this.classList.add('active');
+            currentTool = tool;
+            console.log('选择工具:', tool);
+        }
+    });
+});
+
+// 点击文档其他地方关闭下拉
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(dd => dd.classList.remove('show'));
+    }
+});
+    
+    // 处理下拉菜单中的设置变更
+    toolDropdowns.forEach(dropdown => {
+        const tool = dropdown.dataset.tool;
+        
+        // 颜色选择
+        const colorBtns = dropdown.querySelectorAll('.color-btn');
+        colorBtns.forEach(colorBtn => {
+            colorBtn.addEventListener('click', function() {
+                // 移除其他颜色的激活状态
+                colorBtns.forEach(btn => btn.classList.remove('active'));
+                // 激活当前颜色
+                this.classList.add('active');
+                
+                const color = this.dataset.color;
+                settings[tool].color = color;
+                updatePreview(dropdown, tool);
+                console.log(`${tool} 颜色设置为:`, color);
+            });
+        });
+        
+        // 滑块设置
+        const sliders = dropdown.querySelectorAll('input[type="range"]');
+        sliders.forEach(slider => {
+            slider.addEventListener('input', function() {
+                const key = this.dataset.key;
+                const value = parseInt(this.value);
+                const valueSpan = this.parentNode.querySelector('.slider-value');
+                
+                if (valueSpan) {
+                    valueSpan.textContent = value;
+                }
+                
+                settings[tool][key] = value;
+                updatePreview(dropdown, tool);
+                console.log(`${tool} ${key} 设置为:`, value);
+            });
+        });
+        
+        // 橡皮擦模式选择
+        if (tool === 'eraser') {
+            const modeRadios = dropdown.querySelectorAll('input[name="eraser-mode"]');
+            modeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    settings.eraser.mode = this.value;
+                    
+                    // 根据模式显示/隐藏大小设置
+                    const sizeRow = dropdown.querySelector('#eraser-size-row');
+                    if (sizeRow) {
+                        sizeRow.style.display = this.value === 'partial' ? 'block' : 'none';
+                    }
+                    
+                    updatePreview(dropdown, tool);
+                    console.log('橡皮擦模式设置为:', this.value);
+                });
+            });
+        }
+        
+        // 初始化预览
+        updatePreview(dropdown, tool);
+    });
+    });
+
+    undoBtn.addEventListener('click', undo);
+    redoBtn.addEventListener('click', redo);
+    clearBtn.addEventListener('click', function () {
+        if (confirm('确定清空所有圈画?')) {
+            objects = [];
+            redoStack = [];
+            redraw();
+        }
+    });
+    saveBtn.addEventListener('click', function () {
+        const data = canvas.toDataURL('image/png');
+        fetch('{{ url_for("assignments.manual_annotate", submission_id=submission.id) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: data })
+        }).then(res => res.json()).then(data => alert(data.message));
+    });
+
+    // 设备模式切换按钮事件处理器
+    const deviceToggleBtn = document.getElementById('device-toggle');
+    if (deviceToggleBtn) {
+        deviceToggleBtn.addEventListener('click', function() {
+            console.log('设备模式切换按钮被点击');
+            
+            // 获取当前强制模式状态
+            const currentForceMobile = localStorage.getItem('forceMobileMode');
+            const currentForceDesktop = localStorage.getItem('forceDesktopMode');
+            
+            // 切换逻辑：移动端 -> 桌面端 -> 自动检测 -> 移动端
+            if (currentForceMobile === 'true') {
+                // 当前强制移动模式，切换到强制桌面模式
+                localStorage.removeItem('forceMobileMode');
+                localStorage.setItem('forceDesktopMode', 'true');
+                console.log('切换到强制桌面模式');
+            } else if (currentForceDesktop === 'true') {
+                // 当前强制桌面模式，切换到自动检测
+                localStorage.removeItem('forceDesktopMode');
+                console.log('切换到自动检测模式');
+            } else {
+                // 当前自动检测，切换到强制移动模式
+                localStorage.setItem('forceMobileMode', 'true');
+                console.log('切换到强制移动模式');
+            }
+            
+            // 重新检测设备并更新UI
+            detectMobileDevice();
+            handleOrientationChange();
+            
+            // 更新按钮显示状态
+            updateDeviceToggleButton();
+            
+            // 提示用户模式已切换
+            const newMode = localStorage.getItem('forceMobileMode') === 'true' ? '移动端模式' : 
+                           localStorage.getItem('forceDesktopMode') === 'true' ? '桌面端模式' : '自动检测模式';
+            console.log(`已切换到: ${newMode}`);
+        });
+    }
+
+    // 更新设备切换按钮显示状态的函数
+    function updateDeviceToggleButton() {
+        const deviceToggleBtn = document.getElementById('device-toggle');
+        if (!deviceToggleBtn) return;
+        
+        const icon = deviceToggleBtn.querySelector('i');
+        const text = deviceToggleBtn.querySelector('.device-mode-text');
+        
+        const forceMobile = localStorage.getItem('forceMobileMode') === 'true';
+        const forceDesktop = localStorage.getItem('forceDesktopMode') === 'true';
+        
+        if (forceMobile) {
+            icon.className = 'fas fa-mobile-alt';
+            text.textContent = '移动端';
+            deviceToggleBtn.className = 'btn btn-outline-secondary mobile-mode';
+            deviceToggleBtn.title = '当前：强制移动端模式';
+        } else if (forceDesktop) {
+            icon.className = 'fas fa-desktop';
+            text.textContent = '桌面端';
+            deviceToggleBtn.className = 'btn btn-outline-secondary desktop-mode';
+            deviceToggleBtn.title = '当前：强制桌面端模式';
+        } else {
+            icon.className = 'fas fa-sync-alt';
+            text.textContent = '自动';
+            deviceToggleBtn.className = 'btn btn-outline-secondary auto-mode';
+            deviceToggleBtn.title = '当前：自动检测模式';
+        }
+    }
+
+    // 页面加载时初始化按钮状态
+    updateDeviceToggleButton();
+
+    function showSettingsDropdown(btn, tool) {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'settings-dropdown';
+        const toolSettings = settings[tool];
+
+        if (['pen', 'highlighter', 'wavy'].includes(tool)) {
+            const colors = tool === 'highlighter' ? ['#FFFF00', '#FF69B4', '#00FF00', '#0000FF'] : ['#FF0000', '#00FF00', '#0000FF', '#000000'];
+            
+            // 颜色选择行
+            dropdown.innerHTML += '<div class="settings-row">';
+            dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-palette"></i>颜色</div>';
+            dropdown.innerHTML += '<div class="color-picker">';
+            colors.forEach(c => {
+                const active = toolSettings.color === c ? ' active' : '';
+                dropdown.innerHTML += `<button class="color-btn${active}" style="background-color: ${c};" data-color="${c}"></button>`;
+            });
+            dropdown.innerHTML += '</div></div>';
+
+            // 粗细设置行
+            if (tool === 'pen' || tool === 'highlighter' || tool === 'wavy') {
+                dropdown.innerHTML += '<div class="settings-row">';
+                dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-pen"></i>粗细</div>';
+                dropdown.innerHTML += '<div class="settings-slider">';
+                dropdown.innerHTML += `<input type="range" min="1" max="20" value="${toolSettings.thickness}" data-key="thickness">`;
+                dropdown.innerHTML += '</div>';
+                dropdown.innerHTML += `<div class="slider-value">${toolSettings.thickness}</div>`;
+                dropdown.innerHTML += '</div>';
+            }
+            
+            // 波浪线特殊设置
+            if (tool === 'wavy') {
+                dropdown.innerHTML += '<div class="settings-row">';
+                dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-arrows-alt-v"></i>高度</div>';
+                dropdown.innerHTML += '<div class="settings-slider">';
+                dropdown.innerHTML += `<input type="range" min="1" max="20" value="${toolSettings.height}" data-key="height">`;
+                dropdown.innerHTML += '</div>';
+                dropdown.innerHTML += `<div class="slider-value">${toolSettings.height}</div>`;
+                dropdown.innerHTML += '</div>';
+                
+                dropdown.innerHTML += '<div class="settings-row">';
+                dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-compress-alt"></i>密度</div>';
+                dropdown.innerHTML += '<div class="settings-slider">';
+                dropdown.innerHTML += `<input type="range" min="1" max="10" value="${toolSettings.density}" data-key="density">`;
+                dropdown.innerHTML += '</div>';
+                dropdown.innerHTML += `<div class="slider-value">${toolSettings.density}</div>`;
+                dropdown.innerHTML += '</div>';
+            }
+            
+            // 预览
+            dropdown.innerHTML += '<canvas width="100%" height="40" class="mt-2 border" data-preview="true" style="border-radius: 8px;"></canvas>';
+        } else if (tool === 'eraser') {
+            // 模式选择行
+            dropdown.innerHTML += '<div class="settings-row">';
+            dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-eraser"></i>模式</div>';
+            dropdown.innerHTML += '<div class="mode-buttons">';
+            dropdown.innerHTML += `<button class="btn btn-outline-primary ${toolSettings.mode === 'partial' ? 'active' : ''}" data-mode="partial">部分</button>`;
+            dropdown.innerHTML += `<button class="btn btn-outline-primary ${toolSettings.mode === 'object' ? 'active' : ''}" data-mode="object">对象</button>`;
+            dropdown.innerHTML += '</div></div>';
+            
+            // 大小设置行（仅部分擦除模式）
+            if (toolSettings.mode === 'partial') {
+                dropdown.innerHTML += '<div class="settings-row" id="size-slider-row">';
+                dropdown.innerHTML += '<div class="settings-label"><i class="fas fa-expand"></i>大小</div>';
+                dropdown.innerHTML += '<div class="settings-slider">';
+                dropdown.innerHTML += `<input type="range" min="5" max="50" value="${toolSettings.size}" data-key="size">`;
+                dropdown.innerHTML += '</div>';
+                dropdown.innerHTML += `<div class="slider-value">${toolSettings.size}</div>`;
+                dropdown.innerHTML += '</div>';
+            }
+            
+            // 预览
+            dropdown.innerHTML += '<canvas width="100%" height="40" class="mt-2 border" data-preview="true" style="border-radius: 8px;"></canvas>';
+        }
+
+        btn.appendChild(dropdown);
+        dropdown.classList.add('visible');
+
+        // 事件委托
+        dropdown.querySelectorAll('.color-btn').forEach(b => b.addEventListener('click', () => updateSetting(tool, 'color', b.dataset.color)));
+        const ranges = dropdown.querySelectorAll('input[type="range"]');
+        ranges.forEach(r => {
+            r.addEventListener('input', (e) => {
+                updateSetting(tool, e.target.dataset.key, e.target.value);
+                // 更新显示的数值
+                const valueDisplay = e.target.parentElement.nextElementSibling;
+                if (valueDisplay && valueDisplay.classList.contains('slider-value')) {
+                    valueDisplay.textContent = e.target.value;
+                }
+            });
+        });
+        const modeButtons = dropdown.querySelectorAll('.mode-buttons button');
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                const newMode = e.target.dataset.mode;
+                updateSetting(tool, 'mode', newMode);
+                // Toggle size slider
+                const sizeSliderRow = dropdown.querySelector('#size-slider-row');
+                if (newMode === 'partial') {
+                    if (!sizeSliderRow) {
+                        const newSliderRow = `<div class="settings-row" id="size-slider-row">
+                            <div class="settings-label"><i class="fas fa-expand"></i>大小</div>
+                            <div class="settings-slider">
+                                <input type="range" min="5" max="50" value="${settings[tool].size}" data-key="size">
+                            </div>
+                            <div class="slider-value">${settings[tool].size}</div>
+                        </div>`;
+                        dropdown.insertBefore(document.createRange().createContextualFragment(newSliderRow), dropdown.querySelector('[data-preview="true"]'));
+                        const newRange = dropdown.querySelector('input[data-key="size"]');
+                        newRange.addEventListener('input', (ev) => {
+                            updateSetting(tool, 'size', ev.target.value);
+                            const valueDisplay = ev.target.parentElement.nextElementSibling;
+                            if (valueDisplay && valueDisplay.classList.contains('slider-value')) {
+                                valueDisplay.textContent = ev.target.value;
+                            }
+                        });
+                    }
+                } else if (sizeSliderRow) {
+                    sizeSliderRow.remove();
+                }
+                updatePreview(dropdown, tool);
+            });
+        });
+        updatePreview(dropdown, tool);
+    }
+
+    function updateSetting(tool, key, value) {
+        settings[tool][key] = key === 'color' || key === 'mode' ? value : parseInt(value);
+        const dropdown = document.querySelector('.settings-dropdown');
+        if (dropdown) updatePreview(dropdown, tool);
+    }
+
+    function updatePreview(dropdown, tool) {
+        const previewCanvas = dropdown.querySelector('.preview-canvas');
+        if (!previewCanvas) return;
+        
+        const pCtx = previewCanvas.getContext('2d');
+        pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        const toolSettings = settings[tool];
+        
+        // 设置画笔样式
+        pCtx.strokeStyle = toolSettings.color || '#000000';
+        pCtx.lineWidth = toolSettings.thickness || 2;
+        pCtx.globalAlpha = tool === 'highlighter' ? (toolSettings.alpha || 0.5) : 1;
+        pCtx.lineCap = 'round';
+        pCtx.lineJoin = 'round';
+
+        if (tool === 'wavy') {
+            // 绘制波浪线预览
+            pCtx.beginPath();
+            const startX = 10;
+            const endX = 190;
+            const centerY = 20;
+            const dx = endX - startX;
+            const steps = Math.floor(dx / 3);
+            
+            pCtx.moveTo(startX, centerY);
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const x = startX + t * dx;
+                const y = centerY + Math.sin(t * Math.PI * (toolSettings.density || 4)) * (toolSettings.height || 5);
+                pCtx.lineTo(x, y);
+            }
+            pCtx.stroke();
+        } else if (tool === 'eraser') {
+            if (toolSettings.mode === 'partial') {
+                // 绘制圆形橡皮擦预览
+                pCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                pCtx.strokeStyle = '#FF0000';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                pCtx.arc(100, 20, (toolSettings.size || 10) / 2, 0, Math.PI * 2);
+                pCtx.fill();
+                pCtx.stroke();
+            } else {
+                // 对象擦除模式显示十字标记
+                pCtx.strokeStyle = '#FF0000';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                pCtx.moveTo(85, 20); pCtx.lineTo(115, 20);
+                pCtx.moveTo(100, 5); pCtx.lineTo(100, 35);
+                pCtx.stroke();
+                
+                // 添加文字说明
+                pCtx.fillStyle = '#666';
+                pCtx.font = '12px Arial';
+                pCtx.textAlign = 'center';
+                pCtx.fillText('点击对象删除', 100, 35);
+            }
+        } else {
+            // 绘制直线预览（圆珠笔、荧光笔）
+            pCtx.beginPath();
+            pCtx.moveTo(10, 20);
+            pCtx.lineTo(190, 20);
+            pCtx.stroke();
+        }
+        
+        pCtx.globalAlpha = 1;
+    }
 
     function startDrawing(e) {
         if (!currentTool) return;
@@ -618,9 +1998,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (drawing) {
             drawing = false;
             if (currentTool !== 'eraser') {
-                const obj = { type: currentTool, path: currentPath.slice(), ...settings[currentTool] };
-                objects.push(obj);
-                redoStack = [];
+            const obj = { type: currentTool, path: currentPath, ...settings[currentTool] };
+            objects.push(obj);
+            redoStack = [];
             }
             redraw();
             currentPath = [];
@@ -648,9 +2028,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function isPointNearObject(obj, pos) {
+        // 简单距离检查
         for (let i = 0; i < obj.path.length - 1; i++) {
             const p1 = obj.path[i];
-            const p2 = obj.path[i + 1];
+            const p2 = obj.path[i+1];
             const dist = distanceToSegment(pos, p1, p2);
             if (dist < 10) return true;
         }
@@ -660,11 +2041,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function distanceToSegment(point, p1, p2) {
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
-        const len = dx * dx + dy * dy;
+        const len = dx*dx + dy*dy;
         let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / len;
         t = Math.max(0, Math.min(1, t));
         const proj = { x: p1.x + t * dx, y: p1.y + t * dy };
-        return Math.sqrt((point.x - proj.x) ** 2 + (point.y - proj.y) ** 2);
+        return Math.sqrt((point.x - proj.x)**2 + (point.y - proj.y)**2);
     }
 
     function redraw() {
@@ -675,22 +2056,22 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.globalAlpha = obj.alpha || 1;
             ctx.beginPath();
             if (obj.path && obj.path.length > 0) {
-                ctx.moveTo(obj.path[0].x, obj.path[0].y);
-                if (obj.type === 'wavy') {
-                    const start = obj.path[0];
-                    const end = obj.path[obj.path.length - 1];
-                    const dx = end.x - start.x;
-                    const dy = end.y - start.y;
-                    const len = Math.sqrt(dx * dx + dy * dy);
-                    const steps = len / 5;
-                    for (let i = 1; i <= steps; i++) {
-                        const t = i / steps;
-                        const x = start.x + t * dx;
-                        const y = start.y + t * dy + Math.sin(t * Math.PI * obj.density) * obj.height;
-                        ctx.lineTo(x, y);
-                    }
-                } else {
-                    obj.path.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.moveTo(obj.path[0].x, obj.path[0].y);
+            if (obj.type === 'wavy') {
+                const start = obj.path[0];
+                const end = obj.path[obj.path.length - 1];
+                const dx = end.x - start.x;
+                const dy = end.y - start.y;
+                const len = Math.sqrt(dx*dx + dy*dy);
+                const steps = len / 5;
+                for (let i = 1; i <= steps; i++) {
+                    const t = i / steps;
+                    const x = start.x + t * dx;
+                    const y = start.y + t * dy + Math.sin(t * Math.PI * obj.density) * obj.height;
+                    ctx.lineTo(x, y);
+                }
+            } else {
+                obj.path.forEach(p => ctx.lineTo(p.x, p.y));
                 }
             }
             ctx.stroke();
@@ -712,247 +2093,148 @@ document.addEventListener('DOMContentLoaded', function() {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        if (e.touches && e.touches.length > 0) {
-            return {
-                x: (e.touches[0].clientX - rect.left) * scaleX,
-                y: (e.touches[0].clientY - rect.top) * scaleY
-            };
-        } else {
-            return {
-                x: (e.clientX - rect.left) * scaleX,
-                y: (e.clientY - rect.top) * scaleY
-            };
-        }
+        return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     }
 
-    /* ============== 撤销/重做/清空/保存 ============== */
-
-    // 撤销操作封装为函数，便于快捷键调用
-    function undoAction() {
+    function undo() {
         if (objects.length > 0) {
             redoStack.push(objects.pop());
             redraw();
         }
     }
 
-    // 重做操作封装为函数
-    function redoAction() {
+    function redo() {
         if (redoStack.length > 0) {
             objects.push(redoStack.pop());
             redraw();
         }
     }
-
-    // 将按钮点击事件绑定到封装函数
-    undoBtn.addEventListener('click', undoAction);
-    redoBtn.addEventListener('click', redoAction);
-    clearBtn.addEventListener('click', function() {
-        if (confirm('确定清空所有圈画?')) {
-            objects = [];
-            redoStack = [];
-            redraw();
-        }
-    });
     
-saveBtn.addEventListener('click', function () {
-        const dataURL = canvas.toDataURL('image/png');
-        const postUrl = "{{ url_for('assignments.manual_annotate', submission_id=submission.id) }}";
-        fetch(postUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: dataURL })
-        })
-        .then(res => res.json())
-        .then(data => alert(data.message))
-        .catch(err => {
-            console.error(err);
-            // 兜底：网络错误则下载到本地
-            const link = document.createElement('a');
-            link.href = dataURL;
-            link.download = 'annotated.png';
-            link.click();
-            alert('网络错误，已下载到本地');
-        });
-});
-});
-
-
-    // 键盘快捷键支持：Ctrl+Z 撤销，Ctrl+Y 重做（支持 Windows 和 Mac）
-    document.addEventListener('keydown', function(e) {
-        const key = e.key.toLowerCase();
-        const isCtrl = e.ctrlKey || e.metaKey;
-        if (isCtrl && key === 'z' && !e.shiftKey) {
-            e.preventDefault();
-            undoAction();
-        } else if (isCtrl && (key === 'y' || (key === 'z' && e.shiftKey))) {
-            // Ctrl+Y 或 Cmd+Shift+Z 重做
-            e.preventDefault();
-            redoAction();
-        }
-    });
-
-    // 鼠标滚轮缩放（按住 Ctrl）
-    canvas.addEventListener('wheel', function(e) {
-        if (e.ctrlKey) {
-            e.preventDefault();
-            // deltaY 正值为向下滚动，负值为向上滚动
-            const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
-            const newScale = scale * zoomFactor;
-            if (newScale >= 0.5 && newScale <= 3) {
-                scale = newScale;
-                applyTransform();
-            }
-        }
-    }, { passive: false });
-
-    /* ============== 触控缩放/移动逻辑 ============== */
+    // 触控手势处理函数
     function handleTouchStart(e) {
         e.preventDefault();
+        touchStartTime = Date.now();
+        
         if (e.touches.length === 1) {
-            // 单指绘画
+            // 单指触控 - 绘画
             isGesturing = false;
             if (currentTool) {
                 startDrawing(e.touches[0]);
             }
         } else if (e.touches.length === 2) {
-            // 双指缩放/平移
+            // 双指触控 - 手势操作
             isGesturing = true;
-            if (drawing) stopDrawing();
-            const t1 = e.touches[0];
-            const t2 = e.touches[1];
-            lastTouchDistance = getTouchDistance(t1, t2);
-            lastTouchCenter = getTouchCenter(t1, t2);
+            if (drawing) {
+                stopDrawing();
+            }
+            
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            
+            lastTouchDistance = getTouchDistance(touch1, touch2);
+            lastTouchCenter = getTouchCenter(touch1, touch2);
         }
     }
+    
     function handleTouchMove(e) {
         e.preventDefault();
+        
         if (e.touches.length === 1 && !isGesturing) {
-            // 单指绘图
-            if (currentTool && drawing) draw(e.touches[0]);
+            // 单指移动 - 绘画
+            if (currentTool && drawing) {
+                draw(e.touches[0]);
+            }
         } else if (e.touches.length === 2) {
+            // 双指移动 - 缩放和平移
             isGesturing = true;
-            const t1 = e.touches[0];
-            const t2 = e.touches[1];
-            const currentDistance = getTouchDistance(t1, t2);
-            const currentCenter = getTouchCenter(t1, t2);
+            
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            
+            const currentDistance = getTouchDistance(touch1, touch2);
+            const currentCenter = getTouchCenter(touch1, touch2);
+            
             // 缩放
             if (lastTouchDistance > 0) {
                 const scaleChange = currentDistance / lastTouchDistance;
                 const newScale = scale * scaleChange;
+                
+                // 限制缩放范围
                 if (newScale >= 0.5 && newScale <= 3) {
                     scale = newScale;
                 }
             }
+            
             // 平移
             const deltaX = currentCenter.x - lastTouchCenter.x;
             const deltaY = currentCenter.y - lastTouchCenter.y;
             translateX += deltaX;
             translateY += deltaY;
+            
+            // 应用变换
             applyTransform();
+            
             lastTouchDistance = currentDistance;
             lastTouchCenter = currentCenter;
         }
     }
+    
     function handleTouchEnd(e) {
         e.preventDefault();
+        
         if (e.touches.length === 0) {
-            if (!isGesturing && drawing) stopDrawing();
+            // 所有手指离开
+            if (!isGesturing && drawing) {
+                stopDrawing();
+            }
             isGesturing = false;
             lastTouchDistance = 0;
         } else if (e.touches.length === 1 && isGesturing) {
+            // 从双指变为单指
             isGesturing = false;
             lastTouchDistance = 0;
         }
-        // 双击重置缩放
-        const currentTime = Date.now();
-        if (currentTime - lastTapTime < 300) {
-            resetTransform();
-        }
-        lastTapTime = currentTime;
     }
-    function getTouchDistance(t1, t2) {
-        const dx = t1.clientX - t2.clientX;
-        const dy = t1.clientY - t2.clientY;
+    
+    function getTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
         return Math.sqrt(dx * dx + dy * dy);
     }
-    function getTouchCenter(t1, t2) {
+    
+    function getTouchCenter(touch1, touch2) {
         return {
-            x: (t1.clientX + t2.clientX) / 2,
-            y: (t1.clientY + t2.clientY) / 2
+            x: (touch1.clientX + touch2.clientX) / 2,
+            y: (touch1.clientY + touch2.clientY) / 2
         };
     }
+    
     function applyTransform() {
         const transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
         img.style.transform = `translate(-50%, -50%) ${transform}`;
         canvas.style.transform = `translate(-50%, -50%) ${transform}`;
     }
+    
+    // 重置变换
     function resetTransform() {
         scale = 1;
         translateX = 0;
         translateY = 0;
         applyTransform();
     }
-
-    /* ============== 工具预览 ============== */
-    function updatePreview(dropdown, tool) {
-        const previewCanvas = dropdown.querySelector('.preview-canvas');
-        if (!previewCanvas) return;
-        const pCtx = previewCanvas.getContext('2d');
-        pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-        const cfg = settings[tool];
-        pCtx.strokeStyle = cfg.color || '#000000';
-        pCtx.lineWidth = cfg.thickness || 2;
-        pCtx.globalAlpha = tool === 'highlighter' ? (cfg.alpha || 0.5) : 1;
-        pCtx.lineCap = 'round';
-        pCtx.lineJoin = 'round';
-        if (tool === 'wavy') {
-            pCtx.beginPath();
-            const startX = 10;
-            const endX = previewCanvas.width - 10;
-            const centerY = previewCanvas.height / 2;
-            const dx = endX - startX;
-            const steps = Math.floor(dx / 3);
-            pCtx.moveTo(startX, centerY);
-            for (let i = 1; i <= steps; i++) {
-                const t = i / steps;
-                const x = startX + t * dx;
-                const y = centerY + Math.sin(t * Math.PI * (cfg.density || 4)) * (cfg.height || 5);
-                pCtx.lineTo(x, y);
+    
+    // 双击重置缩放（可选功能）
+    let lastTapTime = 0;
+    canvas.addEventListener('touchend', function(e) {
+        if (e.touches.length === 0) {
+            const currentTime = Date.now();
+            if (currentTime - lastTapTime < 300) {
+                // 双击检测
+                resetTransform();
             }
-            pCtx.stroke();
-        } else if (tool === 'eraser') {
-            if (cfg.mode === 'partial') {
-                pCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-                pCtx.strokeStyle = '#FF0000';
-                pCtx.lineWidth = 2;
-                pCtx.beginPath();
-                pCtx.arc(previewCanvas.width / 2, previewCanvas.height / 2, (cfg.size || 10) / 2, 0, Math.PI * 2);
-                pCtx.fill();
-                pCtx.stroke();
-            } else {
-                pCtx.strokeStyle = '#FF0000';
-                pCtx.lineWidth = 2;
-                pCtx.beginPath();
-                const cx = previewCanvas.width / 2;
-                const cy = previewCanvas.height / 2;
-                pCtx.moveTo(cx - 15, cy);
-                pCtx.lineTo(cx + 15, cy);
-                pCtx.moveTo(cx, cy - 15);
-                pCtx.lineTo(cx, cy + 15);
-                pCtx.stroke();
-                pCtx.fillStyle = '#666';
-                pCtx.font = '12px Arial';
-                pCtx.textAlign = 'center';
-                pCtx.fillText('点击对象删除', cx, cy + 20);
-            }
-        } else {
-            pCtx.beginPath();
-            pCtx.moveTo(10, previewCanvas.height / 2);
-            pCtx.lineTo(previewCanvas.width - 10, previewCanvas.height / 2);
-            pCtx.stroke();
+            lastTapTime = currentTime;
         }
-        pCtx.globalAlpha = 1;
-    }
+    });
 });
 </script>
 {% endblock %}
