@@ -1,0 +1,102 @@
+title: "五年级记叙文评分标准"
+total_score: 100
+dimensions:
+  - name: "内容"
+    max_score: 30
+    rubrics:
+      - level_name: "优秀"
+        min_score: 26
+        max_score: 30
+        description: "内容充实，主题鲜明，有具体生动的事例，能够围绕中心选材"
+      - level_name: "良好"  
+        min_score: 21
+        max_score: 25
+        description: "内容较充实，主题较明确，有一定的事例支撑"
+      - level_name: "一般"
+        min_score: 16
+        max_score: 20  
+        description: "内容基本完整，主题基本明确，事例不够生动"
+      - level_name: "需改进"
+        min_score: 0
+        max_score: 15
+        description: "内容空洞，主题不明确，缺乏具体事例"
+        
+  - name: "结构"
+    max_score: 20
+    rubrics:
+      - level_name: "优秀"
+        min_score: 18
+        max_score: 20
+        description: "结构完整，层次清晰，过渡自然，详略得当"
+      - level_name: "良好"
+        min_score: 14
+        max_score: 17
+        description: "结构较完整，层次较清晰，有一定的详略安排"
+      - level_name: "一般"
+        min_score: 10
+        max_score: 13
+        description: "结构基本完整，层次基本清楚，详略安排一般"
+      - level_name: "需改进"
+        min_score: 0
+        max_score: 9
+        description: "结构混乱，层次不清，详略不当"
+        
+  - name: "语言"
+    max_score: 25
+    rubrics:
+      - level_name: "优秀"
+        min_score: 22
+        max_score: 25
+        description: "语言准确流畅，表达清楚，句式有变化"
+      - level_name: "良好"
+        min_score: 18
+        max_score: 21
+        description: "语言较准确，表达较清楚，句式有一定变化"
+      - level_name: "一般"
+        min_score: 13
+        max_score: 17
+        description: "语言基本准确，表达基本清楚，句式较单一"
+      - level_name: "需改进"
+        min_score: 0
+        max_score: 12
+        description: "语言不够准确，表达不够清楚，句式单调"
+        
+  - name: "文采"
+    max_score: 15
+    rubrics:
+      - level_name: "优秀"
+        min_score: 13
+        max_score: 15
+        description: "语言生动形象，修辞手法运用恰当，有一定的文采"
+      - level_name: "良好"
+        min_score: 10
+        max_score: 12
+        description: "语言较生动，有一定的修辞手法，有一些文采"
+      - level_name: "一般"
+        min_score: 7
+        max_score: 9
+        description: "语言较平实，修辞手法较少，文采一般"
+      - level_name: "需改进"
+        min_score: 0
+        max_score: 6
+        description: "语言平淡，缺乏修辞手法，没有文采"
+        
+  - name: "规范"
+    max_score: 10
+    rubrics:
+      - level_name: "优秀"
+        min_score: 9
+        max_score: 10
+        description: "书写工整，卷面整洁，无错别字，标点使用正确"
+      - level_name: "良好"
+        min_score: 7
+        max_score: 8
+        description: "书写较工整，卷面较整洁，错别字较少，标点使用基本正确"
+      - level_name: "一般"
+        min_score: 5
+        max_score: 6
+        description: "书写一般，卷面一般，有一些错别字，标点使用基本正确"
+      - level_name: "需改进"
+        min_score: 0
+        max_score: 4
+        description: "书写不够工整，卷面不够整洁，错别字较多，标点使用不规范"
