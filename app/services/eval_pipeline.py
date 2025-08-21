@@ -100,7 +100,13 @@ def analyze(essay_text: str, meta: dict, llm_provider=None) -> dict:
         )
         
         logger.debug(f"Calling LLM with prompt: {prompt[:100]}...")
-        result = llm.call_llm(prompt, require_json=True)
+        result = llm.call_llm(
+            prompt, 
+            require_json=True, 
+            temperature=0.2,  # Lower temperature for more consistent analysis
+            timeout=20,       # Shorter timeout for analysis step
+            max_retries=1     # Single retry for analysis
+        )
         logger.debug(f"LLM returned: {result}")
         
         # Validate structure
@@ -167,7 +173,13 @@ def score(essay_text: str, standard: StandardDTO, analysis: dict, llm_provider=N
             essay_text=essay_text
         )
         
-        result = llm.call_llm(prompt, require_json=True)
+        result = llm.call_llm(
+            prompt, 
+            require_json=True,
+            temperature=0.1,  # Even lower temperature for consistent scoring
+            timeout=30,       # Longer timeout for scoring step  
+            max_retries=2     # More retries for critical scoring
+        )
         
         # Validate scoring structure
         required_fields = ['content', 'structure', 'language', 'aesthetics', 'norms', 'total', 'rationale']
