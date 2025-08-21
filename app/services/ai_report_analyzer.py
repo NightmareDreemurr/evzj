@@ -334,6 +334,7 @@ def _get_top_essays(essays, limit):
     """获取最高分作文"""
     sorted_essays = sorted(essays, key=lambda x: x.final_score or 0, reverse=True)
     return [{
+        'essay_id': essay.id,
         'student_name': essay.enrollment.student.user.full_name or essay.enrollment.student.user.username,
         'score': essay.final_score,
         'content_preview': essay.content[:100] + '...' if essay.content and len(essay.content) > 100 else essay.content
@@ -343,6 +344,7 @@ def _get_bottom_essays(essays, limit):
     """获取最低分作文"""
     sorted_essays = sorted(essays, key=lambda x: x.final_score or 0)
     return [{
+        'essay_id': essay.id,
         'student_name': essay.enrollment.student.user.full_name or essay.enrollment.student.user.username,
         'score': essay.final_score,
         'content_preview': essay.content[:100] + '...' if essay.content and len(essay.content) > 100 else essay.content
