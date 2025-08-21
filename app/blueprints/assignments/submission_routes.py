@@ -470,13 +470,19 @@ def review_submission(submission_id):
     rubrics_by_dimension = {}
     criteria_max_scores = {}
     if standard:
-        dimensions = db.session.query(Dimension).filter(Dimension.standard_id == standard.id).all()
+        # Eager load dimensions and rubrics for better performance and template access
+        dimensions = db.session.query(Dimension).options(
+            joinedload(Dimension.rubrics)
+        ).filter(Dimension.standard_id == standard.id).all()
+        
+        # Attach dimensions to the standard for template access
+        standard.dimensions = dimensions
+        
         for dim in dimensions:
             criteria_max_scores[dim.name] = dim.max_score
-            rubrics = db.session.query(Rubric).filter(Rubric.dimension_id == dim.id).all()
             rubrics_by_dimension[dim.name] = [
                 {'level': r.level_name, 'min': r.min_score, 'max': r.max_score}
-                for r in rubrics
+                for r in dim.rubrics
             ]
     cnm = True
     if cnm:
