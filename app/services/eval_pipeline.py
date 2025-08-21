@@ -75,19 +75,23 @@ def evaluate_essay(essay_text: str, meta: dict) -> EvaluationResult:
         raise
 
 
-def analyze(essay_text: str, meta: dict) -> dict:
+def analyze(essay_text: str, meta: dict, llm_provider=None) -> dict:
     """
     Analyze essay structure and identify issues.
     
     Args:
         essay_text: Essay content
         meta: Essay metadata
+        llm_provider: Optional LLM provider for testing
         
     Returns:
         Dictionary with outline and issues
     """
     try:
-        llm = get_llm_provider()
+        if llm_provider is None:
+            llm = get_llm_provider()
+        else:
+            llm = llm_provider
         
         prompt = PROMPT_ANALYZE.format(
             essay_text=essay_text,
@@ -95,12 +99,16 @@ def analyze(essay_text: str, meta: dict) -> dict:
             genre=meta.get('genre', '记叙文')
         )
         
+        logger.debug(f"Calling LLM with prompt: {prompt[:100]}...")
         result = llm.call_llm(prompt, require_json=True)
+        logger.debug(f"LLM returned: {result}")
         
         # Validate structure
         if 'outline' not in result:
+            logger.warning("No 'outline' key in result, adding empty list")
             result['outline'] = []
         if 'issues' not in result:
+            logger.warning("No 'issues' key in result, adding empty list")
             result['issues'] = []
             
         return result
@@ -130,7 +138,7 @@ def load_standard(meta: dict) -> StandardDTO:
     return get_grading_standard(grade, genre)
 
 
-def score(essay_text: str, standard: StandardDTO, analysis: dict) -> dict:
+def score(essay_text: str, standard: StandardDTO, analysis: dict, llm_provider=None) -> dict:
     """
     Score essay using standard and analysis.
     
@@ -138,12 +146,16 @@ def score(essay_text: str, standard: StandardDTO, analysis: dict) -> dict:
         essay_text: Essay content
         standard: Grading standard
         analysis: Analysis results from analyze()
+        llm_provider: Optional LLM provider for testing
         
     Returns:
         Dictionary with scoring results
     """
     try:
-        llm = get_llm_provider()
+        if llm_provider is None:
+            llm = get_llm_provider()
+        else:
+            llm = llm_provider
         
         # Format standard for prompt
         standard_text = _format_standard_for_prompt(standard)

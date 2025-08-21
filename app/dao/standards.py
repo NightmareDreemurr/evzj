@@ -23,7 +23,13 @@ def get_grading_standard(grade: str, genre: str = "narrative") -> Optional[Stand
         StandardDTO or None if not found
     """
     try:
-        # First try to get from database
+        # First try to get from database (only if app is in production/development mode)
+        from flask import current_app
+        if current_app.config.get('TESTING', False):
+            # Skip database check in testing mode
+            logger.info(f"Testing mode: skipping DB check, loading YAML for {grade}-{genre}")
+            return _load_from_yaml(grade, genre)
+            
         grade_level = GradeLevel.query.filter_by(name=grade).first()
         if grade_level:
             standard = GradingStandard.query.filter_by(

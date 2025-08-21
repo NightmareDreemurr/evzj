@@ -2,7 +2,7 @@
 Evaluation schemas for the structured LLM evaluation pipeline.
 """
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Meta(BaseModel):
@@ -64,11 +64,10 @@ class EvaluationResult(BaseModel):
 
 class StandardDTO(BaseModel):
     """评分标准数据传输对象"""
+    model_config = ConfigDict(from_attributes=True)
+    
     title: str
     total_score: int
     grade: str
     genre: Optional[str] = None
     dimensions: List[Dict[str, Any]] = Field(default_factory=list, description="评分维度详情")
-    
-    class Config:
-        from_attributes = True
