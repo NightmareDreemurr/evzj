@@ -1,13 +1,14 @@
 import os
 import json
 import logging
+import io
 from collections import Counter
 from datetime import datetime
 import threading
 import time
 
 from flask import (render_template, request, flash, redirect, url_for, 
-                   current_app, jsonify)
+                   current_app, jsonify, send_file, abort)
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
@@ -964,14 +965,65 @@ def download_essay_report(essay_id):
         return redirect(url_for('assignments.list_assignments'))
 
 
-@assignments_bp.route('/<int:assignment_id>/report/download')
+@assignments_bp.route('/<int:assignment_id>/report/download', methods=['GET'])
 @login_required  
 def download_assignment_report(assignment_id):
-    """Download DOCX report for assignment (currently returns first essay as representative)"""
+    """Download DOCX report for assignment - upgraded to support batch mode"""
     from flask import send_file
     from app.dao.evaluation_dao import load_evaluations_by_assignment
     from app.reporting.docx_renderer import render_assignment_docx
+    from app.reporting.service import render_assignment_docx as render_assignment_batch
+    import io
     
+    # Check for new batch mode parameters
+    mode = request.args.get('mode', None)
+    fmt = request.args.get('format', 'docx')
+    
+    if fmt != 'docx':
+        abort(400, "Only DOCX format is supported")
+    
+    # New batch mode
+    if mode in ['combined', 'zip']:
+        try:
+            result = render_assignment_batch(assignment_id, mode=mode)
+            
+            # Generate filename based on mode
+            assignment = db.session.get(EssayAssignment, assignment_id)
+            safe_title = assignment.title.replace(' ', '_').replace('/', '_') if assignment else f"assignment_{assignment_id}"
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            if mode == 'combined':
+                filename = f"{safe_title}-report-{timestamp}.docx"
+                mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                return send_file(
+                    io.BytesIO(result),
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype=mimetype
+                )
+            else:  # zip mode
+                filename = f"{safe_title}-reports-{timestamp}.zip"
+                
+                # Create response from ZipStream generator  
+                def generate_zip():
+                    for chunk in result:
+                        yield chunk
+                
+                from flask import Response
+                return Response(
+                    generate_zip(),
+                    headers={
+                        'Content-Disposition': f'attachment; filename="{filename}"',
+                        'Content-Type': 'application/zip'
+                    }
+                )
+        
+        except Exception as e:
+            logger.error(f"Failed to download batch assignment report {assignment_id}: {e}")
+            flash(f'批量下载报告失败: {str(e)}', 'danger')
+            return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))
+    
+    # Fallback to original logic for backward compatibility
     try:
         # Load all evaluations for the assignment
         evaluations = load_evaluations_by_assignment(assignment_id)
@@ -1005,4 +1057,60 @@ def download_assignment_report(assignment_id):
     except Exception as e:
         logger.error(f"Failed to download assignment report {assignment_id}: {e}")
         flash(f'下载报告失败: {str(e)}', 'danger')
+        return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))
+
+
+@assignments_bp.route('/<int:assignment_id>/report/download_batch', methods=['GET'])
+@login_required
+def download_assignment_report_batch(assignment_id):
+    """批量下载作业报告 - new dedicated batch endpoint"""
+    mode = request.args.get('mode', 'combined')
+    fmt = request.args.get('format', 'docx')
+    
+    if fmt != 'docx':
+        abort(400, "Only DOCX format is supported")
+    
+    if mode not in ['combined', 'zip']:
+        abort(400, "Mode must be 'combined' or 'zip'")
+    
+    try:
+        from app.reporting.service import render_assignment_docx
+        import io
+        
+        result = render_assignment_docx(assignment_id, mode=mode)
+        
+        # Generate safe filename
+        assignment = db.session.get(EssayAssignment, assignment_id)
+        safe_title = "".join(c for c in (assignment.title if assignment else f"assignment_{assignment_id}") 
+                           if c.isalnum() or c in "._-")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if mode == 'combined':
+            filename = f"{safe_title}-report-{timestamp}.docx"
+            return send_file(
+                io.BytesIO(result), 
+                as_attachment=True, 
+                download_name=filename,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+        else:  # zip mode  
+            filename = f"{safe_title}-reports-{timestamp}.zip"
+            
+            # Create response from ZipStream generator  
+            def generate_zip():
+                for chunk in result:
+                    yield chunk
+            
+            from flask import Response
+            return Response(
+                generate_zip(),
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"',
+                    'Content-Type': 'application/zip'
+                }
+            )
+            
+    except Exception as e:
+        logger.error(f"Failed to download batch assignment report {assignment_id}: {e}")
+        flash(f'批量下载报告失败: {str(e)}', 'danger')
         return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))

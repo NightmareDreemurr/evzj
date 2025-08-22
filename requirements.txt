@@ -17,6 +17,8 @@ PyYAML>=6.0
 pytest>=7.0
 python-docx==1.1.2
 docxtpl==0.16.7
+docxcompose
+zipstream-ng
 blinker==1.7.0
 click==8.1.7
 colorama==0.4.6
