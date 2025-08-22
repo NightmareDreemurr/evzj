@@ -120,7 +120,7 @@ def _create_minimal_template(template_path: str):
     footer = doc.add_paragraph()
     footer.add_run('报告生成时间: ').bold = True
     if DOCXTPL_AVAILABLE:
-        footer.add_run('{{ "now"|strftime("%Y-%m-%d %H:%M:%S") }}')
+        footer.add_run('{{ now|strftime("%Y-%m-%d %H:%M:%S") }}')
     else:
         footer.add_run('[生成时间]')
     footer.alignment = 1  # Center
@@ -159,7 +159,7 @@ def render_essay_docx(evaluation: EvaluationResult, output_path: str = None) -> 
 
 def render_assignment_docx(assignment_id: int, evaluations: list = None, output_path: str = None) -> str:
     """
-    Render assignment summary DOCX (currently returns NotImplemented).
+    Render assignment summary DOCX.
     
     Args:
         assignment_id: Assignment ID
@@ -170,14 +170,46 @@ def render_assignment_docx(assignment_id: int, evaluations: list = None, output_
         Path to generated DOCX file
         
     Raises:
-        NotImplementedError: Assignment summary not yet implemented
+        FileNotFoundError: If assignment template is missing
+        ValueError: If no evaluations available
     """
-    # For now, just export the first essay as a representative
-    if evaluations and len(evaluations) > 0:
-        logger.warning(f"Assignment summary not implemented, exporting first essay for assignment {assignment_id}")
-        return render_essay_docx(evaluations[0], output_path)
-    else:
-        raise NotImplementedError("Assignment summary DOCX export not yet implemented")
+    # Check if assignment template exists
+    project_root = Path(__file__).parent.parent.parent
+    assignment_template_path = project_root / "templates" / "word" / "assignment_compiled.docx"
+    
+    if not assignment_template_path.exists():
+        raise FileNotFoundError(
+            f"Assignment template not found at {assignment_template_path}. "
+            "Assignment summary export requires a dedicated template. "
+            "Please create the template or use individual essay export instead."
+        )
+    
+    if not evaluations or len(evaluations) == 0:
+        raise ValueError(f"No evaluation data available for assignment {assignment_id}")
+    
+    logger.info(f"Rendering assignment summary for {len(evaluations)} evaluations")
+    
+    # For now, use the existing combined rendering logic if available
+    # This is a placeholder for proper assignment template implementation
+    try:
+        return _render_assignment_combined(assignment_id, evaluations, output_path)
+    except NotImplementedError:
+        # If combined rendering is not implemented, provide clear guidance
+        raise NotImplementedError(
+            f"Assignment summary rendering not yet fully implemented. "
+            f"Available options: 1) Create individual essay reports, "
+            f"2) Implement _render_assignment_combined function, "
+            f"3) Add assignment template at {assignment_template_path}"
+        )
+
+
+def _render_assignment_combined(assignment_id: int, evaluations: list, output_path: str = None) -> str:
+    """
+    Render combined assignment DOCX using assignment template.
+    
+    This is a placeholder implementation - should be enhanced based on actual requirements.
+    """
+    raise NotImplementedError("Combined assignment rendering not yet implemented")
 
 
 def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
@@ -188,21 +220,46 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
         doc = DocxTemplate(template_path)
         context = to_context(evaluation)
         
-        # Add current timestamp (pre-formatted to avoid strftime filter issues)
+        # Add current timestamp and enhance context
         from datetime import datetime
         context['now'] = datetime.now()
         context['current_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        doc.render(context)
+        # Add fields for future enhancements (P2)
+        context.setdefault('paragraphs', [])
+        context.setdefault('exercises', [])
+        context.setdefault('feedback_summary', '')
+        
+        # Create Jinja environment with strftime filter (P0)
+        from jinja2 import Environment
+        env = Environment(autoescape=False)
+        
+        def strftime_filter(dt, fmt):
+            """Custom strftime filter that handles both datetime objects and strings"""
+            if dt is None:
+                return ''
+            if isinstance(dt, str):
+                return dt  # If already a string, return as-is
+            if hasattr(dt, 'strftime'):
+                return dt.strftime(fmt)
+            return str(dt)
+        
+        env.filters['strftime'] = strftime_filter
+        
+        # Render with custom jinja environment
+        doc.render(context, jinja_env=env)
         doc.save(output_path)
         
         logger.info(f"Rendered DOCX using docxtpl: {output_path}")
         return output_path
         
-    except Exception as e:
-        logger.error(f"Failed to render with docxtpl: {e}")
-        # Fall back to python-docx
+    except FileNotFoundError as e:
+        logger.info(f"Template file not found, falling back to python-docx: {e}")
         return _render_with_python_docx(evaluation, output_path)
+    except Exception as e:
+        # P1: Don't fallback on template syntax errors - raise them clearly
+        logger.error(f"Failed to render with docxtpl due to template error: {e}")
+        raise RuntimeError(f"DOCX template rendering failed: {e}") from e
 
 
 def _render_with_python_docx(evaluation: EvaluationResult, output_path: str) -> str:
