@@ -188,9 +188,10 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
         doc = DocxTemplate(template_path)
         context = to_context(evaluation)
         
-        # Add current timestamp
+        # Add current timestamp (pre-formatted to avoid strftime filter issues)
         from datetime import datetime
         context['now'] = datetime.now()
+        context['current_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         doc.render(context)
         doc.save(output_path)

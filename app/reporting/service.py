@@ -307,8 +307,19 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
         'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
+    # Debug: print context structure
+    logger.info(f"Rendering assignment with {len(students_data)} students")
+    
     # Render template
-    doc.render(context)
+    try:
+        doc.render(context)
+    except Exception as e:
+        logger.error(f"Template rendering failed: {e}")
+        logger.error(f"Context keys: {list(context.keys())}")
+        logger.error(f"Students data type: {type(context['students'])}")
+        if context['students']:
+            logger.error(f"First student keys: {list(context['students'][0].keys())}")
+        raise
     
     # Save to bytes
     output = io.BytesIO()
