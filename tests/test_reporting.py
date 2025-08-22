@@ -227,10 +227,11 @@ class TestService:
         # Mock essay
         mock_essay = Mock()
         mock_essay.enrollment = Mock()
-        mock_essay.enrollment.student_profile = Mock()
-        mock_essay.enrollment.student_profile.id = 1
-        mock_essay.enrollment.student_profile.user = Mock()
-        mock_essay.enrollment.student_profile.user.full_name = "张三"
+        mock_essay.enrollment.student = Mock()
+        mock_essay.enrollment.student.id = 1
+        mock_essay.enrollment.student.user = Mock()
+        mock_essay.enrollment.student.user.full_name = "张三"
+        mock_essay.enrollment.student_number = "20230001"
         
         mock_db_get.return_value = mock_essay
         

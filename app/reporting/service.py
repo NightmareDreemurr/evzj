@@ -55,13 +55,13 @@ def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
         student_name = safe_get_student_name(evaluation)
         student_no = None
         
-        if essay.enrollment and essay.enrollment.student_profile:
-            student_profile = essay.enrollment.student_profile
+        if essay.enrollment and essay.enrollment.student:
+            student_profile = essay.enrollment.student
             student_id = student_profile.id
             if student_profile.user:
                 student_name = student_profile.user.full_name or student_profile.user.username
-            # Try to get student number if available
-            student_no = getattr(student_profile, 'student_number', None)
+            # Get student number from enrollment
+            student_no = essay.enrollment.student_number
         
         # Extract other information
         topic = safe_get_topic(evaluation)
