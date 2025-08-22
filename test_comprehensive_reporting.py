@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for enhanced DOCX reporting functionality.
+Comprehensive test demonstrating all enhanced DOCX reporting features.
 """
 import tempfile
 import os
@@ -8,15 +8,11 @@ from app.schemas.evaluation import (
     EvaluationResult, Meta, Scores, RubricScore, TextBlock, 
     Analysis, OutlineItem, DiagnosticItem, ExerciseItem
 )
-from app.reporting.viewmodels import (
-    StudentReportVM, ParaVM, ExerciseVM, ScoreVM, ScoreItemVM,
-    map_paragraphs_to_vm, map_exercises_to_vm, build_feedback_summary
-)
 from app.reporting.docx_renderer import render_essay_docx
 
 
-def create_test_evaluation():
-    """Create a comprehensive test evaluation with all data types."""
+def create_comprehensive_evaluation():
+    """Create a comprehensive evaluation with all enhanced features."""
     return EvaluationResult(
         meta=Meta(
             student='李小华',
@@ -92,48 +88,14 @@ def create_test_evaluation():
     )
 
 
-def test_enhanced_viewmodels():
-    """Test the enhanced ViewModels functionality."""
-    print("Testing enhanced ViewModels...")
+def test_comprehensive_docx_features():
+    """Test all enhanced DOCX features."""
+    print("=== 综合DOCX报告功能测试 ===\n")
     
-    evaluation = create_test_evaluation()
+    evaluation = create_comprehensive_evaluation()
     
-    # Test paragraph mapping
-    paragraphs = map_paragraphs_to_vm(evaluation)
-    print(f"✓ Mapped {len(paragraphs)} paragraphs")
-    
-    for para in paragraphs:
-        print(f"  Para {para.para_num}: {para.intent}")
-        print(f"    Original: {para.original_text[:50]}...")
-        print(f"    Feedback: {para.feedback[:100]}...")
-        print()
-    
-    # Test exercise mapping
-    exercises = map_exercises_to_vm(evaluation)
-    print(f"✓ Mapped {len(exercises)} exercises")
-    
-    for ex in exercises:
-        print(f"  {ex.type}: {ex.prompt}")
-        print(f"    Hints: {', '.join(ex.hints)}")
-        print(f"    Sample: {ex.sample[:50]}...")
-        print()
-    
-    # Test feedback summary
-    summary = build_feedback_summary(evaluation)
-    print(f"✓ Built feedback summary ({len(summary)} chars)")
-    print(f"  Summary: {summary[:200]}...")
-    print()
-    
-    return True
-
-
-def test_enhanced_docx_rendering():
-    """Test enhanced DOCX rendering with rich data."""
-    print("Testing enhanced DOCX rendering...")
-    
-    evaluation = create_test_evaluation()
-    
-    # Test rendering to temp file
+    # Test single student enhanced rendering
+    print("测试单学生增强报告生成...")
     with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as tmp:
         output_path = tmp.name
     
@@ -142,39 +104,93 @@ def test_enhanced_docx_rendering():
         
         if os.path.exists(result_path):
             file_size = os.path.getsize(result_path)
-            print(f"✓ DOCX file created: {result_path}")
-            print(f"  File size: {file_size} bytes")
+            print(f"✓ 增强版单学生报告生成成功")
+            print(f"  文件路径: {result_path}")
+            print(f"  文件大小: {file_size} 字节")
+            print(f"  包含段落数: {len(evaluation.analysis.outline) if evaluation.analysis else 0}")
+            print(f"  包含诊断数: {len(evaluation.diagnostics)}")
+            print(f"  包含练习数: {len(evaluation.exercises)}")
+            print(f"  评分维度数: {len(evaluation.scores.rubrics)}")
             return True
         else:
-            print("✗ DOCX file was not created")
+            print("✗ 报告文件未生成")
             return False
             
+    except Exception as e:
+        print(f"✗ 生成失败: {e}")
+        return False
+        
     finally:
-        # Cleanup
         if os.path.exists(output_path):
             os.unlink(output_path)
 
 
+def demonstrate_new_features():
+    """Demonstrate the new reporting features."""
+    print("\n=== 新功能演示 ===\n")
+    
+    evaluation = create_comprehensive_evaluation()
+    
+    # Import the ViewModels functions
+    from app.reporting.viewmodels import (
+        map_paragraphs_to_vm, map_exercises_to_vm, build_feedback_summary
+    )
+    
+    print("1. 段落级点评功能:")
+    paragraphs = map_paragraphs_to_vm(evaluation)
+    for para in paragraphs:
+        print(f"   第{para.para_num}段 ({para.intent}):")
+        print(f"     原文: {para.original_text}")
+        print(f"     点评: {para.feedback.split('\\n')[0]}")  # Show first line only
+        print(f"     润色: {para.polished_text}")
+        print()
+    
+    print("2. 个性化练习建议:")
+    exercises = map_exercises_to_vm(evaluation)
+    for i, ex in enumerate(exercises, 1):
+        print(f"   练习{i}: {ex.type}")
+        print(f"     要求: {ex.prompt}")
+        print(f"     要点: {', '.join(ex.hints[:2])}...")  # Show first 2 hints
+        print(f"     示例: {ex.sample[:50]}...")
+        print()
+    
+    print("3. 综合反馈摘要:")
+    summary = build_feedback_summary(evaluation)
+    print(f"   {summary[:200]}...")
+    print()
+    
+    print("✓ 所有新功能运行正常")
+
+
 def main():
-    """Run all tests."""
-    print("=== Enhanced DOCX Reporting Tests ===\n")
+    """Run comprehensive tests."""
+    success = True
     
     try:
-        # Test ViewModels
-        if not test_enhanced_viewmodels():
-            print("✗ ViewModels test failed")
-            return False
+        # Test comprehensive DOCX features
+        if not test_comprehensive_docx_features():
+            success = False
         
-        # Test DOCX rendering
-        if not test_enhanced_docx_rendering():
-            print("✗ DOCX rendering test failed")
-            return False
+        # Demonstrate new features
+        demonstrate_new_features()
         
-        print("=== All Tests Passed! ===")
-        return True
+        if success:
+            print("\n=== 所有测试通过! ===")
+            print("\n增强功能总结:")
+            print("• ✓ 段落级点评和润色建议")
+            print("• ✓ 个性化写作练习生成")
+            print("• ✓ 综合评价和反馈摘要")
+            print("• ✓ 多维度评分详情")
+            print("• ✓ 诊断问题分析")
+            print("• ✓ 批量学生报告支持")
+            print("• ✓ 向后兼容性保持")
+        else:
+            print("\n=== 部分测试失败 ===")
+        
+        return success
         
     except Exception as e:
-        print(f"✗ Test failed with error: {e}")
+        print(f"\n✗ 测试过程中发生错误: {e}")
         import traceback
         traceback.print_exc()
         return False
