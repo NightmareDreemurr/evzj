@@ -102,17 +102,17 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         class_name = "未知班级"
         teacher_name = "未知教师"
         
-        if essay.enrollment and essay.enrollment.student_profile:
-            student_profile = essay.enrollment.student_profile
+        if essay.enrollment and essay.enrollment.student:
+            student_profile = essay.enrollment.student
             if student_profile.user:
                 student_name = student_profile.user.full_name or student_profile.user.username
             
-            if student_profile.classroom:
-                class_name = student_profile.classroom.class_name
+            if essay.enrollment.classroom:
+                class_name = essay.enrollment.classroom.class_name
                 
                 # Get teacher from classroom
-                if student_profile.classroom.teacher_profiles:
-                    teacher_profile = student_profile.classroom.teacher_profiles[0]
+                if essay.enrollment.classroom.teachers:
+                    teacher_profile = essay.enrollment.classroom.teachers[0]
                     if teacher_profile.user:
                         teacher_name = teacher_profile.user.full_name or teacher_profile.user.username
         
@@ -127,7 +127,7 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
             "teacher": teacher_name,
             "topic": topic,
             "date": essay.created_at.strftime('%Y-%m-%d') if essay.created_at else datetime.now().strftime('%Y-%m-%d'),
-            "student_id": str(essay.enrollment.student_profile.id) if essay.enrollment and essay.enrollment.student_profile else None,
+            "student_id": str(essay.enrollment.student.id) if essay.enrollment and essay.enrollment.student else None,
             "grade": "五年级",  # Default
             "words": len(essay.content or "")
         }
