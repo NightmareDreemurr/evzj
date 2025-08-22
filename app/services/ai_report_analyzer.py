@@ -332,22 +332,74 @@ def _calculate_score_distribution(scores, total_score):
 
 def _get_top_essays(essays, limit):
     """获取最高分作文"""
-    sorted_essays = sorted(essays, key=lambda x: x.final_score or 0, reverse=True)
+    def get_essay_score(essay):
+        """获取作文的有效分数"""
+        if essay.final_score is not None:
+            return essay.final_score
+        
+        # 尝试从AI评分中获取总分
+        if essay.ai_score and isinstance(essay.ai_score, dict):
+            return essay.ai_score.get('total_score', 0)
+        
+        return 0
+    
+    def get_student_name(essay):
+        """安全地获取学生姓名"""
+        try:
+            if (essay.enrollment and 
+                essay.enrollment.student_profile and 
+                essay.enrollment.student_profile.name):
+                return essay.enrollment.student_profile.name
+            elif (essay.enrollment and 
+                  essay.enrollment.student and 
+                  essay.enrollment.student.user):
+                return essay.enrollment.student.user.full_name or essay.enrollment.student.user.username
+            return "未知"
+        except AttributeError:
+            return "未知"
+    
+    sorted_essays = sorted(essays, key=get_essay_score, reverse=True)
     return [{
         'essay_id': essay.id,
-        'student_name': essay.enrollment.student.user.full_name or essay.enrollment.student.user.username,
-        'score': essay.final_score,
-        'content_preview': essay.content[:100] + '...' if essay.content and len(essay.content) > 100 else essay.content
+        'student_name': get_student_name(essay),
+        'score': float(get_essay_score(essay)),
+        'content_preview': (essay.content or "").strip()[:180] + "..." if essay.content and len(essay.content.strip()) > 180 else (essay.content or "").strip()
     } for essay in sorted_essays[:limit]]
 
 def _get_bottom_essays(essays, limit):
     """获取最低分作文"""
-    sorted_essays = sorted(essays, key=lambda x: x.final_score or 0)
+    def get_essay_score(essay):
+        """获取作文的有效分数"""
+        if essay.final_score is not None:
+            return essay.final_score
+        
+        # 尝试从AI评分中获取总分
+        if essay.ai_score and isinstance(essay.ai_score, dict):
+            return essay.ai_score.get('total_score', 0)
+        
+        return 0
+    
+    def get_student_name(essay):
+        """安全地获取学生姓名"""
+        try:
+            if (essay.enrollment and 
+                essay.enrollment.student_profile and 
+                essay.enrollment.student_profile.name):
+                return essay.enrollment.student_profile.name
+            elif (essay.enrollment and 
+                  essay.enrollment.student and 
+                  essay.enrollment.student.user):
+                return essay.enrollment.student.user.full_name or essay.enrollment.student.user.username
+            return "未知"
+        except AttributeError:
+            return "未知"
+    
+    sorted_essays = sorted(essays, key=get_essay_score)
     return [{
         'essay_id': essay.id,
-        'student_name': essay.enrollment.student.user.full_name or essay.enrollment.student.user.username,
-        'score': essay.final_score,
-        'content_preview': essay.content[:100] + '...' if essay.content and len(essay.content) > 100 else essay.content
+        'student_name': get_student_name(essay),
+        'score': float(get_essay_score(essay)),
+        'content_preview': (essay.content or "").strip()[:180] + "..." if essay.content and len(essay.content.strip()) > 180 else (essay.content or "").strip()
     } for essay in sorted_essays[:limit]]
 
 def _generate_charts_data(scores, dimension_averages, word_counts, total_score, ai_report_data=None):
