@@ -152,8 +152,8 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
         context['meta']['date'] = context['meta']['date'].strftime('%Y-%m-%d')
     
     # Group highlights by type and severity for easy template rendering
+    highlight_summary = {}
     if context.get('highlights'):
-        highlight_summary = {}
         for highlight in context['highlights']:
             highlight_type = highlight['type']
             severity = highlight['severity']
@@ -164,7 +164,7 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
             highlight_summary[highlight_type][severity] += 1
             if len(highlight_summary[highlight_type]['examples']) < 3:  # Limit examples
                 highlight_summary[highlight_type]['examples'].append(highlight['span']['text'])
-        
-        context['highlight_summary'] = highlight_summary
+    
+    context['highlight_summary'] = highlight_summary
     
     return context

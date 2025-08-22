@@ -20,7 +20,8 @@ from app.dao.evaluation_dao import load_evaluation_by_essay
 from app.reporting.viewmodels import (
     StudentReportVM, AssignmentReportVM, ScoreVM,
     map_scores_to_vm, safe_get_student_name, safe_get_topic,
-    safe_get_feedback, safe_get_original_paragraphs
+    safe_get_feedback, safe_get_original_paragraphs,
+    map_paragraphs_to_vm, map_exercises_to_vm, build_feedback_summary
 )
 from app.reporting.docx_renderer import render_essay_docx
 
@@ -70,6 +71,13 @@ def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
         feedback = safe_get_feedback(evaluation)
         original_paragraphs = safe_get_original_paragraphs(evaluation)
         
+        # Extract new enhanced information
+        paragraphs = map_paragraphs_to_vm(evaluation)
+        exercises = map_exercises_to_vm(evaluation)
+        feedback_summary = build_feedback_summary(evaluation)
+        # For now, scanned_images is empty - can be populated from file storage later
+        scanned_images = []
+        
         return StudentReportVM(
             student_id=student_id,
             student_name=student_name,
@@ -79,7 +87,11 @@ def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
             words=words,
             scores=scores,
             feedback=feedback,
-            original_paragraphs=original_paragraphs
+            original_paragraphs=original_paragraphs,
+            paragraphs=paragraphs,
+            exercises=exercises,
+            scanned_images=scanned_images,
+            feedback_summary=feedback_summary
         )
         
     except Exception as e:
@@ -222,13 +234,102 @@ def _render_assignment_combined(assignment_vm: AssignmentReportVM) -> bytes:
 
 
 def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
-    """Render using docxtpl with subdocuments."""
+    """Render using docxtpl with subdocuments and enhanced templates."""
     from docxtpl import DocxTemplate
-    from app.reporting.docx_renderer import ensure_template_exists
+    from datetime import datetime
+    import os
+    from pathlib import Path
     
-    # For now, use existing template and render as single document
-    # TODO: Implement proper assignment template with subdocuments
-    template_path = ensure_template_exists()
+    # Use new assignment template
+    project_root = Path(__file__).parent.parent.parent
+    assignment_template_path = project_root / "templates" / "word" / "assignment_compiled.docx"
+    
+    if not assignment_template_path.exists():
+        logger.warning("Assignment template not found, falling back to basic template")
+        from app.reporting.docx_renderer import ensure_template_exists
+        template_path = ensure_template_exists()
+        return _render_with_docxtpl_basic(assignment_vm, template_path)
+    
+    # Load the main assignment template
+    doc = DocxTemplate(str(assignment_template_path))
+    
+    # Prepare context with enhanced student data
+    students_data = []
+    for student in assignment_vm.students:
+        # Convert StudentReportVM to context dict
+        student_data = {
+            'student_name': student.student_name,
+            'student_no': student.student_no,
+            'topic': student.topic,
+            'words': student.words,
+            'scores': {
+                'total': student.scores.total,
+                'items': [
+                    {
+                        'name': item.name,
+                        'score': item.score,
+                        'max_score': item.max_score
+                    }
+                    for item in student.scores.items
+                ]
+            },
+            'paragraphs': [
+                {
+                    'para_num': para.para_num,
+                    'original_text': para.original_text,
+                    'feedback': para.feedback,
+                    'polished_text': para.polished_text,
+                    'intent': para.intent
+                }
+                for para in student.paragraphs
+            ],
+            'exercises': [
+                {
+                    'type': ex.type,
+                    'prompt': ex.prompt,
+                    'hints': ex.hints,
+                    'sample': ex.sample
+                }
+                for ex in student.exercises
+            ],
+            'feedback_summary': student.feedback_summary
+        }
+        students_data.append(student_data)
+    
+    # Create combined context
+    context = {
+        'assignment': {
+            'title': assignment_vm.title,
+            'classroom': assignment_vm.classroom,
+            'teacher': assignment_vm.teacher
+        },
+        'students': students_data,
+        'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    
+    # Debug: print context structure
+    logger.info(f"Rendering assignment with {len(students_data)} students")
+    
+    # Render template
+    try:
+        doc.render(context)
+    except Exception as e:
+        logger.error(f"Template rendering failed: {e}")
+        logger.error(f"Context keys: {list(context.keys())}")
+        logger.error(f"Students data type: {type(context['students'])}")
+        if context['students']:
+            logger.error(f"First student keys: {list(context['students'][0].keys())}")
+        raise
+    
+    # Save to bytes
+    output = io.BytesIO()
+    doc.save(output)
+    return output.getvalue()
+
+
+def _render_with_docxtpl_basic(assignment_vm: AssignmentReportVM, template_path: str) -> bytes:
+    """Fallback rendering using basic template (original implementation)."""
+    from docxtpl import DocxTemplate
     
     # Create a combined context with all student data
     combined_context = {
