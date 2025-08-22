@@ -347,12 +347,8 @@ def _get_top_essays(essays, limit):
         """安全地获取学生姓名"""
         try:
             if (essay.enrollment and 
-                essay.enrollment.student_profile and 
-                essay.enrollment.student_profile.name):
-                return essay.enrollment.student_profile.name
-            elif (essay.enrollment and 
-                  essay.enrollment.student and 
-                  essay.enrollment.student.user):
+                essay.enrollment.student and 
+                essay.enrollment.student.user):
                 return essay.enrollment.student.user.full_name or essay.enrollment.student.user.username
             return "未知"
         except AttributeError:
@@ -383,12 +379,8 @@ def _get_bottom_essays(essays, limit):
         """安全地获取学生姓名"""
         try:
             if (essay.enrollment and 
-                essay.enrollment.student_profile and 
-                essay.enrollment.student_profile.name):
-                return essay.enrollment.student_profile.name
-            elif (essay.enrollment and 
-                  essay.enrollment.student and 
-                  essay.enrollment.student.user):
+                essay.enrollment.student and 
+                essay.enrollment.student.user):
                 return essay.enrollment.student.user.full_name or essay.enrollment.student.user.username
             return "未知"
         except AttributeError:
