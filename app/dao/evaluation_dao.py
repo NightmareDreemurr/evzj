@@ -108,7 +108,7 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
                 student_name = student_profile.user.full_name or student_profile.user.username
             
             if student_profile.classroom:
-                class_name = student_profile.classroom.name
+                class_name = student_profile.classroom.class_name
                 
                 # Get teacher from classroom
                 if student_profile.classroom.teacher_profiles:

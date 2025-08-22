@@ -123,7 +123,7 @@ def build_assignment_vm(assignment_id: int) -> Optional[AssignmentReportVM]:
             if teacher_profile.classrooms:
                 classroom = teacher_profile.classrooms[0]
                 classroom_info = {
-                    "name": classroom.name,
+                    "name": classroom.class_name,
                     "id": classroom.id
                 }
         
