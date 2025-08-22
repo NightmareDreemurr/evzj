@@ -256,3 +256,4 @@ old_utils/
 # Planning documents (optional)
 cehua
 _probe_db.py
+_check_aid2.py
