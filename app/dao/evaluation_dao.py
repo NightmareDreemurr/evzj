@@ -200,7 +200,7 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         "scores": scores_data,
         "highlights": [],  # Empty for legacy data
         "diagnosis": None,  # Will try to extract from legacy fields
-        "analysis": ai_score_data.get("analysis"),
+        "analysis": None,   # Legacy analysis is often just a string, set to None for now
         "diagnostics": ai_score_data.get("diagnostics", []),
         "exercises": ai_score_data.get("exercises", []),
         "summary": ai_score_data.get("summary", ""),

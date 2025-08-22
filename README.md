@@ -335,19 +335,42 @@ GET /assignments/<assignment_id>/report/download
 {{ type }}问题: 低{{ data.low }}个, 中{{ data.medium }}个, 高{{ data.high }}个
 示例: {{ data.examples|join(', ') }}
 {% endfor %}
+
+# 时间格式化（已注册 strftime 过滤器）
+{{ now|strftime("%Y-%m-%d %H:%M:%S") }}
+
+# 增强内容（未来功能预留）
+{% for para in paragraphs %}段落 {{ loop.index }}: {{ para.feedback }}{% endfor %}
+{% for exercise in exercises %}练习: {{ exercise.title }}{% endfor %}
+{{ feedback_summary }}
 ```
+
+#### 模板过滤器注册
+
+系统已自动注册以下 Jinja2 过滤器，可直接在模板中使用：
+
+- `strftime`: 日期时间格式化，支持 datetime 对象和字符串
+- 其他标准 Jinja2 过滤器：`join`, `default`, `length` 等
 
 ### 故障排除
 
 #### 常见问题
 
 1. **模板文件丢失**: 系统会自动重新生成最小模板
-2. **历史数据兼容**: DAO层自动处理不同格式的评分数据
+2. **历史数据兼容**: DAO层自动处理不同格式的评分数据，减少兼容性警告
 3. **字体问题**: Linux环境建议安装中文字体（如思源黑体）
 
 #### 错误处理
 
 - 评估数据缺失时会提供友好的错误提示
+- **模板语法错误**: 系统不再静默回退，会明确报告模板问题
+- **作业汇总导出**: 缺少汇总模板时提供明确提示，不再自动导出第一篇作文
+
+#### 作业汇总导出行为
+
+- 汇总导出需要专用模板 `templates/word/assignment_compiled.docx`
+- 如果模板不存在，会返回明确错误信息而非静默导出单篇作文
+- 推荐使用单篇作文批量下载或创建专用汇总模板
 - 文件生成失败时会回退到安全的默认处理
 - 网络或权限问题会显示具体的错误信息
 
