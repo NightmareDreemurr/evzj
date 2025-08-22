@@ -244,8 +244,14 @@
                         作业报告：{{ assignment.title }}
                     </h3>
                     <div class="card-tools">
-                        <a href="{{ url_for('assignments.download_assignment_report', assignment_id=assignment.id) }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-download"></i> 下载 DOCX 报告
+                        <a href="{{ url_for('assignments.download_assignment_report_batch', assignment_id=assignment.id, format='docx', mode='combined') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-download"></i> 批量导出（合并 DOCX）
+                        </a>
+                        <a href="{{ url_for('assignments.download_assignment_report_batch', assignment_id=assignment.id, format='docx', mode='zip') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-file-archive"></i> 批量导出（打包 ZIP）
+                        </a>
+                        <a href="{{ url_for('assignments.download_assignment_report', assignment_id=assignment.id) }}" class="btn btn-outline-success btn-sm">
+                            <i class="fas fa-download"></i> 下载代表作文报告
                         </a>
                         <a href="{{ url_for('assignments.generate_report', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-sync-alt"></i> 重新生成报告

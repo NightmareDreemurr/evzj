@@ -219,3 +219,68 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         normalized["diagnosis"] = diagnosis_data
     
     return normalized
+
+
+def get_assignment_with_students(assignment_id: int):
+    """
+    Get assignment with related students, classrooms, and teacher data.
+    
+    Args:
+        assignment_id: Assignment ID
+        
+    Returns:
+        Tuple of (EssayAssignment, Classroom, TeacherProfile, List[StudentProfile])
+    """
+    from sqlalchemy.orm import joinedload
+    from app.models import Enrollment
+    
+    # Load assignment with eager loading
+    assignment = db.session.query(EssayAssignment)\
+        .options(
+            joinedload(EssayAssignment.teacher),
+            joinedload(EssayAssignment.classrooms),
+            joinedload(EssayAssignment.students)
+        )\
+        .filter(EssayAssignment.id == assignment_id)\
+        .first()
+    
+    if not assignment:
+        return None, None, None, []
+    
+    teacher = assignment.teacher
+    classroom = assignment.classrooms[0] if assignment.classrooms else None
+    
+    # Get students from both direct assignment and classroom enrollments
+    students = list(assignment.students)  # Directly assigned students
+    
+    # Add students from assigned classrooms
+    for classroom_obj in assignment.classrooms:
+        classroom_students = db.session.query(StudentProfile)\
+            .join(Enrollment, StudentProfile.id == Enrollment.student_profile_id)\
+            .filter(
+                Enrollment.classroom_id == classroom_obj.id,
+                Enrollment.status == 'active'
+            )\
+            .all()
+        
+        # Add classroom students if not already in direct assignments
+        for student in classroom_students:
+            if student not in students:
+                students.append(student)
+    
+    return assignment, classroom, teacher, students
+
+
+def get_essays_by_assignment(assignment_id: int):
+    """
+    Get all essays for an assignment.
+    
+    Args:
+        assignment_id: Assignment ID
+        
+    Returns:
+        List of Essay instances
+    """
+    return db.session.query(Essay)\
+        .filter(Essay.assignment_id == assignment_id)\
+        .all()
