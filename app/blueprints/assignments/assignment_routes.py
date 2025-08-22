@@ -1004,17 +1004,18 @@ def download_assignment_report(assignment_id):
             else:  # zip mode
                 filename = f"{safe_title}-reports-{timestamp}.zip"
                 
-                # Convert ZipFile to bytes
-                zip_buffer = io.BytesIO()
-                for chunk in result:
-                    zip_buffer.write(chunk)
-                zip_buffer.seek(0)
+                # Create response from ZipStream generator  
+                def generate_zip():
+                    for chunk in result:
+                        yield chunk
                 
-                return send_file(
-                    zip_buffer,
-                    as_attachment=True,
-                    download_name=filename,
-                    mimetype='application/zip'
+                from flask import Response
+                return Response(
+                    generate_zip(),
+                    headers={
+                        'Content-Disposition': f'attachment; filename="{filename}"',
+                        'Content-Type': 'application/zip'
+                    }
                 )
         
         except Exception as e:
@@ -1095,17 +1096,18 @@ def download_assignment_report_batch(assignment_id):
         else:  # zip mode  
             filename = f"{safe_title}-reports-{timestamp}.zip"
             
-            # Convert ZipFile generator to bytes
-            zip_buffer = io.BytesIO()
-            for chunk in result:
-                zip_buffer.write(chunk)
-            zip_buffer.seek(0)
+            # Create response from ZipStream generator  
+            def generate_zip():
+                for chunk in result:
+                    yield chunk
             
-            return send_file(
-                zip_buffer,
-                as_attachment=True,
-                download_name=filename,
-                mimetype='application/zip'
+            from flask import Response
+            return Response(
+                generate_zip(),
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"',
+                    'Content-Type': 'application/zip'
+                }
             )
             
     except Exception as e:
