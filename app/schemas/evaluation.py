@@ -14,6 +14,7 @@ class RubricScore(BaseModel):
     max: float = Field(..., description="满分")
     weight: float = Field(default=1.0, description="权重")
     reason: str = Field(default="", description="评分理由")
+    level: str = Field(default="", description="评分等级 (A, B, C等)")
     
     # Optional fields for enhanced AI feedback
     example_good_sentence: Optional[List[str]] = Field(default=None, description="优秀句子示例")
@@ -223,7 +224,7 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
         dimension = {
             'dimension_name': rubric.get('name', ''),
             'score': rubric.get('score', 0),
-            'selected_rubric_level': rubric.get('reason', ''),
+            'selected_rubric_level': rubric.get('level', ''),
             'feedback': rubric.get('reason', ''),
             'example_good_sentence': [],
             'example_improvement_suggestion': []
