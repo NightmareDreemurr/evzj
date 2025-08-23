@@ -14,6 +14,10 @@ class RubricScore(BaseModel):
     max: float = Field(..., description="满分")
     weight: float = Field(default=1.0, description="权重")
     reason: str = Field(default="", description="评分理由")
+    
+    # Optional fields for enhanced AI feedback
+    example_good_sentence: Optional[List[str]] = Field(default=None, description="优秀句子示例")
+    example_improvement_suggestion: Optional[List[str]] = Field(default=None, description="改进建议示例")
 
 
 class Span(BaseModel):
