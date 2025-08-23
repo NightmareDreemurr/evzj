@@ -167,4 +167,14 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     
     context['highlight_summary'] = highlight_summary
     
+    # P2: Add fields for future enhancements
+    context.setdefault('paragraphs', [])
+    context.setdefault('exercises', [])
+    context.setdefault('feedback_summary', '')
+    
+    # Ensure scores has required structure
+    if 'scores' in context:
+        context['scores'].setdefault('total', 0.0)
+        context['scores'].setdefault('rubrics', [])
+    
     return context

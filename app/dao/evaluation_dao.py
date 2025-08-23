@@ -37,12 +37,12 @@ def load_evaluation_by_essay(essay_id: int) -> Optional[EvaluationResult]:
             logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (new format)")
             return evaluation
         except Exception as e:
-            logger.warning(f"Failed to parse ai_score as new format for essay {essay_id}: {e}")
+            logger.warning(f"Failed to parse ai_score as new format for EvaluationResult {essay_id}: {e}")
             # Try to normalize legacy format
             try:
                 normalized_data = _normalize_legacy_ai_score(essay.ai_score, essay)
                 evaluation = EvaluationResult.model_validate(normalized_data)
-                logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (legacy format)")
+                logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (legacy format, auto-converted)")
                 return evaluation
             except Exception as e:
                 logger.error(f"Failed to normalize legacy ai_score for essay {essay_id}: {e}")
@@ -193,17 +193,20 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         "cleaned": essay.teacher_corrected_text or essay.content or ""
     }
     
-    # Create normalized data
+    # Create normalized data with enhanced fields for P2 & P4
     normalized = {
         "meta": meta,
         "text": text_data,
         "scores": scores_data,
         "highlights": [],  # Empty for legacy data
         "diagnosis": None,  # Will try to extract from legacy fields
-        "analysis": ai_score_data.get("analysis"),
+        "analysis": None,   # Legacy analysis is often just a string, set to None for now
         "diagnostics": ai_score_data.get("diagnostics", []),
         "exercises": ai_score_data.get("exercises", []),
-        "summary": ai_score_data.get("summary", "")
+        "summary": ai_score_data.get("summary", ""),
+        # P2: Add new fields for enhanced reporting (even if empty)
+        "paragraphs": [],
+        "feedback_summary": ai_score_data.get("summary", "")  # Use summary as feedback_summary fallback
     }
     
     # Try to extract diagnosis from legacy fields
