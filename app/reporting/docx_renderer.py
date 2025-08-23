@@ -21,6 +21,40 @@ from app.schemas.evaluation import EvaluationResult, to_context
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename to be safe for all operating systems.
+    
+    Removes or replaces characters that are invalid on Windows:
+    < > : " | ? * \\ /
+    
+    Args:
+        filename: Original filename string
+        
+    Returns:
+        Sanitized filename safe for all OS
+    """
+    # Characters that are invalid on Windows
+    invalid_chars = '<>:"|?*\\/'
+    
+    # Replace invalid characters with underscores
+    sanitized = filename
+    for char in invalid_chars:
+        sanitized = sanitized.replace(char, '_')
+    
+    # Replace spaces with underscores for consistency
+    sanitized = sanitized.replace(' ', '_')
+    
+    # Remove multiple consecutive underscores
+    while '__' in sanitized:
+        sanitized = sanitized.replace('__', '_')
+    
+    # Remove leading/trailing underscores
+    sanitized = sanitized.strip('_')
+    
+    return sanitized
+
+
 def ensure_template_exists(template_path: str = None) -> str:
     """
     Ensure the DOCX template exists, creating a minimal one if necessary.
@@ -430,9 +464,9 @@ def render_essay_docx(evaluation: EvaluationResult, output_path: str = None, rev
     """
     if output_path is None:
         # Generate filename from student name and topic
-        student = (evaluation.studentName or evaluation.meta.student).replace(' ', '_').replace('/', '_')
-        topic = (evaluation.assignmentTitle or str(evaluation.meta.topic)).replace(' ', '_').replace('/', '_')
-        date_str = str(evaluation.meta.date).replace('-', '').replace('/', '')
+        student = _sanitize_filename(evaluation.studentName or evaluation.meta.student)
+        topic = _sanitize_filename(evaluation.assignmentTitle or str(evaluation.meta.topic))
+        date_str = _sanitize_filename(str(evaluation.meta.date))
         filename = f"{student}_{topic}_{date_str}.docx"
         
         # Use temp directory

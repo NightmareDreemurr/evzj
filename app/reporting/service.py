@@ -17,6 +17,7 @@ from app.models import (
     Essay, Enrollment
 )
 from app.dao.evaluation_dao import load_evaluation_by_essay
+from app.services.evaluation_builder import load_evaluation_from_essay
 from app.reporting.viewmodels import (
     StudentReportVM, AssignmentReportVM, ScoreVM,
     map_scores_to_vm, safe_get_student_name, safe_get_topic,
