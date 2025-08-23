@@ -103,101 +103,16 @@ def ensure_assignment_template_exists() -> str:
     _create_assignment_template(template_path)
     return template_path
 
-def _apply_default_styles(doc: Document):
-    # Normal 字体与段落
-    normal = doc.styles['Normal']
-    normal.font.name = 'SimSun'
-    try:
-        # 设置中文字体
-        normal._element.rPr.rFonts.set(qn('w:eastAsia'), 'SimSun')
-    except Exception:
-        pass
-    normal.font.size = Pt(11)
-    pf = normal.paragraph_format
-    pf.space_before = Pt(6)
-    pf.space_after = Pt(6)
-    pf.line_spacing = 1.5
-
-    # Heading 层级大小（可按需调）
-    for name, size in [('Title', 20), ('Heading 1', 16), ('Heading 2', 14), ('Heading 3', 12)]:
-        if name in doc.styles:
-            st = doc.styles[name]
-            st.font.name = 'SimSun'
-            try:
-                st._element.rPr.rFonts.set(qn('w:eastAsia'), 'SimSun')
-            except Exception:
-                pass
-            st.font.size = Pt(size)
-
-def _apply_page_layout(doc: Document):
-    section = doc.sections[0]
-    section.top_margin = Cm(2.5)
-    section.bottom_margin = Cm(2.5)
-    section.left_margin = Cm(2.8)
-    section.right_margin = Cm(2.8)
-
-    # 页眉/页脚
-    header = section.header
-    h = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    if DOCXTPL_AVAILABLE:
-        h.text = '{{ assignmentTitle }} ｜ {{ className|default("默认班级") }} ｜ {{ teacherName|default("") }}'
-    else:
-        h.text = '作业标题 ｜ 班级 ｜ 教师'
-
-    footer = section.footer
-    f = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-    f.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    # 页码建议在可编辑模板中用 Word 字段；这里放生成时间兜底
-    if DOCXTPL_AVAILABLE:
-        f.text = '生成时间：{{ now|strftime("%Y-%m-%d %H:%M") }}'
-    else:
-        f.text = '生成时间：'
-
-def _add_rubric_table(doc: Document):
-    # 维度评分明细表（表头 + 若使用 docxtpl 则用循环占位）
-    doc.add_heading('维度评分明细', level=1)
-    table = doc.add_table(rows=1, cols=4)
-    table.style = 'Light Shading Accent 1' if 'Light Shading Accent 1' in [s.name for s in doc.styles if s.type==1] else 'Table Grid'
-    hdr = table.rows[0].cells
-    hdr[0].text = '维度'
-    hdr[1].text = '分数'
-    hdr[2].text = '等级'
-    hdr[3].text = '维度反馈'
-
-    if DOCXTPL_AVAILABLE:
-        # 用占位行表达 Jinja 循环（docxtpl 会正确渲染表格内占位）
-        row = table.add_row().cells
-        row[0].text = '{{ r.name }}'
-        row[1].text = '{{ r.score }}'
-        row[2].text = '{{ r.level|default("") }}'
-        row[3].text = '{{ r.reason|default("") }}'
-        # 在表格下方列出“亮点句子/待改进句”（项目符号列表）
-        p = doc.add_paragraph('亮点句子：', style='Heading 3')
-        p = doc.add_paragraph('{{ "• " + highlights }}')  # 可在上层拼接或改为循环
-        p.style = 'List Bullet'
-        p = doc.add_paragraph('待改进句：', style='Heading 3')
-        p = doc.add_paragraph('{{ "• " + to_improve }}')
-        p.style = 'List Bullet'
-    else:
-        # 兜底占位
-        row = table.add_row().cells
-        row[0].text = '——'
-        row[1].text = '——'
-        row[2].text = '——'
-        row[3].text = '——'
 
 def _create_minimal_template(template_path: str):
     """Create a minimal DOCX template for reports aligned with teacher view"""
     doc = Document()
-    _apply_default_styles(doc)
-    _apply_page_layout(doc)
 
-    # 1) 抬头信息（居中大标题）
+    # 1) 抬头信息（页首）
     title = doc.add_heading('批阅作业 - {{ assignmentTitle }}（{{ studentName }}）', 0)
     title.alignment = 1  # Center
 
-    # 基本信息
+    # Basic info in one or two lines
     doc.add_heading('基本信息', level=1)
     info_para = doc.add_paragraph()
     info_para.add_run('作业：').bold = True
@@ -207,42 +122,185 @@ def _create_minimal_template(template_path: str):
     info_para.add_run('提交时间：').bold = True
     info_para.add_run('{{ submittedAt }}')
 
-    # 评分结果（总分）
+    # 2) 总分与维度评分表
     doc.add_heading('评分结果', level=1)
     score_para = doc.add_paragraph()
     score_para.add_run('总分：').bold = True
-    score_para.add_run('{{ totalScore }} / {{ maxScore }}')
+    if DOCXTPL_AVAILABLE:
+        score_para.add_run('{{ gradingResult.total_score }} / {{ total_max_score|default(40) }}')
+    else:
+        score_para.add_run('[总分]')
 
-    # 维度评分明细（表格 + 列表）
-    _add_rubric_table(doc)
+    # 维度明细表
+    doc.add_heading('维度评分明细', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph("""
+{% if gradingResult.dimensions and gradingResult.dimensions|length > 0 %}
+| 维度 | 分数 | 等级 | 维度反馈 |
+|------|------|------|----------|
+{% for dim in gradingResult.dimensions %}| {{ dim.dimension_name }} | {{ dim.score }} | {{ dim.selected_rubric_level|default('') }} | {{ dim.feedback|default('') }} |
+{% endfor %}
 
-    # 作文正文
+{% for dim in gradingResult.dimensions %}
+**{{ dim.dimension_name }}维度详情：**
+
+亮点句子：
+{% if dim.example_good_sentence and dim.example_good_sentence|length > 0 %}
+{% for sentence in dim.example_good_sentence %}
+• {{ sentence }}
+{% endfor %}
+{% else %}
+• （本项暂无数据）
+{% endif %}
+
+待改进句：
+{% if dim.example_improvement_suggestion and dim.example_improvement_suggestion|length > 0 %}
+{% for suggestion in dim.example_improvement_suggestion %}
+- 原文：{{ suggestion.original|default('') }}
+- 建议：{{ suggestion.suggested|default('') }}
+{% endfor %}
+{% else %}
+• （本项暂无数据）
+{% endif %}
+
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
+    else:
+        doc.add_paragraph('[维度评分明细]')
+
+    # 3) 作文正文（当前文本）
     doc.add_heading('作文正文', level=1)
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{{ currentEssayContent|default("") }}')
+        doc.add_paragraph('{{ currentEssayContent|default("（本项暂无数据）") }}')
     else:
-        doc.add_paragraph('')
+        doc.add_paragraph('[作文正文内容]')
 
-    # 综合评价与寄语（空则不显示建议在模板中用条件控制，这里保留标题）
+    # 4) 综合评价与寄语
     doc.add_heading('综合评价与寄语', level=1)
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{{ gradingResult.overall_comment|default("") }}')
+        doc.add_paragraph('{{ gradingResult.overall_comment|default("（本项暂无数据）") }}')
     else:
-        doc.add_paragraph('')
+        doc.add_paragraph('[综合评价与寄语]')
 
-    # 主要优点 / 改进建议（项目符号列表）
+    # 5) 主要优点
     doc.add_heading('主要优点', level=1)
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% for a in advantages %}• {{ a }}{% endfor %}')
+        doc.add_paragraph("""
+{% if gradingResult.strengths and gradingResult.strengths|length > 0 %}
+{% for strength in gradingResult.strengths %}
+• {{ strength }}
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
     else:
-        doc.add_paragraph('')
+        doc.add_paragraph('[主要优点]')
+
+    # 6) 改进建议
     doc.add_heading('改进建议', level=1)
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% for a in advice %}• {{ a }}{% endfor %}')
+        doc.add_paragraph("""
+{% if gradingResult.improvements and gradingResult.improvements|length > 0 %}
+{% for improvement in gradingResult.improvements %}
+• {{ improvement }}
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
     else:
-        doc.add_paragraph('')
+        doc.add_paragraph('[改进建议]')
+
+    # 7) AI 增强内容审核
+    doc.add_heading('AI 增强内容审核', level=1)
+
+    # 段落大纲分析
+    doc.add_heading('段落大纲分析', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph("""
+{% if outline and outline|length > 0 %}
+{% for item in outline %}
+{{ item.index }}. {{ item.intention }}
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
+    else:
+        doc.add_paragraph('[段落大纲分析]')
+
+    # 诊断建议
+    doc.add_heading('诊断建议', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph("""
+{% if diagnoses and diagnoses|length > 0 %}
+{% for diag in diagnoses %}
+{{ diag.id }}. {{ diag.target }} - {{ diag.evidence }} 
+   建议：{% for suggestion in diag.suggestions %}{{ suggestion }}{% if not loop.last %}；{% endif %}{% endfor %}
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
+    else:
+        doc.add_paragraph('[诊断建议]')
+
+    # 个性化练习
+    doc.add_heading('个性化练习', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph("""
+{% if personalizedPractices and personalizedPractices|length > 0 %}
+{% for practice in personalizedPractices %}
+{{ loop.index }}. {{ practice.title }}
+   要求：{{ practice.requirement }}
+{% endfor %}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
+    else:
+        doc.add_paragraph('[个性化练习]')
+
+    # 综合诊断总结
+    doc.add_heading('综合诊断总结', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph("""
+{% if summaryData %}
+**问题总结：** {{ summaryData.problemSummary|default("（本项暂无数据）") }}
+
+**改进建议：** {{ summaryData.improvementPlan|default("（本项暂无数据）") }}
+
+**预期效果：** {{ summaryData.expectedOutcome|default("（本项暂无数据）") }}
+{% else %}
+（本项暂无数据）
+{% endif %}
+        """.strip())
+    else:
+        doc.add_paragraph('[综合诊断总结]')
+
+    # 给家长的总结
+    doc.add_heading('给家长的总结', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{{ parentSummary|default("（本项暂无数据）") }}')
+    else:
+        doc.add_paragraph('[给家长的总结]')
+
+    # Footer
+    doc.add_paragraph().add_run('\n' + '='*50)
+    footer = doc.add_paragraph()
+    footer.add_run('报告生成时间: ').bold = True
+    if DOCXTPL_AVAILABLE:
+        footer.add_run('{{ now|strftime("%Y-%m-%d %H:%M:%S") }}')
+    else:
+        footer.add_run('[生成时间]')
+    footer.alignment = 1  # Center
 
     doc.save(template_path)
+    logger.info(f"Created teacher-view aligned template: {template_path}")
 def _create_assignment_template(template_path: str):
     """Create assignment batch template with student loop and page breaks"""
     from docx import Document

@@ -224,14 +224,6 @@ def generate_report_content(evaluation: EvaluationResult, essay):
     return '\n'.join(lines)
 
 
-# 在现有 generate_docx_report_from_evaluation 中，对“诊断建议/练习建议”做轻量版式增强
-def _as_bullet(paragraph):
-    try:
-        paragraph.style = 'List Bullet'
-    except Exception:
-        pass
-    return paragraph
-
 def generate_docx_report_from_evaluation(evaluation: EvaluationResult, essay, output_path: str):
     """Generate DOCX report from EvaluationResult"""
     
@@ -297,32 +289,29 @@ def generate_docx_report_from_evaluation(evaluation: EvaluationResult, essay, ou
             doc.add_heading('诊断建议', level=1)
             for diag in evaluation.diagnostics:
                 para_info = f"第{diag.para}段" if diag.para else "全文"
-                para = _as_bullet(doc.add_paragraph())
-                run = para.add_run(f"{para_info} - {diag.issue}  ")
-                run.bold = True
-
-                ev = para.add_run("证据: ")
-                ev.bold = True
-                para.add_run(f"{diag.evidence}  ")
-
+                para = doc.add_paragraph()
+                para.add_run(f"{para_info} - ").bold = True
+                para.add_run(f"{diag.issue}\n")
+                para.add_run("证据: ").bold = True
+                para.add_run(f"{diag.evidence}\n")
                 if diag.advice:
-                    adv = para.add_run("建议: ")
-                    adv.bold = True
-                    para.add_run('；'.join(diag.advice))
+                    para.add_run("建议: ").bold = True
+                    para.add_run(', '.join(diag.advice))
 
         # Exercises
         if evaluation.exercises:
             doc.add_heading('练习建议', level=1)
             for ex in evaluation.exercises:
-                para = _as_bullet(doc.add_paragraph())
-                title_run = para.add_run(f"[{ex.type}] {ex.prompt}  ")
-                title_run.bold = True
-                if getattr(ex, 'hint', None):
-                    h = para.add_run("要点: ")
-                    h.bold = True
-                    para.add_run('；'.join(ex.hint) if isinstance(ex.hint, (list, tuple)) else str(ex.hint))
-                if getattr(ex, 'sample', None):
-                    para.add_run("  示例: ")
+                para = doc.add_paragraph()
+                para.add_run(f"练习类型: ").bold = True
+                para.add_run(f"{ex.type}\n")
+                para.add_run(f"提示: ").bold = True
+                para.add_run(f"{ex.prompt}\n")
+                if ex.hint:
+                    para.add_run("要点: ").bold = True
+                    para.add_run(', '.join(ex.hint) + '\n')
+                if ex.sample:
+                    para.add_run("示例: ").bold = True
                     para.add_run(ex.sample)
 
         # Summary
