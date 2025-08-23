@@ -308,6 +308,7 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
             'student_no': student.student_no,
             'topic': student.topic,
             'words': student.words,
+            # 在 _render_with_docxtpl_combined 构建 student_data 的 'scores' 时，补充一个 rubrics 别名
             'scores': {
                 'total': student.scores.total,
                 'items': [
@@ -319,7 +320,18 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                         'reason': getattr(item, 'reason', '')
                     }
                     for item in student.scores.items
-                ]
+                ],
+                # 兼容字段，方便模板将来统一用 rubrics/max
+                'rubrics': [
+                    {
+                        'name': item.name,
+                        'score': item.score,
+                        'max': item.max_score,
+                        'weight': getattr(item, 'weight', ''),
+                        'reason': getattr(item, 'reason', '')
+                    }
+                    for item in student.scores.items
+                ],
             },
             'text': {
                 # 优先 cleaned_text，其次用原文段落拼接，再退到反馈
