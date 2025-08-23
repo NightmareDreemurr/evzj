@@ -117,6 +117,24 @@ class EvaluationResult(BaseModel):
     diagnostics: List[DiagnosticItem] = Field(default_factory=list, description="诊断建议")
     exercises: List[ExerciseItem] = Field(default_factory=list, description="练习建议")
     summary: str = Field(default="", description="给家长可读的总结")
+    
+    # Teacher-view aligned export fields
+    assignmentTitle: Optional[str] = Field(None, description="作业标题")
+    studentName: Optional[str] = Field(None, description="学生姓名")
+    submittedAt: Optional[str] = Field(None, description="提交时间")
+    currentEssayContent: Optional[str] = Field(None, description="当前作文内容(教师最终版本)")
+    
+    # AI enhanced content for export
+    outline: List[Dict[str, Any]] = Field(default_factory=list, description="段落大纲分析")
+    diagnoses: List[Dict[str, Any]] = Field(default_factory=list, description="诊断建议")
+    personalizedPractices: List[Dict[str, Any]] = Field(default_factory=list, description="个性化练习")
+    summaryData: Optional[Dict[str, Any]] = Field(None, description="综合诊断总结")
+    parentSummary: Optional[str] = Field(None, description="给家长的总结")
+    
+    # Additional fields for template compatibility
+    overall_comment: Optional[str] = Field(None, description="综合评价")
+    strengths: List[str] = Field(default_factory=list, description="主要优点")
+    improvements: List[str] = Field(default_factory=list, description="改进建议")
 
 
 class StandardDTO(BaseModel):
@@ -176,5 +194,76 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     if 'scores' in context:
         context['scores'].setdefault('total', 0.0)
         context['scores'].setdefault('rubrics', [])
+    
+    # Map teacher-view aligned fields for export compatibility
+    # These fields should be populated when creating EvaluationResult for export
+    context.setdefault('assignmentTitle', context.get('assignmentTitle') or meta.get('topic', '未知作业'))
+    context.setdefault('studentName', context.get('studentName') or meta.get('student', '未知学生'))
+    context.setdefault('submittedAt', context.get('submittedAt') or meta.get('date', '未知时间'))
+    context.setdefault('currentEssayContent', context.get('currentEssayContent', ''))
+    
+    # Transform scoring data to match teacher view structure  
+    grading_result = {
+        'total_score': context.get('scores', {}).get('total', 0),
+        'dimensions': []
+    }
+    
+    # Map rubrics to dimensions format expected by teacher view
+    rubrics = context.get('scores', {}).get('rubrics', [])
+    for rubric in rubrics:
+        dimension = {
+            'dimension_name': rubric.get('name', ''),
+            'score': rubric.get('score', 0),
+            'selected_rubric_level': rubric.get('reason', ''),
+            'feedback': rubric.get('reason', ''),
+            'example_good_sentence': [],  # Will be populated from highlights/analysis
+            'example_improvement_suggestion': []  # Will be populated from diagnostics
+        }
+        grading_result['dimensions'].append(dimension)
+    
+    context['gradingResult'] = grading_result
+    
+    # Map AI enhanced content for export
+    context.setdefault('outline', context.get('outline', []))
+    context.setdefault('diagnoses', context.get('diagnoses', []))
+    context.setdefault('personalizedPractices', context.get('personalizedPractices', []))
+    context.setdefault('summaryData', context.get('summaryData'))
+    context.setdefault('parentSummary', context.get('parentSummary'))
+    
+    # Map legacy analysis data if new format is empty
+    if not context['outline'] and context.get('analysis') and context['analysis']:
+        outline_items = context['analysis'].get('outline', [])
+        context['outline'] = [{'index': item.get('para', 0), 'intention': item.get('intent', '')} 
+                             for item in outline_items]
+    
+    if not context['diagnoses'] and context.get('diagnostics'):
+        context['diagnoses'] = []
+        for i, diag in enumerate(context['diagnostics']):
+            diagnosis = {
+                'id': i + 1,
+                'target': f"第{diag.get('para', 0)}段" if diag.get('para') else "全文",
+                'evidence': diag.get('evidence', ''),
+                'suggestions': diag.get('advice', [])
+            }
+            context['diagnoses'].append(diagnosis)
+    
+    if not context['personalizedPractices'] and context.get('exercises'):
+        context['personalizedPractices'] = [
+            {
+                'title': ex.get('type', ''),
+                'requirement': ex.get('prompt', '')
+            } for ex in context['exercises']
+        ]
+    
+    # Create summary data if not provided
+    if not context['summaryData']:
+        context['summaryData'] = {
+            'problemSummary': '本次作文分析发现的主要问题...',
+            'improvementPlan': '建议从以下方面进行改进...',
+            'expectedOutcome': '通过有针对性的练习，预期能够...'
+        }
+    
+    if not context['parentSummary']:
+        context['parentSummary'] = context.get('summary', '总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。')
     
     return context

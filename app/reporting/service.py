@@ -24,6 +24,7 @@ from app.reporting.viewmodels import (
     map_paragraphs_to_vm, map_exercises_to_vm, build_feedback_summary
 )
 from app.reporting.docx_renderer import render_essay_docx
+from app.schemas.evaluation import EvaluationResult, Meta, TextBlock, Scores, RubricScore
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,211 @@ def build_assignment_vm(assignment_id: int, require_review: bool = None) -> Opti
         return None
 
 
+def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
+    """
+    Build EvaluationResult aligned with teacher view data structure.
+    
+    Args:
+        essay_id: Essay ID
+        
+    Returns:
+        EvaluationResult with teacher-view aligned fields populated
+    """
+    try:
+        # Get essay with related data
+        essay = db.session.get(Essay, essay_id)
+        if not essay:
+            logger.warning(f"Essay {essay_id} not found")
+            return None
+        
+        assignment = essay.assignment
+        if not assignment:
+            logger.warning(f"Assignment not found for essay {essay_id}")
+            return None
+        
+        # Get teacher feedback data (this is what's shown on review page)
+        grading_result = essay.ai_score or {}
+        if essay.teacher_feedback_overrides:
+            try:
+                from dictdiffer import patch
+                grading_result = patch(essay.teacher_feedback_overrides, grading_result)
+            except Exception as e:
+                logger.warning(f"Failed to apply teacher feedback overrides for essay {essay_id}: {e}")
+                grading_result = essay.ai_score or {}
+        
+        # Build basic meta information aligned with teacher view
+        student_name = "未知学生"
+        if essay.enrollment and essay.enrollment.student and essay.enrollment.student.user:
+            student_name = essay.enrollment.student.user.full_name or essay.enrollment.student.user.username
+        
+        submitted_at = essay.created_at.strftime('%Y-%m-%d %H:%M:%S') if essay.created_at else "未知时间"
+        
+        meta = Meta(
+            student=student_name,
+            topic=assignment.title,
+            date=submitted_at,
+            class_="未知班级",  # Could be enhanced to get actual class
+            teacher="未知教师"   # Could be enhanced to get actual teacher
+        )
+        
+        # Build scores from grading_result 
+        total_score = grading_result.get('total_score', 0)
+        rubrics = []
+        
+        # Map dimensions to rubrics
+        dimensions = grading_result.get('dimensions', [])
+        for dim in dimensions:
+            rubric = RubricScore(
+                name=dim.get('dimension_name', ''),
+                score=dim.get('score', 0),
+                max=dim.get('max_score', 0) or 10,  # Default max if not provided
+                weight=1.0,
+                reason=dim.get('feedback', '') or dim.get('selected_rubric_level', '')
+            )
+            rubrics.append(rubric)
+        
+        scores = Scores(total=total_score, rubrics=rubrics)
+        
+        # Get current essay content (teacher's final version)
+        # This comes from content_source in the review page
+        original_content = essay.content or essay.original_ocr_text or ''
+        current_content = essay.teacher_corrected_text if essay.teacher_corrected_text else original_content
+        
+        text_block = TextBlock(original=original_content, cleaned=current_content)
+        
+        # Load enhanced evaluation data if available
+        evaluation_data = None
+        try:
+            evaluation_data = load_evaluation_from_essay(essay_id)
+        except Exception as e:
+            logger.warning(f"Failed to load evaluation data for essay {essay_id}: {e}")
+        
+        # Extract AI enhanced content from evaluation_data
+        outline = []
+        diagnoses = []
+        personalized_practices = []
+        summary_data = None
+        parent_summary = ""
+        
+        if evaluation_data:
+            # Map outline from analysis
+            if hasattr(evaluation_data, 'analysis') and evaluation_data.analysis:
+                outline_items = evaluation_data.analysis.outline if hasattr(evaluation_data.analysis, 'outline') else []
+                outline = [{'index': item.para, 'intention': item.intent} for item in outline_items]
+            
+            # Map diagnostics to diagnoses
+            if hasattr(evaluation_data, 'diagnostics') and evaluation_data.diagnostics:
+                for i, diag in enumerate(evaluation_data.diagnostics):
+                    diagnosis = {
+                        'id': i + 1,
+                        'target': f"第{diag.para}段" if diag.para else "全文",
+                        'evidence': diag.evidence,
+                        'suggestions': diag.advice if hasattr(diag, 'advice') else []
+                    }
+                    diagnoses.append(diagnosis)
+            
+            # Map exercises to personalized practices
+            if hasattr(evaluation_data, 'exercises') and evaluation_data.exercises:
+                for ex in evaluation_data.exercises:
+                    practice = {
+                        'title': ex.type if hasattr(ex, 'type') else '',
+                        'requirement': ex.prompt if hasattr(ex, 'prompt') else ''
+                    }
+                    personalized_practices.append(practice)
+            
+            # Use summary for parent summary
+            if hasattr(evaluation_data, 'summary'):
+                parent_summary = evaluation_data.summary
+        
+        # Create default summary data if not available
+        if not summary_data:
+            summary_data = {
+                'problemSummary': '本次作文分析发现的主要问题包括结构组织、语言表达等方面。',
+                'improvementPlan': '建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。',
+                'expectedOutcome': '通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。'
+            }
+        
+        # Build the EvaluationResult with teacher-view aligned fields
+        result = EvaluationResult(
+            meta=meta,
+            text=text_block,
+            scores=scores,
+            highlights=[],  # Not needed for current export
+            diagnosis=None,  # Using new format instead
+            
+            # Teacher-view aligned export fields
+            assignmentTitle=assignment.title,
+            studentName=student_name,
+            submittedAt=submitted_at,
+            currentEssayContent=current_content,
+            
+            # AI enhanced content
+            outline=outline,
+            diagnoses=diagnoses,
+            personalizedPractices=personalized_practices,
+            summaryData=summary_data,
+            parentSummary=parent_summary,
+            
+            # Additional fields needed for template compatibility
+            overall_comment=grading_result.get('overall_comment', ''),
+            strengths=grading_result.get('strengths', []),
+            improvements=grading_result.get('improvements', [])
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to build teacher view evaluation for essay {essay_id}: {e}")
+        return None
+
+
 def render_student_docx(essay_id: int) -> bytes:
+    """
+    Render single student DOCX report using legacy format.
+    
+    Args:
+        essay_id: Essay ID
+        
+    Returns:
+        DOCX file content as bytes
+    """
+    from app.dao.evaluation_dao import load_evaluation_by_essay
+    
+    evaluation = load_evaluation_by_essay(essay_id)
+    if not evaluation:
+        raise ValueError(f"No evaluation found for essay {essay_id}")
+    
+    # Use existing renderer with legacy format
+    output_path = render_essay_docx(evaluation, teacher_view=False)
+    
+    # Read file and return bytes
+    with open(output_path, 'rb') as f:
+        return f.read()
+
+
+def render_teacher_view_docx(essay_id: int) -> bytes:
+    """
+    Render DOCX report aligned with teacher view (no diff).
+    
+    Args:
+        essay_id: Essay ID
+        
+    Returns:
+        DOCX file content as bytes
+        
+    Raises:
+        ValueError: If evaluation data not found
+    """
+    evaluation = build_teacher_view_evaluation(essay_id)
+    if not evaluation:
+        raise ValueError(f"No evaluation data found for essay {essay_id}")
+    
+    # Use existing renderer with teacher-view aligned evaluation
+    output_path = render_essay_docx(evaluation)
+    
+    # Read file and return bytes
+    with open(output_path, 'rb') as f:
+        return f.read()
     """
     Render single student DOCX report.
     
