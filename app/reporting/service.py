@@ -28,25 +28,55 @@ from app.reporting.docx_renderer import render_essay_docx
 logger = logging.getLogger(__name__)
 
 
-def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
+def build_student_vm(essay_id: int, require_review: bool = None) -> Optional[StudentReportVM]:
     """
     Build StudentReportVM from essay evaluation data.
     
     Args:
         essay_id: Essay ID
+        require_review: Whether to require teacher review before export. 
+                       If None, uses config EVAL_REQUIRE_REVIEW_BEFORE_EXPORT
         
     Returns:
         StudentReportVM instance or None if not found
+        
+    Raises:
+        ValueError: If require_review is True but evaluation is not teacher-reviewed
     """
     try:
+        from flask import current_app
+        
+        # Check if review is required
+        if require_review is None:
+            require_review = current_app.config.get('EVAL_REQUIRE_REVIEW_BEFORE_EXPORT', False)
+        
         # Load evaluation result
         evaluation = load_evaluation_by_essay(essay_id)
         if not evaluation:
             logger.warning(f"No evaluation found for essay {essay_id}")
             return None
         
-        # Get essay for additional context
+        # Get essay for additional context and status checking
         essay = db.session.get(Essay, essay_id)
+        if not essay:
+            logger.warning(f"Essay {essay_id} not found")
+            return None
+        
+        # Check review status if required
+        if require_review:
+            eval_status = getattr(essay, 'evaluation_status', 'ai_generated')
+            if eval_status not in ['teacher_reviewed', 'finalized']:
+                error_msg = f"Essay {essay_id} evaluation status is '{eval_status}', but teacher review is required for export"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+        
+        # Add review status to meta if available
+        eval_status = getattr(essay, 'evaluation_status', 'ai_generated')
+        review_info = {
+            'status': eval_status,
+            'reviewed_by': getattr(essay, 'reviewed_by', None),
+            'reviewed_at': getattr(essay, 'reviewed_at', None)
+        }
         if not essay:
             logger.warning(f"Essay {essay_id} not found")
             return None
@@ -91,7 +121,10 @@ def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
             paragraphs=paragraphs,
             exercises=exercises,
             scanned_images=scanned_images,
-            feedback_summary=feedback_summary
+            feedback_summary=feedback_summary,
+            review_status=review_info['status'],
+            reviewed_by=review_info['reviewed_by'],
+            reviewed_at=review_info['reviewed_at'].isoformat() if review_info['reviewed_at'] else None
         )
         
     except Exception as e:
@@ -99,15 +132,20 @@ def build_student_vm(essay_id: int) -> Optional[StudentReportVM]:
         return None
 
 
-def build_assignment_vm(assignment_id: int) -> Optional[AssignmentReportVM]:
+def build_assignment_vm(assignment_id: int, require_review: bool = None) -> Optional[AssignmentReportVM]:
     """
     Build AssignmentReportVM with all student data.
     
     Args:
         assignment_id: Assignment ID
+        require_review: Whether to require teacher review before export.
+                       If None, uses config EVAL_REQUIRE_REVIEW_BEFORE_EXPORT
         
     Returns:
         AssignmentReportVM instance or None if not found
+        
+    Raises:
+        ValueError: If require_review is True but some evaluations are not teacher-reviewed
     """
     try:
         # Get assignment with related data in single query to avoid N+1
@@ -149,7 +187,7 @@ def build_assignment_vm(assignment_id: int) -> Optional[AssignmentReportVM]:
         # Build student VMs
         students = []
         for essay in essays:
-            student_vm = build_student_vm(essay.id)
+            student_vm = build_student_vm(essay.id, require_review)
             if student_vm:
                 students.append(student_vm)
         
@@ -192,18 +230,23 @@ def render_student_docx(essay_id: int) -> bytes:
         return f.read()
 
 
-def render_assignment_docx(assignment_id: int, mode: Literal["combined", "zip"] = "combined") -> Union[bytes, zipstream.ZipStream]:
+def render_assignment_docx(assignment_id: int, mode: Literal["combined", "zip"] = "combined", require_review: bool = None) -> Union[bytes, zipstream.ZipStream]:
     """
     Render assignment batch DOCX report.
     
     Args:
         assignment_id: Assignment ID
         mode: "combined" for single merged DOCX, "zip" for ZIP of individual files
+        require_review: Whether to require teacher review before export.
+                       If None, uses config EVAL_REQUIRE_REVIEW_BEFORE_EXPORT
         
     Returns:
         Bytes for combined mode, ZipFile for zip mode
+        
+    Raises:
+        ValueError: If require_review is True but some evaluations are not teacher-reviewed
     """
-    assignment_vm = build_assignment_vm(assignment_id)
+    assignment_vm = build_assignment_vm(assignment_id, require_review)
     if not assignment_vm:
         raise ValueError(f"No data found for assignment {assignment_id}")
     

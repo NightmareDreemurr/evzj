@@ -129,13 +129,14 @@ def _create_minimal_template(template_path: str):
     logger.info(f"Created minimal template: {template_path}")
 
 
-def render_essay_docx(evaluation: EvaluationResult, output_path: str = None) -> str:
+def render_essay_docx(evaluation: EvaluationResult, output_path: str = None, review_status: str = None) -> str:
     """
     Render a single essay evaluation to DOCX.
     
     Args:
         evaluation: EvaluationResult instance
         output_path: Output file path, auto-generated if None
+        review_status: Review status for display (ai_generated, teacher_reviewed, finalized)
         
     Returns:
         Path to generated DOCX file
@@ -152,9 +153,9 @@ def render_essay_docx(evaluation: EvaluationResult, output_path: str = None) -> 
         output_path = os.path.join(temp_dir, filename)
     
     if DOCXTPL_AVAILABLE:
-        return _render_with_docxtpl(evaluation, output_path)
+        return _render_with_docxtpl(evaluation, output_path, review_status)
     else:
-        return _render_with_python_docx(evaluation, output_path)
+        return _render_with_python_docx(evaluation, output_path, review_status)
 
 
 def render_assignment_docx(assignment_id: int, evaluations: list = None, output_path: str = None) -> str:
@@ -212,7 +213,7 @@ def _render_assignment_combined(assignment_id: int, evaluations: list, output_pa
     raise NotImplementedError("Combined assignment rendering not yet implemented")
 
 
-def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
+def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str, review_status: str = None) -> str:
     """Render using docxtpl (template-based)"""
     template_path = ensure_template_exists()
     
@@ -224,6 +225,11 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
         from datetime import datetime
         context['now'] = datetime.now()
         context['current_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Add review status information
+        context['review_status'] = review_status or 'ai_generated'
+        context['is_reviewed'] = review_status in ['teacher_reviewed', 'finalized'] if review_status else False
+        context['needs_review_warning'] = review_status not in ['teacher_reviewed', 'finalized'] if review_status else True
         
         # Add fields for future enhancements (P2)
         context.setdefault('paragraphs', [])
@@ -262,13 +268,19 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str) -> str:
         raise RuntimeError(f"DOCX template rendering failed: {e}") from e
 
 
-def _render_with_python_docx(evaluation: EvaluationResult, output_path: str) -> str:
+def _render_with_python_docx(evaluation: EvaluationResult, output_path: str, review_status: str = None) -> str:
     """Render using python-docx (direct generation)"""
     doc = Document()
     
     # Title
     title = doc.add_heading(f'{evaluation.meta.topic} 作文评估报告', 0)
     title.alignment = 1  # Center
+    
+    # Add review status warning if needed
+    if review_status and review_status != 'teacher_reviewed' and review_status != 'finalized':
+        warning = doc.add_paragraph()
+        warning.add_run('⚠️ 注意：此报告内容为AI生成，尚未经过教师审核确认').bold = True
+        warning.style = 'Intense Quote'
     
     # Basic information
     doc.add_heading('基本信息', level=1)

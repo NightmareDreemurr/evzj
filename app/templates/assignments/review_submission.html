@@ -211,6 +211,183 @@
                     {% endif %}
                 </div>
             </div>
+            
+            <!-- Enhanced AI Content Review Panel -->
+            {% if eval_prebuild_enabled and evaluation_data %}
+            <div class="card shadow mb-4" id="enhanced-content-panel">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">AI 增强内容审核</h6>
+                    <div>
+                        <span class="badge bg-info">
+                            {% if submission.evaluation_status == 'teacher_reviewed' %}
+                                已审核
+                            {% elif submission.evaluation_status == 'finalized' %}
+                                已确认
+                            {% else %}
+                                待审核
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 段落大纲分析 -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">段落大纲分析</h6>
+                        <div id="outline-container">
+                            {% if evaluation_data.analysis and evaluation_data.analysis.outline %}
+                                {% for item in evaluation_data.analysis.outline %}
+                                <div class="outline-item-wrapper mb-2" data-para="{{ item.para }}">
+                                    <div class="row">
+                                        <div class="col-2">
+                                            <span class="badge bg-secondary">第{{ item.para }}段</span>
+                                        </div>
+                                        <div class="col-10">
+                                            <div class="input-group">
+                                                <span class="input-group-text">写作意图:</span>
+                                                <input type="text" class="form-control outline-intent" value="{{ item.intent }}" placeholder="描述这一段的写作意图...">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无段落大纲分析数据</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 诊断建议 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-primary mb-0">诊断建议</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-diagnostic-btn">
+                                <i class="fas fa-plus"></i> 添加诊断
+                            </button>
+                        </div>
+                        <div id="diagnostics-container">
+                            {% if evaluation_data.diagnostics %}
+                                {% for diagnostic in evaluation_data.diagnostics %}
+                                <div class="diagnostic-item mb-3 border rounded p-3" data-index="{{ loop.index0 }}">
+                                    <div class="row mb-2">
+                                        <div class="col-3">
+                                            <label class="form-label">段落位置:</label>
+                                            <input type="number" class="form-control form-control-sm diagnostic-para" value="{{ diagnostic.para or '' }}" placeholder="段落号">
+                                        </div>
+                                        <div class="col-9">
+                                            <label class="form-label">问题描述:</label>
+                                            <input type="text" class="form-control form-control-sm diagnostic-issue" value="{{ diagnostic.issue }}" placeholder="描述发现的问题...">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-12">
+                                            <label class="form-label">证据:</label>
+                                            <textarea class="form-control form-control-sm diagnostic-evidence" rows="2" placeholder="支持这个问题的具体证据...">{{ diagnostic.evidence }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-12">
+                                            <label class="form-label">改进建议:</label>
+                                            <div class="advice-container">
+                                                {% for advice in diagnostic.advice %}
+                                                <div class="input-group mb-1">
+                                                    <input type="text" class="form-control form-control-sm advice-item" value="{{ advice }}" placeholder="输入改进建议...">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-advice-btn">×</button>
+                                                </div>
+                                                {% endfor %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary add-advice-btn">+ 添加建议</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-diagnostic-btn">删除诊断</button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无诊断建议</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 个性化练习 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-primary mb-0">个性化练习</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-exercise-btn">
+                                <i class="fas fa-plus"></i> 添加练习
+                            </button>
+                        </div>
+                        <div id="exercises-container">
+                            {% if evaluation_data.exercises %}
+                                {% for exercise in evaluation_data.exercises %}
+                                <div class="exercise-item mb-3 border rounded p-3" data-index="{{ loop.index0 }}">
+                                    <div class="row mb-2">
+                                        <div class="col-4">
+                                            <label class="form-label">练习类型:</label>
+                                            <input type="text" class="form-control form-control-sm exercise-type" value="{{ exercise.type }}" placeholder="练习类型">
+                                        </div>
+                                        <div class="col-8">
+                                            <label class="form-label">练习题目:</label>
+                                            <input type="text" class="form-control form-control-sm exercise-prompt" value="{{ exercise.prompt }}" placeholder="练习题目描述...">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label">提示内容:</label>
+                                            <div class="hint-container">
+                                                {% for hint in exercise.hint %}
+                                                <div class="input-group mb-1">
+                                                    <input type="text" class="form-control form-control-sm hint-item" value="{{ hint }}" placeholder="输入提示...">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-hint-btn">×</button>
+                                                </div>
+                                                {% endfor %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary add-hint-btn">+ 添加提示</button>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">示例内容:</label>
+                                            <textarea class="form-control form-control-sm exercise-sample" rows="3" placeholder="练习示例...">{{ exercise.sample or '' }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-exercise-btn">删除练习</button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无个性化练习</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 综合诊断总结 -->
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">综合诊断总结</h6>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label">问题总结:</label>
+                                <textarea class="form-control" id="diagnosis-before" rows="3" placeholder="总结学生作文中的主要问题...">{{ evaluation_data.diagnosis.before if evaluation_data.diagnosis else '' }}</textarea>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">改进建议:</label>
+                                <textarea class="form-control" id="diagnosis-comment" rows="3" placeholder="具体的改进建议和指导...">{{ evaluation_data.diagnosis.comment if evaluation_data.diagnosis else '' }}</textarea>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">预期效果:</label>
+                                <textarea class="form-control" id="diagnosis-after" rows="3" placeholder="按建议改进后的预期效果...">{{ evaluation_data.diagnosis.after if evaluation_data.diagnosis else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 总结评价 -->
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-3">给家长的总结</h6>
+                        <textarea class="form-control" id="evaluation-summary" rows="4" placeholder="面向家长的作文总体评价，简明扼要，突出优点和改进方向...">{{ evaluation_data.summary or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
              <!-- Save Button -->
             <div class="text-end mb-4">
                 <button id="save-changes-btn" class="btn btn-primary" data-submission-id="{{ submission.id }}">
@@ -806,6 +983,62 @@
         gap: 4px;
     }
 }
+
+/* Enhanced content panel styles */
+#enhanced-content-panel .outline-item-wrapper {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+#enhanced-content-panel .diagnostic-item,
+#enhanced-content-panel .exercise-item {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6 !important;
+    transition: box-shadow 0.2s ease;
+}
+
+#enhanced-content-panel .diagnostic-item:hover,
+#enhanced-content-panel .exercise-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#enhanced-content-panel .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+#enhanced-content-panel .input-group-text {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+    font-weight: 500;
+}
+
+#enhanced-content-panel .btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+}
+
+#enhanced-content-panel .btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+#enhanced-content-panel .advice-container,
+#enhanced-content-panel .hint-container {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 8px;
+}
+
+#enhanced-content-panel .badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+#enhanced-content-panel .badge.bg-info {
+    background-color: #17a2b8 !important;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
@@ -1286,18 +1519,56 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         try {
+            // Save traditional teacher feedback first
             const response = await fetch(`/assignments/api/submission/${this.dataset.submissionId}/update_teacher_feedback`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const result = await response.json();
-            if (response.ok) {
-                alert('修改已成功保存！');
-                window.location.reload();
-            } else {
-                alert(`保存失败: ${result.message || '未知错误'}`);
+            
+            if (!response.ok) {
+                throw new Error(result.message || '保存教师反馈失败');
             }
+            
+            // Save enhanced content if the panel exists
+            const enhancedPanel = document.getElementById('enhanced-content-panel');
+            if (enhancedPanel) {
+                try {
+                    // Get current evaluation data first
+                    const evalResponse = await fetch(`/assignments/api/submissions/${this.dataset.submissionId}/evaluation`);
+                    if (evalResponse.ok) {
+                        const currentEvaluation = await evalResponse.json();
+                        
+                        // Collect enhanced content changes
+                        const enhancedData = collectEnhancedContentData();
+                        
+                        // Merge with existing evaluation data
+                        const updatedEvaluation = {
+                            ...currentEvaluation,
+                            ...enhancedData
+                        };
+                        
+                        // Save updated evaluation
+                        const updateResponse = await fetch(`/assignments/api/submissions/${this.dataset.submissionId}/evaluation`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(updatedEvaluation)
+                        });
+                        
+                        if (!updateResponse.ok) {
+                            const evalResult = await updateResponse.json();
+                            console.warn('Enhanced content save failed:', evalResult.message);
+                        }
+                    }
+                } catch (enhancedError) {
+                    console.warn('Failed to save enhanced content:', enhancedError);
+                    // Don't fail the whole save operation for enhanced content issues
+                }
+            }
+            
+            alert('修改已成功保存！');
+            window.location.reload();
         } catch (err) {
             alert(`保存时发生网络错误: ${err.message}`);
         } finally {
@@ -1365,6 +1636,187 @@ document.addEventListener('DOMContentLoaded', function() {
             location.reload();
         }
     });
+    
+    // ===== Enhanced Content Management =====
+    
+    // Add diagnostic item
+    document.getElementById('add-diagnostic-btn')?.addEventListener('click', function() {
+        const container = document.getElementById('diagnostics-container');
+        const index = container.children.length;
+        
+        const diagnosticHTML = `
+            <div class="diagnostic-item mb-3 border rounded p-3" data-index="${index}">
+                <div class="row mb-2">
+                    <div class="col-3">
+                        <label class="form-label">段落位置:</label>
+                        <input type="number" class="form-control form-control-sm diagnostic-para" placeholder="段落号">
+                    </div>
+                    <div class="col-9">
+                        <label class="form-label">问题描述:</label>
+                        <input type="text" class="form-control form-control-sm diagnostic-issue" placeholder="描述发现的问题...">
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <label class="form-label">证据:</label>
+                        <textarea class="form-control form-control-sm diagnostic-evidence" rows="2" placeholder="支持这个问题的具体证据..."></textarea>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <label class="form-label">改进建议:</label>
+                        <div class="advice-container">
+                            <button type="button" class="btn btn-sm btn-outline-secondary add-advice-btn">+ 添加建议</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-diagnostic-btn">删除诊断</button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', diagnosticHTML);
+    });
+    
+    // Add exercise item  
+    document.getElementById('add-exercise-btn')?.addEventListener('click', function() {
+        const container = document.getElementById('exercises-container');
+        const index = container.children.length;
+        
+        const exerciseHTML = `
+            <div class="exercise-item mb-3 border rounded p-3" data-index="${index}">
+                <div class="row mb-2">
+                    <div class="col-4">
+                        <label class="form-label">练习类型:</label>
+                        <input type="text" class="form-control form-control-sm exercise-type" placeholder="练习类型">
+                    </div>
+                    <div class="col-8">
+                        <label class="form-label">练习题目:</label>
+                        <input type="text" class="form-control form-control-sm exercise-prompt" placeholder="练习题目描述...">
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label">提示内容:</label>
+                        <div class="hint-container">
+                            <button type="button" class="btn btn-sm btn-outline-secondary add-hint-btn">+ 添加提示</button>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">示例内容:</label>
+                        <textarea class="form-control form-control-sm exercise-sample" rows="3" placeholder="练习示例..."></textarea>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-exercise-btn">删除练习</button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', exerciseHTML);
+    });
+    
+    // Enhanced content event delegation
+    document.addEventListener('click', function(e) {
+        // Remove diagnostic
+        if (e.target.classList.contains('remove-diagnostic-btn')) {
+            e.target.closest('.diagnostic-item').remove();
+        }
+        
+        // Remove exercise
+        if (e.target.classList.contains('remove-exercise-btn')) {
+            e.target.closest('.exercise-item').remove();
+        }
+        
+        // Add advice to diagnostic
+        if (e.target.classList.contains('add-advice-btn')) {
+            const container = e.target.parentElement;
+            const adviceHTML = `
+                <div class="input-group mb-1">
+                    <input type="text" class="form-control form-control-sm advice-item" placeholder="输入改进建议...">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-advice-btn">×</button>
+                </div>
+            `;
+            e.target.insertAdjacentHTML('beforebegin', adviceHTML);
+        }
+        
+        // Remove advice from diagnostic
+        if (e.target.classList.contains('remove-advice-btn')) {
+            e.target.closest('.input-group').remove();
+        }
+        
+        // Add hint to exercise
+        if (e.target.classList.contains('add-hint-btn')) {
+            const container = e.target.parentElement;
+            const hintHTML = `
+                <div class="input-group mb-1">
+                    <input type="text" class="form-control form-control-sm hint-item" placeholder="输入提示...">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-hint-btn">×</button>
+                </div>
+            `;
+            e.target.insertAdjacentHTML('beforebegin', hintHTML);
+        }
+        
+        // Remove hint from exercise
+        if (e.target.classList.contains('remove-hint-btn')) {
+            e.target.closest('.input-group').remove();
+        }
+    });
+    
+    // Collect enhanced content data for saving
+    function collectEnhancedContentData() {
+        const data = {
+            analysis: {
+                outline: []
+            },
+            diagnostics: [],
+            exercises: [],
+            diagnosis: {
+                before: document.getElementById('diagnosis-before')?.value || '',
+                comment: document.getElementById('diagnosis-comment')?.value || '',
+                after: document.getElementById('diagnosis-after')?.value || ''
+            },
+            summary: document.getElementById('evaluation-summary')?.value || ''
+        };
+        
+        // Collect outline data
+        document.querySelectorAll('.outline-item-wrapper').forEach(item => {
+            const para = parseInt(item.dataset.para);
+            const intent = item.querySelector('.outline-intent').value;
+            if (intent.trim()) {
+                data.analysis.outline.push({ para, intent });
+            }
+        });
+        
+        // Collect diagnostics data
+        document.querySelectorAll('.diagnostic-item').forEach(item => {
+            const para = parseInt(item.querySelector('.diagnostic-para').value) || null;
+            const issue = item.querySelector('.diagnostic-issue').value;
+            const evidence = item.querySelector('.diagnostic-evidence').value;
+            const advice = Array.from(item.querySelectorAll('.advice-item'))
+                .map(input => input.value.trim())
+                .filter(value => value);
+            
+            if (issue.trim()) {
+                data.diagnostics.push({ para, issue, evidence, advice });
+            }
+        });
+        
+        // Collect exercises data
+        document.querySelectorAll('.exercise-item').forEach(item => {
+            const type = item.querySelector('.exercise-type').value;
+            const prompt = item.querySelector('.exercise-prompt').value;
+            const hint = Array.from(item.querySelectorAll('.hint-item'))
+                .map(input => input.value.trim())
+                .filter(value => value);
+            const sample = item.querySelector('.exercise-sample').value;
+            
+            if (prompt.trim()) {
+                data.exercises.push({ type, prompt, hint, sample });
+            }
+        });
+        
+        return data;
+    }
 });
 </script>
 {% endblock %}

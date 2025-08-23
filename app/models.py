@@ -246,6 +246,11 @@ class Essay(db.Model):
     teacher_score = db.Column(db.JSON, nullable=True, comment="教师手动调整后的各维度分数")
     teacher_feedback_overrides = db.Column(db.JSON, nullable=True, comment="教师对AI评语的覆写（修改/删除）")
     final_score = db.Column(db.Float, nullable=True)
+    
+    # Enhanced evaluation status tracking
+    evaluation_status = db.Column(db.String(50), nullable=True, default='ai_generated', comment="评估状态: ai_generated, teacher_reviewed, finalized")
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('teacher_profiles.id'), nullable=True, comment="审核教师ID")
+    reviewed_at = db.Column(db.DateTime, nullable=True, comment="审核时间")
 
     # Status and Error tracking
     status = db.Column(db.String(50), default='pending', index=True) # e.g., pending, ocr_failed, correcting, grading, graded, error
@@ -257,6 +262,7 @@ class Essay(db.Model):
     assignment = db.relationship('EssayAssignment', back_populates='essays') # 新增关系
     grading_standard = db.relationship('GradingStandard')
     manual_review = db.relationship('ManualReview', back_populates='essay', uselist=False, cascade="all, delete-orphan")
+    reviewer = db.relationship('TeacherProfile', foreign_keys=[reviewed_by], backref='reviewed_essays')
 
     # Association proxy to easily get the student (User) from the essay
     student = association_proxy('enrollment', 'student.user')
