@@ -142,7 +142,7 @@ class EvaluationResult(BaseModel):
     improvements: List[str] = Field(default_factory=list, description="改进建议")
     
     # Internal field to preserve original detailed grading data
-    _original_grading_result: Optional[Dict[str, Any]] = Field(None, description="原始详细评分数据，用于保留维度示例等信息")
+    original_grading_result: Optional[Dict[str, Any]] = Field(None, description="原始详细评分数据，用于保留维度示例等信息")
 
 
 class StandardDTO(BaseModel):
@@ -220,8 +220,8 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     rubrics = context.get('scores', {}).get('rubrics', [])
     
     # Get original grading result if available for dimension examples
-    original_grading_result = getattr(evaluation, '_original_grading_result', {})
-    original_dimensions = original_grading_result.get('dimensions', [])
+    original_grading_result = getattr(evaluation, 'original_grading_result', {})
+    original_dimensions = original_grading_result.get('dimensions', []) if original_grading_result else []
     
     for i, rubric in enumerate(rubrics):
         dimension = {

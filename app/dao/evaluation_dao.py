@@ -274,7 +274,7 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         "strengths": ai_score_data.get("strengths", []),
         "improvements": ai_score_data.get("improvements", []),
         # Store original grading result for detailed feedback preservation
-        "_original_grading_result": {
+        "original_grading_result": {
             "dimensions": original_dimensions if 'original_dimensions' in locals() else [],
             "overall_comment": ai_score_data.get("overall_comment", ""),
             "strengths": ai_score_data.get("strengths", []),
