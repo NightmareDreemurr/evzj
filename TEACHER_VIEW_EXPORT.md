@@ -150,6 +150,11 @@ Ensures proper mapping from teacher review page data:
 - Default placeholders: "（本项暂无数据）"
 - Maintains export functionality even with incomplete data
 - Clear error messages for debugging
+- **Enhanced batch export error handling (v2024.08):**
+  - Detailed error messages when batch export fails
+  - Shows specific students and essay IDs that failed
+  - Provides troubleshooting guidance for common issues
+  - Consistent error handling between combined and ZIP modes
 
 ## Configuration
 No additional configuration required - works with existing setup:
