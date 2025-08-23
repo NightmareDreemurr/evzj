@@ -56,6 +56,11 @@ class StudentReportVM(BaseModel):
     exercises: List[ExerciseVM] = Field(default_factory=list, description="Personalized writing exercises")
     scanned_images: List[str] = Field(default_factory=list, description="Scanned image file paths")
     feedback_summary: str = Field(default="", description="Combined summary and diagnostic feedback")
+    
+    # Review status tracking
+    review_status: str = Field(default="ai_generated", description="Evaluation review status")
+    reviewed_by: Optional[int] = Field(None, description="Teacher ID who reviewed")
+    reviewed_at: Optional[str] = Field(None, description="Review timestamp")
 
 
 class AssignmentReportVM(BaseModel):
