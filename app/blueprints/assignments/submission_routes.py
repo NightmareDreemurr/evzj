@@ -19,6 +19,7 @@ from app.services.ai_grader import grade_essay_with_ai
 from app.services.ocr_service import process_submissions_for_assignment
 from app.services.ai_corrector import correct_essay_with_ai
 from app.services.ai_matcher import match_students_for_assignment
+from app.services.evaluation_builder import build_and_persist_evaluation, EvaluationBuilderError
 
 from . import assignments_bp
 from .forms import BatchConfirmationForm
@@ -289,10 +290,8 @@ def confirm_submissions(assignment_id):
 
             def _process_single_essay(essay_id_to_process, app):
                 """
-                Processes a single essay within its own app context.
-                1. Corrects the text.
-                2. Grades the essay.
-                Each step is self-contained and handles its own DB transactions.
+                Processes a single essay within its own app context using the evaluation builder.
+                This orchestrates: AI corrector -> AI pre-grader -> AI grader -> persist evaluation
                 """
                 with app.app_context():
                     essay = None
@@ -306,25 +305,61 @@ def confirm_submissions(assignment_id):
                             current_app.logger.warning(f"Essay {essay_id_to_process} not found for processing.")
                             return
 
-                        # Step 1: Correct text.
+                        # Set status to processing
                         essay.status = 'correcting'
                         db.session.commit()
                         
-                        correct_essay_with_ai(essay_id_to_process)
-                        
-                        # Refresh to see changes from the service, e.g., if it failed
-                        db.session.refresh(essay)
-                        if essay.status.startswith('error'):
-                            current_app.logger.error(f"Failed to correct essay {essay_id_to_process}. Status: {essay.status}")
-                            # Error status and message are already set by the service
+                        # Use evaluation builder to orchestrate the complete pipeline
+                        try:
+                            evaluation_result = build_and_persist_evaluation(essay_id_to_process)
+                            
+                            # Refresh to see changes from the evaluation builder
+                            db.session.refresh(essay)
+                            
+                            if evaluation_result:
+                                # Mark as successfully graded
+                                if essay.status not in ['graded', 'error', 'error_unknown']:
+                                    essay.status = 'graded'
+                                    db.session.commit()
+                                current_app.logger.info(f"Successfully built and persisted evaluation for essay {essay_id_to_process}")
+                            else:
+                                # Fallback: try traditional grading if evaluation builder failed
+                                current_app.logger.warning(f"Evaluation builder failed for essay {essay_id_to_process}, falling back to traditional grading")
+                                
+                                # Try individual steps as fallback
+                                correct_essay_with_ai(essay_id_to_process)
+                                
+                                # Refresh to see changes from the corrector
+                                db.session.refresh(essay)
+                                if essay.status.startswith('error'):
+                                    current_app.logger.error(f"Failed to correct essay {essay_id_to_process}. Status: {essay.status}")
+                                    return
+                                
+                                # Grade essay
+                                grade_essay_with_ai(essay_id_to_process)
+                                current_app.logger.info(f"Completed fallback processing for essay {essay_id_to_process}")
+                                
+                        except EvaluationBuilderError as e:
+                            current_app.logger.error(f"Evaluation builder error for essay {essay_id_to_process}: {e}")
+                            essay.status = 'error_evaluation'
+                            essay.error_message = f"评估构建失败: {str(e)[:250]}"
+                            db.session.commit()
                             return
+                        except Exception as e:
+                            current_app.logger.error(f"Unexpected error in evaluation for essay {essay_id_to_process}: {e}", exc_info=True)
+                            # Try fallback to traditional grading
+                            try:
+                                correct_essay_with_ai(essay_id_to_process)
+                                db.session.refresh(essay)
+                                if not essay.status.startswith('error'):
+                                    grade_essay_with_ai(essay_id_to_process)
+                                current_app.logger.info(f"Fallback processing completed for essay {essay_id_to_process}")
+                            except Exception as fallback_e:
+                                current_app.logger.error(f"Fallback processing also failed for essay {essay_id_to_process}: {fallback_e}")
+                                essay.status = 'error_unknown'
+                                essay.error_message = f"处理失败: {str(e)[:250]}"
+                                db.session.commit()
                         
-                        # Step 2: Grade essay.
-                        # The service itself will set the status to 'grading' then 'graded' or 'error_*'
-                        grade_essay_with_ai(essay_id_to_process)
-                        
-                        current_app.logger.info(f"Successfully finished processing essay {essay_id_to_process}.")
-
                     except Exception as e:
                         current_app.logger.error(f"An unexpected error occurred in the processing orchestrator for essay {essay_id_to_process}: {e}", exc_info=True)
                         if essay:
