@@ -464,6 +464,35 @@ def render_assignment_docx(assignment_id: int, mode: Literal["combined", "zip"] 
         return _render_assignment_combined(assignment_vm)
 
 
+def render_assignment_docx_teacher_view(assignment_id: int, mode: Literal["combined", "zip"] = "combined", require_review: bool = None) -> Union[bytes, zipstream.ZipStream]:
+    """
+    Render assignment batch DOCX report using teacher view format (no diff).
+    
+    Args:
+        assignment_id: Assignment ID
+        mode: "combined" for single merged DOCX, "zip" for ZIP of individual files
+        require_review: Whether to require teacher review before export.
+                       If None, uses config EVAL_REQUIRE_REVIEW_BEFORE_EXPORT
+        
+    Returns:
+        Bytes for combined mode, ZipStream for zip mode
+        
+    Raises:
+        ValueError: If require_review is True but some evaluations are not teacher-reviewed
+    """
+    assignment_vm = build_assignment_vm(assignment_id, require_review)
+    if not assignment_vm:
+        raise ValueError(f"No data found for assignment {assignment_id}")
+    
+    if not assignment_vm.students:
+        raise ValueError(f"No student data found for assignment {assignment_id}")
+    
+    if mode == "zip":
+        return _render_assignment_zip_teacher_view(assignment_vm)
+    else:
+        return _render_assignment_combined_teacher_view(assignment_vm)
+
+
 def _render_assignment_combined(assignment_vm: AssignmentReportVM) -> bytes:
     """
     Render combined DOCX using docxtpl with subdocuments.
@@ -777,3 +806,102 @@ def _render_assignment_zip(assignment_vm: AssignmentReportVM) -> zipstream.ZipSt
             continue
     
     return z
+
+
+def _render_assignment_zip_teacher_view(assignment_vm: AssignmentReportVM) -> zipstream.ZipStream:
+    """
+    Render assignment as ZIP of individual teacher view DOCX files.
+    
+    Args:
+        assignment_vm: Assignment data
+        
+    Returns:
+        ZipStream generator
+    """
+    z = zipstream.ZipStream(mode='w', compression=zipstream.ZIP_DEFLATED)
+    
+    for student in assignment_vm.students:
+        try:
+            # Use teacher view instead of legacy student format
+            student_bytes = render_teacher_view_docx(student.essay_id)
+            # Use assignment title and timestamp for better naming
+            assignment_title = assignment_vm.title or "assignment"
+            safe_assignment_title = "".join(c for c in assignment_title if c.isalnum() or c in "._-")
+            safe_student_name = "".join(c for c in student.student_name if c.isalnum() or c in "._-") 
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d')
+            filename = f"{safe_student_name}_{safe_assignment_title}_{timestamp}.docx"
+            z.writestr(filename, student_bytes)
+        except Exception as e:
+            logger.error(f"Failed to render teacher view for student {student.student_name}: {e}")
+            continue
+    
+    return z
+
+
+def _render_assignment_combined_teacher_view(assignment_vm: AssignmentReportVM) -> bytes:
+    """
+    Render combined DOCX using docxcompose with individual teacher view DOCX files.
+    
+    Args:
+        assignment_vm: Assignment data
+        
+    Returns:
+        Combined DOCX as bytes
+    """
+    from docx import Document
+    from docxcompose.composer import Composer
+    import tempfile
+    from pathlib import Path
+    
+    # Generate individual teacher view documents
+    temp_files = []
+    try:
+        for i, student in enumerate(assignment_vm.students):
+            try:
+                student_bytes = render_teacher_view_docx(student.essay_id)
+                
+                # Save to temporary file
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+                temp_file.write(student_bytes)
+                temp_file.close()
+                temp_files.append(temp_file.name)
+            except Exception as e:
+                logger.error(f"Failed to render teacher view for student {student.student_name}: {e}")
+                continue
+        
+        if not temp_files:
+            raise ValueError("No teacher view documents could be generated")
+        
+        # Create cover page and compose documents
+        master = Document(temp_files[0])
+        
+        # Insert assignment info at the beginning
+        cover_para = master.paragraphs[0]
+        cover_para.insert_paragraph_before(f"作业批量报告")
+        cover_para.insert_paragraph_before(f"作业标题：{assignment_vm.title}")
+        cover_para.insert_paragraph_before(f"班级：{assignment_vm.classroom}")
+        cover_para.insert_paragraph_before(f"教师：{assignment_vm.teacher}")
+        from datetime import datetime
+        cover_para.insert_paragraph_before(f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        cover_para.insert_paragraph_before("")
+        
+        if len(temp_files) > 1:
+            composer = Composer(master)
+            
+            for path in temp_files[1:]:
+                # Add page break before each new student
+                composer.append(Document(path))
+        
+        # Save to bytes
+        output = io.BytesIO()
+        master.save(output)
+        return output.getvalue()
+        
+    finally:
+        # Clean up temporary files
+        for temp_file in temp_files:
+            try:
+                Path(temp_file).unlink()
+            except:
+                pass

@@ -1,5 +1,13 @@
 # Teacher View Aligned DOCX Export Implementation
 
+## Summary Update (August 2024)
+**作业报告页面的三个导出入口均已切换到教师视图对齐版：**
+1. **批量导出（合并 DOCX）** - 现在使用教师视图格式生成单个合并 DOCX
+2. **批量导出（打包 ZIP）** - 现在使用教师视图格式，每个学生一个 DOCX 文件  
+3. **下载代表作文报告** - 现在使用教师视图格式导出代表作文
+
+所有导出均不包含 diff 标记，按教师终稿正文与 7 个板块排版：基本信息、评分结果、作文正文、综合评价与寄语、主要优点、改进建议、AI 增强内容审核。
+
 ## Overview
 
 This implementation adds support for exporting DOCX reports aligned with the teacher's review page display, without any diff markings or UI elements, as specified in the requirements.
@@ -19,7 +27,30 @@ The exported DOCX follows the exact structure specified:
 - Excludes all UI elements (navigation, sidebars, buttons, etc.)
 - Pure content export aligned with teacher's final review
 
-### 3. Data Field Mapping
+### 3. Batch Export Support (New)
+**Three export entry points all use teacher view format:**
+
+#### 批量导出（合并 DOCX）
+- Route: `/assignments/{assignment_id}/report/download_batch?mode=combined`
+- Function: `render_assignment_docx_teacher_view(assignment_id, mode="combined")`
+- Output: Single DOCX file containing all students' teacher view reports
+- Implementation: Uses `docxcompose` to merge individual teacher view DOCX files
+- Cover page includes assignment metadata (title, class, teacher, generation time)
+
+#### 批量导出（打包 ZIP）  
+- Route: `/assignments/{assignment_id}/report/download_batch?mode=zip`
+- Function: `render_assignment_docx_teacher_view(assignment_id, mode="zip")`
+- Output: ZIP file containing separate teacher view DOCX for each student
+- Filename format: `{studentName}_{assignmentTitle}_{YYYYMMDD}.docx`
+- Implementation: Uses `zipstream` for memory-efficient streaming
+
+#### 下载代表作文报告
+- Route: `/assignments/{assignment_id}/report/download` (representative fallback)
+- Function: `render_teacher_view_docx(representative_essay_id)`
+- Output: Single teacher view DOCX for the representative essay
+- Fallback: When batch mode fails, exports first essay in teacher view format
+
+### 4. Data Field Mapping
 Maps frontend data structure to export format:
 ```python
 # Frontend → Export
@@ -69,7 +100,12 @@ python test_teacher_view_export.py
 
 2. **Context Building**: `to_context()` maps data to template variables
 
-3. **Rendering**: Both docxtpl and python-docx paths support the structure
+3. **Single Essay Rendering**: `render_teacher_view_docx()` generates individual teacher view DOCX
+
+4. **Batch Processing**: 
+   - **Combined Mode**: `_render_assignment_combined_teacher_view()` uses docxcompose to merge individual DOCX files
+   - **ZIP Mode**: `_render_assignment_zip_teacher_view()` streams individual DOCX files into ZIP
+   - **Representative**: Direct fallback to `render_teacher_view_docx()` for first essay
 
 ### Template Variables
 Key template variables available:

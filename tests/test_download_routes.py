@@ -46,60 +46,36 @@ def test_download_assignment_report_route_requires_login(app):
         assert '/auth/login' in response.location or 'login' in response.location
 
 
-@patch('app.dao.evaluation_dao.load_evaluation_by_essay')
-@patch('app.reporting.docx_renderer.render_essay_docx')
-def test_download_essay_report_success(mock_render, mock_load, app, test_user):
-    """Test successful essay report download"""
-    from app.schemas.evaluation import EvaluationResult, Meta, Scores
+@patch('app.reporting.service.render_teacher_view_docx')
+def test_download_essay_report_success(mock_render, app, test_user):
+    """Test successful essay report download using teacher view"""
     import tempfile
     import os
     
-    # Mock evaluation data
-    mock_evaluation = EvaluationResult(
-        meta=Meta(
-            student="Test Student",
-            class_="Test Class", 
-            teacher="Test Teacher",
-            topic="Test Topic",
-            date="2024-08-21"
-        ),
-        scores=Scores(total=85.0, rubrics=[])
-    )
-    mock_load.return_value = mock_evaluation
+    # Mock teacher view docx content
+    mock_render.return_value = b'fake teacher view docx content'
     
-    # Mock file creation
-    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
-        temp_file.write(b'fake docx content')
-        mock_render.return_value = temp_file.name
+    with app.test_client() as client:
+        # Login first
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(test_user.id)
+            sess['_fresh'] = True
         
-        try:
-            with app.test_client() as client:
-                # Login first
-                with client.session_transaction() as sess:
-                    sess['_user_id'] = str(test_user.id)
-                    sess['_fresh'] = True
-                
-                response = client.get('/assignments/essays/1/report/download')
-                
-                # Should return file
-                assert response.status_code == 200
-                assert response.headers['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                assert 'attachment' in response.headers.get('Content-Disposition', '')
-                
-                # Check mocks were called
-                mock_load.assert_called_once_with(1)
-                mock_render.assert_called_once()
-                
-        finally:
-            # Cleanup temp file
-            if os.path.exists(temp_file.name):
-                os.unlink(temp_file.name)
+        response = client.get('/assignments/essays/1/report/download')
+        
+        # Should return file
+        assert response.status_code == 200
+        assert response.headers['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        assert 'attachment' in response.headers.get('Content-Disposition', '')
+        
+        # Check mock was called with teacher view
+        mock_render.assert_called_once_with(1)
 
 
-@patch('app.dao.evaluation_dao.load_evaluation_by_essay')
-def test_download_essay_report_not_found(mock_load, app, test_user):
-    """Test essay download when evaluation not found"""
-    mock_load.return_value = None
+@patch('app.reporting.service.render_teacher_view_docx')
+def test_download_essay_report_not_found(mock_render, app, test_user):
+    """Test essay download when teacher view rendering fails"""
+    mock_render.side_effect = ValueError("No evaluation data found for essay")
     
     with app.test_client() as client:
         # Login first  
@@ -115,7 +91,7 @@ def test_download_essay_report_not_found(mock_load, app, test_user):
 
 
 @patch('app.dao.evaluation_dao.load_evaluations_by_assignment')
-@patch('app.reporting.docx_renderer.render_assignment_docx')
+@patch('app.reporting.service.render_assignment_docx_teacher_view')
 def test_download_assignment_report_success(mock_render, mock_load, app, test_user):
     """Test successful assignment report download"""
     from app.schemas.evaluation import EvaluationResult, Meta, Scores
@@ -138,32 +114,28 @@ def test_download_assignment_report_success(mock_render, mock_load, app, test_us
     mock_load.return_value = mock_evaluations
     
     # Mock file creation
-    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
-        temp_file.write(b'fake assignment docx content')
-        mock_render.return_value = temp_file.name
-        
-        try:
-            with app.test_client() as client:
-                # Login first
-                with client.session_transaction() as sess:
-                    sess['_user_id'] = str(test_user.id)
-                    sess['_fresh'] = True
-                
-                response = client.get('/assignments/1/report/download')
-                
-                # Should return file
-                assert response.status_code == 200
-                assert response.headers['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                assert 'attachment' in response.headers.get('Content-Disposition', '')
-                
-                # Check mocks were called
-                mock_load.assert_called_once_with(1)
-                mock_render.assert_called_once_with(1, mock_evaluations)
-                
-        finally:
-            # Cleanup temp file
-            if os.path.exists(temp_file.name):
-                os.unlink(temp_file.name)
+    mock_render.return_value = b'fake assignment teacher view docx content'
+    
+    try:
+        with app.test_client() as client:
+            # Login first
+            with client.session_transaction() as sess:
+                sess['_user_id'] = str(test_user.id)
+                sess['_fresh'] = True
+            
+            response = client.get('/assignments/1/report/download')
+            
+            # Should return file
+            assert response.status_code == 200
+            assert response.headers['Content-Type'] == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            assert 'attachment' in response.headers.get('Content-Disposition', '')
+            
+            # Check mocks were called - should use teacher view service now
+            mock_load.assert_called_once_with(1)
+            mock_render.assert_called_once_with(1, mode='combined')
+            
+    finally:
+        pass  # No temp file cleanup needed for bytes mock
 
 
 @patch('app.dao.evaluation_dao.load_evaluations_by_assignment')
@@ -185,9 +157,9 @@ def test_download_assignment_report_no_data(mock_load, app, test_user):
 
 
 @patch('app.dao.evaluation_dao.load_evaluations_by_assignment')  
-@patch('app.reporting.docx_renderer.render_assignment_docx')
+@patch('app.reporting.service.render_assignment_docx_teacher_view')
 def test_download_assignment_report_not_implemented(mock_render, mock_load, app, test_user):
-    """Test assignment download when NotImplementedError is raised"""
+    """Test assignment download when NotImplementedError is raised - should fallback to representative essay"""
     from app.schemas.evaluation import EvaluationResult, Meta, Scores
     
     # Mock evaluation data
