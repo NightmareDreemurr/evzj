@@ -112,6 +112,7 @@ def build_and_persist_evaluation(essay_id: int) -> Optional[EvaluationResult]:
         # Step 6: Persist to database
         try:
             essay.ai_evaluation = evaluation_result.model_dump()
+            essay.evaluation_status = 'ai_generated'  # Set initial status
             db.session.commit()
             logger.info(f"Successfully persisted evaluation for essay {essay_id}")
         except Exception as e:

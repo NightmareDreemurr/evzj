@@ -19,7 +19,7 @@ from app.services.ai_grader import grade_essay_with_ai
 from app.services.ocr_service import process_submissions_for_assignment
 from app.services.ai_corrector import correct_essay_with_ai
 from app.services.ai_matcher import match_students_for_assignment
-from app.services.evaluation_builder import build_and_persist_evaluation, EvaluationBuilderError
+from app.services.evaluation_builder import build_and_persist_evaluation, EvaluationBuilderError, load_evaluation_from_essay
 
 from . import assignments_bp
 from .forms import BatchConfirmationForm
@@ -531,6 +531,13 @@ def review_submission(submission_id):
     current_app.logger.debug(f'Passing original_content (AI version) to template: {original_content[:100]}...')  # Log first 100 chars for debug
     current_app.logger.debug(f'Passing content_source (Teacher version if exists) to template: {content_source[:100]}...')
 
+    # Load enhanced evaluation data if available
+    evaluation_data = None
+    try:
+        evaluation_data = load_evaluation_from_essay(submission.id)
+    except Exception as e:
+        current_app.logger.warning(f"Failed to load evaluation data for submission {submission.id}: {e}")
+
     return render_template('assignments/review_submission.html',
                            submission=submission,
                            assignment=assignment,
@@ -542,7 +549,8 @@ def review_submission(submission_id):
                            criteria_max_scores=criteria_max_scores,
                            total_max_score=total_max_score,
                            original_content=original_content,
-                           content_source=content_source)
+                           content_source=content_source,
+                           evaluation_data=evaluation_data)
 
 
 @assignments_bp.route('/submission/<int:submission_id>/manual_annotate', methods=['GET', 'POST'])

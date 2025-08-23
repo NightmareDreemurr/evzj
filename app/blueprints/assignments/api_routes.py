@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from flask import jsonify, request, current_app
 from flask_login import login_required, current_user
@@ -7,6 +8,8 @@ from dictdiffer import diff
 from app.extensions import db
 from app.models import Essay, PendingSubmission
 from app.decorators import teacher_required
+from app.services.evaluation_builder import load_evaluation_from_essay
+from app.schemas.evaluation import EvaluationResult
 
 from . import assignments_bp
 
@@ -200,3 +203,71 @@ def update_teacher_feedback(submission_id):
     db.session.commit()
 
     return jsonify({'message': 'Feedback updated successfully', 'final_score': submission.final_score})
+
+
+@assignments_bp.route('/api/submissions/<int:submission_id>/evaluation', methods=['GET'])
+@login_required
+@teacher_required
+def get_submission_evaluation(submission_id):
+    """
+    GET endpoint to retrieve the unified EvaluationResult for a submission.
+    Returns both AI-generated and teacher-reviewed data.
+    """
+    submission = db.session.get(Essay, submission_id)
+    if not submission or submission.assignment.teacher_profile_id != current_user.teacher_profile.id:
+        return jsonify({'message': 'Submission not found or not authorized'}), 404
+    
+    # Try to load existing evaluation data
+    evaluation = load_evaluation_from_essay(submission_id)
+    if not evaluation:
+        return jsonify({'message': 'No evaluation data found for this submission'}), 404
+    
+    # Add status information
+    response_data = evaluation.model_dump()
+    response_data['evaluation_status'] = submission.evaluation_status or 'ai_generated'
+    response_data['reviewed_by'] = submission.reviewed_by
+    response_data['reviewed_at'] = submission.reviewed_at.isoformat() if submission.reviewed_at else None
+    
+    return jsonify(response_data)
+
+
+@assignments_bp.route('/api/submissions/<int:submission_id>/evaluation', methods=['PUT'])
+@login_required
+@teacher_required
+def update_submission_evaluation(submission_id):
+    """
+    PUT endpoint to update the EvaluationResult after teacher review.
+    Accepts full EvaluationResult data and updates the submission.
+    """
+    submission = db.session.get(Essay, submission_id)
+    if not submission or submission.assignment.teacher_profile_id != current_user.teacher_profile.id:
+        return jsonify({'message': 'Submission not found or not authorized'}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'Invalid data'}), 400
+    
+    try:
+        # Validate the data structure by creating an EvaluationResult instance
+        evaluation = EvaluationResult(**data)
+        
+        # Update the submission with the new evaluation data
+        submission.ai_evaluation = evaluation.model_dump()
+        submission.evaluation_status = 'teacher_reviewed'
+        submission.reviewed_by = current_user.teacher_profile.id
+        submission.reviewed_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        current_app.logger.info(f"Teacher {current_user.teacher_profile.id} reviewed evaluation for submission {submission_id}")
+        
+        return jsonify({
+            'message': 'Evaluation updated successfully',
+            'evaluation_status': submission.evaluation_status,
+            'reviewed_at': submission.reviewed_at.isoformat()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating evaluation for submission {submission_id}: {e}", exc_info=True)
+        return jsonify({'message': 'Failed to update evaluation', 'error': str(e)}), 500
