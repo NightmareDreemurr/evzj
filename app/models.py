@@ -242,6 +242,7 @@ class Essay(db.Model):
 
     # Scoring
     ai_score = db.Column(db.JSON, nullable=True, comment="AI原始评分和评语")
+    ai_evaluation = db.Column(db.JSON, nullable=True, comment="AI增强评估结果（包含段落分析、诊断、练习等）")
     teacher_score = db.Column(db.JSON, nullable=True, comment="教师手动调整后的各维度分数")
     teacher_feedback_overrides = db.Column(db.JSON, nullable=True, comment="教师对AI评语的覆写（修改/删除）")
     final_score = db.Column(db.Float, nullable=True)
