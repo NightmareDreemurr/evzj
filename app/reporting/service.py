@@ -359,6 +359,9 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
             improvements=grading_result.get('improvements', [])
         )
         
+        # Preserve original dimensions data for template access
+        result._original_grading_result = grading_result
+        
         return result
         
     except Exception as e:

@@ -210,15 +210,45 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     
     # Map rubrics to dimensions format expected by teacher view
     rubrics = context.get('scores', {}).get('rubrics', [])
-    for rubric in rubrics:
+    
+    # Get original grading result if available for dimension examples
+    original_grading_result = getattr(evaluation, '_original_grading_result', {})
+    original_dimensions = original_grading_result.get('dimensions', [])
+    
+    for i, rubric in enumerate(rubrics):
         dimension = {
             'dimension_name': rubric.get('name', ''),
             'score': rubric.get('score', 0),
             'selected_rubric_level': rubric.get('reason', ''),
             'feedback': rubric.get('reason', ''),
-            'example_good_sentence': [],  # Will be populated from highlights/analysis
-            'example_improvement_suggestion': []  # Will be populated from diagnostics
+            'example_good_sentence': [],
+            'example_improvement_suggestion': []
         }
+        
+        # Find matching dimension from original data to get examples
+        matching_original = None
+        for orig_dim in original_dimensions:
+            if orig_dim.get('dimension_name') == rubric.get('name'):
+                matching_original = orig_dim
+                break
+        
+        if matching_original:
+            # Populate example_good_sentence
+            good_sentence = matching_original.get('example_good_sentence', '')
+            if good_sentence and good_sentence.strip():
+                dimension['example_good_sentence'] = [good_sentence.strip()]
+            
+            # Populate example_improvement_suggestion
+            improvement_suggestion = matching_original.get('example_improvement_suggestion', {})
+            if improvement_suggestion and isinstance(improvement_suggestion, dict):
+                original_text = improvement_suggestion.get('original', '')
+                suggested_text = improvement_suggestion.get('suggested', '')
+                if original_text and suggested_text:
+                    dimension['example_improvement_suggestion'] = [{
+                        'original': original_text.strip(),
+                        'suggested': suggested_text.strip()
+                    }]
+        
         grading_result['dimensions'].append(dimension)
     
     context['gradingResult'] = grading_result
