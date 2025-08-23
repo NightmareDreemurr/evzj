@@ -59,18 +59,25 @@ def build_and_persist_evaluation(essay_id: int) -> Optional[EvaluationResult]:
             return None
         
         # Step 2: Get or generate cleaned text
-        cleaned_text = None
+        cleaned_text = original_text
         try:
-            if essay.corrected_content:
-                cleaned_text = essay.corrected_content
-                logger.debug(f"Using existing corrected content for essay {essay_id}")
-            else:
+            need_correction = bool(
+                getattr(essay, "is_from_ocr", False) and
+                (essay.original_ocr_text or "").strip() and
+                (not original_text.strip() or original_text.strip() == (essay.original_ocr_text or "").strip())
+            )
+            if need_correction:
                 logger.info(f"Generating cleaned text for essay {essay_id}")
-                cleaned_text = correct_text_with_ai(original_text)
-                if cleaned_text and cleaned_text != original_text:
-                    essay.corrected_content = cleaned_text
+                corrected_text = correct_text_with_ai(original_text)
+                if corrected_text and corrected_text != original_text:
+                    essay.content = corrected_text
                     db.session.commit()
-                    logger.debug(f"Saved corrected content for essay {essay_id}")
+                    logger.debug(f"AI corrected text persisted for essay {essay_id}, len={len(corrected_text)}")
+                    cleaned_text = corrected_text
+                else:
+                    cleaned_text = original_text
+            else:
+                cleaned_text = original_text
         except (AIConnectionError, Exception) as e:
             logger.warning(f"Failed to get cleaned text for essay {essay_id}: {e}")
             cleaned_text = original_text
@@ -154,8 +161,8 @@ def _build_context_for_essay(essay: Essay) -> Dict[str, Any]:
             context['student_id'] = essay.enrollment.student.id
         
         # Get teacher info
-        if essay.assignment and essay.assignment.teacher_profile and essay.assignment.teacher_profile.user:
-            context['teacher_name'] = essay.assignment.teacher_profile.user.full_name
+        if essay.assignment and getattr(essay.assignment, "teacher", None) and getattr(essay.assignment.teacher, "user", None):
+            context['teacher_name'] = essay.assignment.teacher.user.full_name
         
         # Get class info
         if essay.enrollment and essay.enrollment.classroom:
