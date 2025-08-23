@@ -228,7 +228,7 @@ class TestEvaluationBuilder:
         mock_essay.assignment.title = "我的家乡"
         mock_essay.assignment.grading_standard.grade = "五年级"
         mock_essay.assignment.grading_standard.total_score = 100
-        mock_essay.assignment.teacher_profile.user.full_name = "李老师"
+        mock_essay.assignment.teacher.user.full_name = "李老师"
         
         # Mock enrollment and student
         mock_essay.enrollment.student.user.full_name = "张三"
@@ -251,18 +251,19 @@ class TestEvaluationBuilder:
     def test_build_and_persist_evaluation_success(self, mock_grade, mock_correct, mock_preanalysis, mock_session, app):
         """Test successful evaluation building and persistence."""
         with app.app_context():
-            # Mock essay
+            # Mock essay (non-OCR)
             mock_essay = Mock()
             mock_essay.id = 1
             mock_essay.content = "测试作文内容"
-            mock_essay.corrected_content = None
+            mock_essay.is_from_ocr = False  # Non-OCR essay
+            mock_essay.original_ocr_text = None
             mock_essay.ai_score = None
             mock_essay.created_at.date.return_value.isoformat.return_value = "2023-08-23"
             
             # Setup relationships
             mock_essay.assignment.title = "我的家乡"
             mock_essay.assignment.grading_standard.grade = "五年级"
-            mock_essay.assignment.teacher_profile.user.full_name = "李老师"
+            mock_essay.assignment.teacher.user.full_name = "李老师"
             mock_essay.enrollment.student.user.full_name = "张三"
             mock_essay.enrollment.classroom.name = "五年级一班"
             
@@ -291,7 +292,7 @@ class TestEvaluationBuilder:
             assert isinstance(result, EvaluationResult)
             assert result.meta.student == "张三"
             assert result.text.original == "测试作文内容"
-            assert result.text.cleaned == "清洁后的内容"
+            assert result.text.cleaned == "测试作文内容"  # No correction for non-OCR essays
             assert result.scores.total == 85
     
     @patch('app.services.evaluation_builder.db.session')  
@@ -301,6 +302,136 @@ class TestEvaluationBuilder:
         
         with pytest.raises(Exception):  # Should raise EvaluationBuilderError
             build_and_persist_evaluation(999)
+
+    @patch('app.services.evaluation_builder.db.session')
+    @patch('app.services.evaluation_builder.generate_preanalysis')
+    @patch('app.services.evaluation_builder.correct_text_with_ai')
+    @patch('app.services.evaluation_builder.grade_essay_with_ai')
+    def test_build_and_persist_evaluation_runs_correction_for_ocr_raw(self, mock_grade, mock_correct, mock_preanalysis, mock_session, app):
+        """Test that AI correction is triggered for OCR essays with raw content."""
+        with app.app_context():
+            # Mock OCR essay with raw content that needs correction
+            mock_essay = Mock()
+            mock_essay.id = 1
+            mock_essay.is_from_ocr = True
+            mock_essay.original_ocr_text = "RAW OCR 文字识别内容"
+            mock_essay.content = "RAW OCR 文字识别内容"  # Same as original, needs correction
+            mock_essay.ai_score = None
+            mock_essay.created_at.date.return_value.isoformat.return_value = "2023-08-23"
+            
+            # Setup relationships
+            mock_essay.assignment.title = "我的家乡"
+            mock_essay.assignment.grading_standard.grade = "五年级"
+            mock_essay.assignment.teacher.user.full_name = "李老师"
+            mock_essay.enrollment.student.user.full_name = "张三"
+            mock_essay.enrollment.classroom.name = "五年级一班"
+            
+            mock_session.get.return_value = mock_essay
+            
+            # Mock AI correction
+            mock_correct.return_value = "CLEANED 清洁后的文字内容"
+            mock_preanalysis.return_value = {
+                "analysis": {"outline": [{"para": 1, "intent": "开篇"}]},
+                "diagnostics": [],
+                "exercises": [],
+                "summary": "测试总结",
+                "diagnosis": {}
+            }
+            
+            # Mock AI grader
+            def mock_grade_side_effect(essay_id):
+                mock_essay.ai_score = {"total_score": 85, "scores": {"content": 18}}
+            mock_grade.side_effect = mock_grade_side_effect
+            
+            with patch('app.services.evaluation_builder.count_words_zh', return_value=450):
+                result = build_and_persist_evaluation(1)
+            
+            # Verify correction was called and content was updated
+            mock_correct.assert_called_once_with("RAW OCR 文字识别内容")
+            assert mock_essay.content == "CLEANED 清洁后的文字内容"  # Content should be updated
+            
+            # Verify result uses corrected text
+            assert result is not None
+            assert result.text.cleaned == "CLEANED 清洁后的文字内容"
+            assert result.text.original == "RAW OCR 文字识别内容"
+
+    @patch('app.services.evaluation_builder.db.session')
+    @patch('app.services.evaluation_builder.generate_preanalysis')
+    @patch('app.services.evaluation_builder.correct_text_with_ai')
+    @patch('app.services.evaluation_builder.grade_essay_with_ai')
+    def test_build_and_persist_evaluation_skips_correction_if_already_cleaned(self, mock_grade, mock_correct, mock_preanalysis, mock_session, app):
+        """Test that AI correction is skipped if content is already different from original OCR text."""
+        with app.app_context():
+            # Mock OCR essay where content has already been cleaned
+            mock_essay = Mock()
+            mock_essay.id = 1
+            mock_essay.is_from_ocr = True
+            mock_essay.original_ocr_text = "RAW OCR 文字识别内容"
+            mock_essay.content = "ALREADY_CLEANED 已经清洁的内容"  # Different from original, should skip correction
+            mock_essay.ai_score = None
+            mock_essay.created_at.date.return_value.isoformat.return_value = "2023-08-23"
+            
+            # Setup relationships
+            mock_essay.assignment.title = "我的家乡"
+            mock_essay.assignment.grading_standard.grade = "五年级"
+            mock_essay.assignment.teacher.user.full_name = "李老师"
+            mock_essay.enrollment.student.user.full_name = "张三"
+            mock_essay.enrollment.classroom.name = "五年级一班"
+            
+            mock_session.get.return_value = mock_essay
+            
+            # Mock services
+            mock_preanalysis.return_value = {
+                "analysis": {"outline": [{"para": 1, "intent": "开篇"}]},
+                "diagnostics": [],
+                "exercises": [],
+                "summary": "测试总结",
+                "diagnosis": {}
+            }
+            
+            # Mock AI grader
+            def mock_grade_side_effect(essay_id):
+                mock_essay.ai_score = {"total_score": 85, "scores": {"content": 18}}
+            mock_grade.side_effect = mock_grade_side_effect
+            
+            with patch('app.services.evaluation_builder.count_words_zh', return_value=450):
+                result = build_and_persist_evaluation(1)
+            
+            # Verify correction was NOT called
+            mock_correct.assert_not_called()
+            
+            # Verify result uses existing content
+            assert result is not None
+            assert result.text.cleaned == "ALREADY_CLEANED 已经清洁的内容"
+            assert result.text.original == "ALREADY_CLEANED 已经清洁的内容"
+
+    @patch('app.services.evaluation_builder.db.session')
+    def test_build_context_uses_teacher_relation(self, mock_session):
+        """Test that context building uses correct teacher relationship."""
+        # Mock essay with assignment and teacher
+        mock_essay = Mock()
+        mock_essay.id = 1
+        mock_essay.content = "测试内容"
+        mock_essay.created_at.date.return_value.isoformat.return_value = "2023-08-23"
+        
+        # Setup assignment with teacher (not teacher_profile)
+        mock_essay.assignment.title = "我的家乡"
+        mock_essay.assignment.grading_standard.grade = "五年级"
+        mock_essay.assignment.grading_standard.total_score = 100
+        mock_essay.assignment.teacher.user.full_name = "李老师"
+        
+        # Setup enrollment
+        mock_essay.enrollment.student.user.full_name = "张三"
+        mock_essay.enrollment.student.id = 123
+        mock_essay.enrollment.classroom.name = "五年级一班"
+        
+        with patch('app.services.evaluation_builder.count_words_zh', return_value=450):
+            result = _build_context_for_essay(mock_essay)
+        
+        # Verify teacher name is correctly included
+        assert result['teacher_name'] == "李老师"
+        assert result['student_name'] == "张三"
+        assert result['topic'] == "我的家乡"
 
 
 @pytest.fixture
