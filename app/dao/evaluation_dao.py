@@ -14,6 +14,25 @@ from app.services.meta_resolver import resolve_meta
 logger = logging.getLogger(__name__)
 
 
+def _is_legacy_ai_score_format(ai_score_data: dict) -> bool:
+    """
+    Detect if ai_score data is in legacy format.
+    
+    Args:
+        ai_score_data: Raw ai_score JSON data
+        
+    Returns:
+        True if legacy format, False if new format
+    """
+    # New format should have 'meta' and 'scores' fields
+    if 'meta' in ai_score_data and 'scores' in ai_score_data:
+        return False
+    
+    # Legacy format typically has 'total_score' or similar old fields
+    legacy_indicators = ['total_score', 'dimensions', 'analysis', 'summary', 'overall_feedback']
+    return any(field in ai_score_data for field in legacy_indicators)
+
+
 def load_evaluation_by_essay(essay_id: int) -> Optional[EvaluationResult]:
     """
     Load evaluation result for a single essay.
@@ -31,14 +50,9 @@ def load_evaluation_by_essay(essay_id: int) -> Optional[EvaluationResult]:
     
     # Try to load from ai_score first
     if essay.ai_score:
-        try:
-            # Try to parse as new format
-            evaluation = EvaluationResult.model_validate(essay.ai_score)
-            logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (new format)")
-            return evaluation
-        except Exception as e:
-            logger.warning(f"Failed to parse ai_score as new format for EvaluationResult {essay_id}: {e}")
-            # Try to normalize legacy format
+        # Check if data is in legacy format to avoid unnecessary validation warnings
+        if _is_legacy_ai_score_format(essay.ai_score):
+            # Handle legacy format directly
             try:
                 normalized_data = _normalize_legacy_ai_score(essay.ai_score, essay)
                 evaluation = EvaluationResult.model_validate(normalized_data)
@@ -46,6 +60,22 @@ def load_evaluation_by_essay(essay_id: int) -> Optional[EvaluationResult]:
                 return evaluation
             except Exception as e:
                 logger.error(f"Failed to normalize legacy ai_score for essay {essay_id}: {e}")
+        else:
+            # Try to parse as new format
+            try:
+                evaluation = EvaluationResult.model_validate(essay.ai_score)
+                logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (new format)")
+                return evaluation
+            except Exception as e:
+                logger.warning(f"Failed to parse ai_score as new format for EvaluationResult {essay_id}: {e}")
+                # Fall back to legacy normalization as last resort
+                try:
+                    normalized_data = _normalize_legacy_ai_score(essay.ai_score, essay)
+                    evaluation = EvaluationResult.model_validate(normalized_data)
+                    logger.info(f"Loaded evaluation for essay {essay_id} from ai_score (legacy format, auto-converted)")
+                    return evaluation
+                except Exception as e:
+                    logger.error(f"Failed to normalize legacy ai_score for essay {essay_id}: {e}")
     
     # Fall back to generating evaluation on-the-fly (non-persistent)
     try:
@@ -143,49 +173,65 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
             "words": len(essay.content or "")
         }
     
-    # Handle different legacy score formats
+    # Handle different legacy score formats with robust error handling
     scores_data = {"total": 0.0, "rubrics": []}
     
-    if "total_score" in ai_score_data:
-        scores_data["total"] = float(ai_score_data["total_score"])
-    elif "total" in ai_score_data:
-        scores_data["total"] = float(ai_score_data["total"])
-    elif "scores" in ai_score_data and "total" in ai_score_data["scores"]:
-        scores_data["total"] = float(ai_score_data["scores"]["total"])
+    try:
+        if "total_score" in ai_score_data:
+            scores_data["total"] = float(ai_score_data["total_score"])
+        elif "total" in ai_score_data:
+            scores_data["total"] = float(ai_score_data["total"])
+        elif "scores" in ai_score_data and isinstance(ai_score_data["scores"], dict) and "total" in ai_score_data["scores"]:
+            scores_data["total"] = float(ai_score_data["scores"]["total"])
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Failed to parse total score from legacy data: {e}, using default 0.0")
+        scores_data["total"] = 0.0
     
-    # Convert dimensions to rubrics
-    if "dimensions" in ai_score_data:
+    # Convert dimensions to rubrics with robust error handling
+    if "dimensions" in ai_score_data and isinstance(ai_score_data["dimensions"], list):
         for dim in ai_score_data["dimensions"]:
             if isinstance(dim, dict) and "name" in dim and "score" in dim:
-                rubric = {
-                    "name": dim["name"],
-                    "score": float(dim.get("score", 0)),
-                    "max": float(dim.get("max_score", 100)),
-                    "weight": float(dim.get("weight", 1.0)),
-                    "reason": dim.get("reason", "")
-                }
-                scores_data["rubrics"].append(rubric)
-    elif "scores" in ai_score_data:
+                try:
+                    rubric = {
+                        "name": str(dim["name"]),
+                        "score": float(dim.get("score", 0)),
+                        "max": float(dim.get("max_score", 100)),
+                        "weight": float(dim.get("weight", 1.0)),
+                        "reason": str(dim.get("reason", ""))
+                    }
+                    scores_data["rubrics"].append(rubric)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to parse dimension {dim.get('name', 'unknown')}: {e}")
+    elif "scores" in ai_score_data and isinstance(ai_score_data["scores"], dict):
         # Convert individual score fields to rubrics
         score_obj = ai_score_data["scores"]
         for field in ["content", "structure", "language", "aesthetics", "norms"]:
             if field in score_obj:
-                rubric = {
-                    "name": {"content": "内容", "structure": "结构", "language": "语言", 
-                           "aesthetics": "文采", "norms": "规范"}.get(field, field),
-                    "score": float(score_obj[field]),
-                    "max": 20.0,  # Default max
-                    "weight": 1.0,
-                    "reason": score_obj.get("rationale", "")
-                }
-                scores_data["rubrics"].append(rubric)
+                try:
+                    rubric = {
+                        "name": {"content": "内容", "structure": "结构", "language": "语言", 
+                               "aesthetics": "文采", "norms": "规范"}.get(field, field),
+                        "score": float(score_obj[field]),
+                        "max": 20.0,  # Default max
+                        "weight": 1.0,
+                        "reason": str(score_obj.get("rationale", ""))
+                    }
+                    scores_data["rubrics"].append(rubric)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to parse score field {field}: {e}")
     
-    # Add legacy score fields for compatibility
-    if "scores" in ai_score_data:
+    # Add legacy score fields for compatibility with error handling
+    if "scores" in ai_score_data and isinstance(ai_score_data["scores"], dict):
         legacy_scores = ai_score_data["scores"]
         for field in ["content", "structure", "language", "aesthetics", "norms", "rationale"]:
             if field in legacy_scores:
-                scores_data[field] = legacy_scores[field]
+                try:
+                    if field == "rationale":
+                        scores_data[field] = str(legacy_scores[field])
+                    else:
+                        scores_data[field] = float(legacy_scores[field])
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to parse legacy score field {field}: {e}")
     
     # Create text block
     text_data = {
