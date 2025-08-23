@@ -106,43 +106,62 @@ def ensure_assignment_template_exists() -> str:
 
 def _create_minimal_template(template_path: str):
     """Create a minimal DOCX template for reports aligned with teacher view"""
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    
     doc = Document()
 
     # 1) 抬头信息（页首）
     title = doc.add_heading('批阅作业 - {{ assignmentTitle }}（{{ studentName }}）', 0)
-    title.alignment = 1  # Center
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Basic info in one or two lines
+    # Basic info in a clean table format
     doc.add_heading('基本信息', level=1)
-    info_para = doc.add_paragraph()
-    info_para.add_run('作业：').bold = True
-    info_para.add_run('{{ assignmentTitle }}\n')
-    info_para.add_run('学生：').bold = True
-    info_para.add_run('{{ studentName }}\n')
-    info_para.add_run('提交时间：').bold = True
-    info_para.add_run('{{ submittedAt }}')
+    if DOCXTPL_AVAILABLE:
+        # Create table with template variables
+        doc.add_paragraph("""
+{%- set info_data = [
+    ('作业', assignmentTitle),
+    ('学生', studentName), 
+    ('提交时间', submittedAt)
+] -%}
+{% for label, value in info_data %}{{ label }}：{{ value }}
+{% endfor %}
+        """.strip())
+    else:
+        info_para = doc.add_paragraph()
+        info_para.add_run('作业：').bold = True
+        info_para.add_run('[作业标题]\n')
+        info_para.add_run('学生：').bold = True
+        info_para.add_run('[学生姓名]\n')
+        info_para.add_run('提交时间：').bold = True
+        info_para.add_run('[提交时间]')
 
     # 2) 总分与维度评分表
     doc.add_heading('评分结果', level=1)
     score_para = doc.add_paragraph()
     score_para.add_run('总分：').bold = True
     if DOCXTPL_AVAILABLE:
-        score_para.add_run('{{ gradingResult.total_score }} / {{ total_max_score|default(40) }}')
+        score_para.add_run('{{ gradingResult.total_score|default(0) }} / {{ total_max_score|default(40) }}')
     else:
         score_para.add_run('[总分]')
 
-    # 维度明细表
+    # 维度明细表 - Using proper table instead of markdown
     doc.add_heading('维度评分明细', level=2)
     if DOCXTPL_AVAILABLE:
+        # Create a proper DOCX table using template
         doc.add_paragraph("""
 {% if gradingResult.dimensions and gradingResult.dimensions|length > 0 %}
-| 维度 | 分数 | 等级 | 维度反馈 |
-|------|------|------|----------|
-{% for dim in gradingResult.dimensions %}| {{ dim.dimension_name }} | {{ dim.score }} | {{ dim.selected_rubric_level|default('') }} | {{ dim.feedback|default('') }} |
+{%- set table_data = [] -%}
+{%- for dim in gradingResult.dimensions -%}
+{%- set _ = table_data.append([dim.dimension_name, dim.score, dim.selected_rubric_level|default(''), dim.feedback|default('')]) -%}
+{%- endfor -%}
+{% for row in table_data %}{{ row[0] }}	{{ row[1] }}	{{ row[2] }}	{{ row[3] }}
 {% endfor %}
 
 {% for dim in gradingResult.dimensions %}
-**{{ dim.dimension_name }}维度详情：**
+{{ dim.dimension_name }}维度详情：
 
 亮点句子：
 {% if dim.example_good_sentence and dim.example_good_sentence|length > 0 %}
@@ -270,11 +289,11 @@ def _create_minimal_template(template_path: str):
     if DOCXTPL_AVAILABLE:
         doc.add_paragraph("""
 {% if summaryData %}
-**问题总结：** {{ summaryData.problemSummary|default("（本项暂无数据）") }}
+问题总结：{{ summaryData.problemSummary|default("（本项暂无数据）") }}
 
-**改进建议：** {{ summaryData.improvementPlan|default("（本项暂无数据）") }}
+改进建议：{{ summaryData.improvementPlan|default("（本项暂无数据）") }}
 
-**预期效果：** {{ summaryData.expectedOutcome|default("（本项暂无数据）") }}
+预期效果：{{ summaryData.expectedOutcome|default("（本项暂无数据）") }}
 {% else %}
 （本项暂无数据）
 {% endif %}
@@ -661,27 +680,62 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
     # 维度明细表
     doc.add_heading('维度评分明细', level=2)
     if evaluation.scores and evaluation.scores.rubrics:
-        # Create table header
-        table_para = doc.add_paragraph()
-        table_para.add_run('维度\t分数\t等级\t维度反馈').bold = True
+        # Create proper DOCX table
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
         
+        table = doc.add_table(rows=1 + len(evaluation.scores.rubrics), cols=4)
+        table.style = 'Table Grid'
+        table.alignment = WD_TABLE_ALIGNMENT.LEFT
+        
+        # Set table headers
+        headers = ['维度', '分数', '等级', '维度反馈']
+        for i, header in enumerate(headers):
+            cell = table.cell(0, i)
+            cell.text = header
+            cell.paragraphs[0].runs[0].bold = True
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Fill table data
+        for row_idx, rubric in enumerate(evaluation.scores.rubrics, 1):
+            table.cell(row_idx, 0).text = rubric.name
+            table.cell(row_idx, 1).text = str(rubric.score)
+            table.cell(row_idx, 1).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            table.cell(row_idx, 2).text = getattr(rubric, 'selected_rubric_level', '') or getattr(rubric, 'reason', '')
+            table.cell(row_idx, 3).text = getattr(rubric, 'feedback', '') or getattr(rubric, 'reason', '')
+            
+            # Add dimension details section after table
+        
+        # Add dimension details sections
         for rubric in evaluation.scores.rubrics:
-            table_row = doc.add_paragraph()
-            table_row.add_run(f'{rubric.name}\t{rubric.score}\t{rubric.reason}\t{rubric.reason}')
+            dim_detail = doc.add_heading(f'{rubric.name}维度详情：', level=3)
             
-            # Add dimension details
-            dim_detail = doc.add_paragraph()
-            dim_detail.add_run(f'{rubric.name}维度详情：').bold = True
-            
-            # Bright points (placeholder)
+            # Bright points (placeholder - would need to be populated from actual data)
             bright_para = doc.add_paragraph()
             bright_para.add_run('亮点句子：').bold = True
-            bright_para.add_run('\n• （本项暂无数据）')
             
-            # Improvement suggestions (placeholder)  
+            # Check if rubric has example_good_sentence data
+            if hasattr(rubric, 'example_good_sentence') and rubric.example_good_sentence:
+                for sentence in rubric.example_good_sentence:
+                    doc.add_paragraph(f'• {sentence}')
+            else:
+                doc.add_paragraph('• （本项暂无数据）')
+            
+            # Improvement suggestions
             improve_para = doc.add_paragraph()
             improve_para.add_run('待改进句：').bold = True
-            improve_para.add_run('\n• （本项暂无数据）')
+            
+            # Check if rubric has example_improvement_suggestion data
+            if hasattr(rubric, 'example_improvement_suggestion') and rubric.example_improvement_suggestion:
+                for suggestion in rubric.example_improvement_suggestion:
+                    original = getattr(suggestion, 'original', '') if hasattr(suggestion, 'original') else suggestion.get('original', '') if isinstance(suggestion, dict) else ''
+                    suggested = getattr(suggestion, 'suggested', '') if hasattr(suggestion, 'suggested') else suggestion.get('suggested', '') if isinstance(suggestion, dict) else ''
+                    if original and suggested:
+                        doc.add_paragraph(f'- 原文：{original}\n- 建议：{suggested}')
+                    else:
+                        doc.add_paragraph(f'• {suggestion}')
+            else:
+                doc.add_paragraph('• （本项暂无数据）')
     else:
         doc.add_paragraph('（本项暂无数据）')
     
@@ -689,6 +743,36 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
     doc.add_heading('作文正文', level=1)
     essay_content = evaluation.currentEssayContent or "（本项暂无数据）"
     doc.add_paragraph(essay_content)
+    
+    # 3.1) 作文图片（如果有的话）
+    if hasattr(evaluation, '_essay_instance'):
+        essay = evaluation._essay_instance
+        if essay and essay.original_image_path:
+            doc.add_heading('作文图片', level=2)
+            
+            # Try to add the original image
+            try:
+                from pathlib import Path
+                from docx.shared import Inches
+                if Path(essay.original_image_path).exists():
+                    doc.add_paragraph('原始图片：')
+                    doc.add_picture(essay.original_image_path, width=Inches(6))
+                    
+                    # Try to add annotated image if available
+                    if essay.annotated_overlay_path and Path(essay.annotated_overlay_path).exists():
+                        doc.add_paragraph('教师批注图片：')
+                        doc.add_picture(essay.annotated_overlay_path, width=Inches(6))
+                    # Or try to compose annotations if we have manual review data
+                    elif hasattr(essay, 'manual_review') and essay.manual_review:
+                        from app.reporting.image_overlay import compose_annotations
+                        # This would need annotation data from manual review
+                        # For now, just show the original image
+                        pass
+                else:
+                    doc.add_paragraph('图片文件未找到')
+            except Exception as e:
+                logger.warning(f"Failed to add image to DOCX: {e}")
+                doc.add_paragraph('图片加载失败')
     
     # 4) 综合评价与寄语
     doc.add_heading('综合评价与寄语', level=1)

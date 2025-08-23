@@ -259,7 +259,7 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
         total_score = grading_result.get('total_score', 0)
         rubrics = []
         
-        # Map dimensions to rubrics
+        # Map dimensions to rubrics with enhanced data
         dimensions = grading_result.get('dimensions', [])
         for dim in dimensions:
             rubric = RubricScore(
@@ -269,6 +269,13 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
                 weight=1.0,
                 reason=dim.get('feedback', '') or dim.get('selected_rubric_level', '')
             )
+            
+            # Add example sentences data if available
+            if 'example_good_sentence' in dim:
+                rubric.example_good_sentence = dim['example_good_sentence']
+            if 'example_improvement_suggestion' in dim:
+                rubric.example_improvement_suggestion = dim['example_improvement_suggestion']
+            
             rubrics.append(rubric)
         
         scores = Scores(total=total_score, rubrics=rubrics)
@@ -332,6 +339,43 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
                 'expectedOutcome': '通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。'
             }
         
+        # Extract meaningful overall comment, strengths, and improvements from dimension feedback
+        overall_comment = grading_result.get('overall_comment', '')
+        strengths = list(grading_result.get('strengths', []))
+        improvements = list(grading_result.get('improvements', []))
+        
+        # Extract insights from dimension feedback if the dedicated fields are empty
+        if not overall_comment and not strengths and not improvements:
+            for dim in dimensions:
+                feedback = dim.get('feedback', '') or dim.get('selected_rubric_level', '')
+                score = dim.get('score', 0)
+                max_score = dim.get('max_score', 10)
+                score_ratio = score / max_score if max_score > 0 else 0
+                
+                # If score is high (>=0.8), treat as strength
+                if score_ratio >= 0.8 and feedback:
+                    strengths.append(f"{dim.get('dimension_name', '')}方面表现优秀：{feedback}")
+                # If score is low (<=0.6), treat as improvement area
+                elif score_ratio <= 0.6 and feedback:
+                    improvements.append(f"{dim.get('dimension_name', '')}需要改进：{feedback}")
+            
+            # Generate overall comment if still empty
+            if not overall_comment:
+                total_score = grading_result.get('total_score', 0)
+                if total_score >= 32:  # Assuming 40 is max, 80% threshold
+                    overall_comment = f"本次作文总体表现良好，获得{total_score}分，显示了扎实的写作基础和良好的表达能力。"
+                elif total_score >= 24:  # 60% threshold
+                    overall_comment = f"本次作文表现中等，获得{total_score}分，在某些方面表现出色，但仍有进一步提升的空间。"
+                else:
+                    overall_comment = f"本次作文获得{total_score}分，需要在多个方面加强练习，建议重点关注写作基础技能的提升。"
+        
+        # Add generic strengths/improvements if still empty
+        if not strengths:
+            strengths = ["能够完成作文基本要求", "语言表达基本流畅", "内容结构相对完整"]
+        
+        if not improvements:
+            improvements = ["可以进一步丰富内容深度", "语言表达可以更加精准", "文章结构可以更加紧密"]
+        
         # Build the EvaluationResult with teacher-view aligned fields
         result = EvaluationResult(
             meta=meta,
@@ -353,14 +397,15 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
             summaryData=summary_data,
             parentSummary=parent_summary,
             
-            # Additional fields needed for template compatibility
-            overall_comment=grading_result.get('overall_comment', ''),
-            strengths=grading_result.get('strengths', []),
-            improvements=grading_result.get('improvements', [])
+            # Additional fields needed for template compatibility with improved data
+            overall_comment=overall_comment,
+            strengths=strengths,
+            improvements=improvements
         )
         
-        # Preserve original dimensions data for template access
+        # Preserve original dimensions data and essay instance for template access
         result._original_grading_result = grading_result
+        result._essay_instance = essay  # Pass essay instance for image access
         
         return result
         
