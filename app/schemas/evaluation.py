@@ -140,6 +140,9 @@ class EvaluationResult(BaseModel):
     overall_comment: Optional[str] = Field(None, description="综合评价")
     strengths: List[str] = Field(default_factory=list, description="主要优点")
     improvements: List[str] = Field(default_factory=list, description="改进建议")
+    
+    # Internal field to preserve original detailed grading data
+    _original_grading_result: Optional[Dict[str, Any]] = Field(None, description="原始详细评分数据，用于保留维度示例等信息")
 
 
 class StandardDTO(BaseModel):

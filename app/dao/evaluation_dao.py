@@ -188,20 +188,36 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         scores_data["total"] = 0.0
     
     # Convert dimensions to rubrics with robust error handling
+    # Also preserve original dimension data for detailed feedback
+    original_dimensions = []
     if "dimensions" in ai_score_data and isinstance(ai_score_data["dimensions"], list):
         for dim in ai_score_data["dimensions"]:
-            if isinstance(dim, dict) and "name" in dim and "score" in dim:
+            if isinstance(dim, dict) and ("name" in dim or "dimension_name" in dim) and "score" in dim:
                 try:
+                    # Handle both 'name' and 'dimension_name' field names
+                    dimension_name = str(dim.get("dimension_name", dim.get("name", "")))
+                    
                     rubric = {
-                        "name": str(dim["name"]),
+                        "name": dimension_name,
                         "score": float(dim.get("score", 0)),
                         "max": float(dim.get("max_score", 100)),
                         "weight": float(dim.get("weight", 1.0)),
-                        "reason": str(dim.get("reason", ""))
+                        "reason": str(dim.get("feedback", dim.get("reason", "")))
                     }
                     scores_data["rubrics"].append(rubric)
+                    
+                    # Preserve original dimension data for detailed feedback
+                    original_dim = {
+                        "dimension_name": dimension_name,
+                        "score": float(dim.get("score", 0)),
+                        "selected_rubric_level": str(dim.get("selected_rubric_level", "")),
+                        "feedback": str(dim.get("feedback", dim.get("reason", ""))),
+                        "example_good_sentence": str(dim.get("example_good_sentence", "")),
+                        "example_improvement_suggestion": dim.get("example_improvement_suggestion", {})
+                    }
+                    original_dimensions.append(original_dim)
                 except (ValueError, TypeError) as e:
-                    logger.warning(f"Failed to parse dimension {dim.get('name', 'unknown')}: {e}")
+                    logger.warning(f"Failed to parse dimension {dim.get('dimension_name', dim.get('name', 'unknown'))}: {e}")
     elif "scores" in ai_score_data and isinstance(ai_score_data["scores"], dict):
         # Convert individual score fields to rubrics
         score_obj = ai_score_data["scores"]
@@ -252,7 +268,18 @@ def _normalize_legacy_ai_score(ai_score_data: dict, essay: Essay) -> dict:
         "summary": ai_score_data.get("summary", ""),
         # P2: Add new fields for enhanced reporting (even if empty)
         "paragraphs": [],
-        "feedback_summary": ai_score_data.get("summary", "")  # Use summary as feedback_summary fallback
+        "feedback_summary": ai_score_data.get("summary", ""),  # Use summary as feedback_summary fallback
+        # Extract overall data from legacy format
+        "overall_comment": ai_score_data.get("overall_comment", ""),
+        "strengths": ai_score_data.get("strengths", []),
+        "improvements": ai_score_data.get("improvements", []),
+        # Store original grading result for detailed feedback preservation
+        "_original_grading_result": {
+            "dimensions": original_dimensions if 'original_dimensions' in locals() else [],
+            "overall_comment": ai_score_data.get("overall_comment", ""),
+            "strengths": ai_score_data.get("strengths", []),
+            "improvements": ai_score_data.get("improvements", [])
+        }
     }
     
     # Try to extract diagnosis from legacy fields
