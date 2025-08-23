@@ -285,6 +285,8 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
     """Render using docxtpl with subdocuments and enhanced templates."""
     from docxtpl import DocxTemplate
     from datetime import datetime
+    from app.dao.evaluation_dao import load_evaluation_by_essay
+    from app.schemas.evaluation import to_context
     import os
     from pathlib import Path
     
@@ -296,12 +298,11 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
     doc = DocxTemplate(assignment_template_path)
     
     # Prepare context with enhanced student data
+
     students_data = []
     for student in assignment_vm.students:
-        # Import image overlay module for annotation composition
         from app.reporting.image_overlay import compose_annotations
-        
-        # Convert StudentReportVM to context dict
+
         student_data = {
             'student_name': student.student_name,
             'student_no': student.student_no,
@@ -321,19 +322,24 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                 ]
             },
             'text': {
-                'cleaned': getattr(student, 'cleaned_text', '') or student.feedback  # Fallback to feedback
+                # 优先 cleaned_text，其次用原文段落拼接，再退到反馈
+                'cleaned': (
+                    getattr(student, 'cleaned_text', '') or
+                    ("\n".join(student.original_paragraphs) if getattr(student, 'original_paragraphs', None) else '') or
+                    student.feedback
+                )
             },
             'analysis': {
-                'outline': getattr(student, 'outline', []),  # Structure analysis
-                'issues': getattr(student, 'issues', [])     # Issue list
+                'outline': getattr(student, 'outline', []),
+                'issues': getattr(student, 'issues', [])
             },
-            'diagnostics': getattr(student, 'diagnostics', []),  # Diagnostic suggestions
+            'diagnostics': getattr(student, 'diagnostics', []),
             'diagnosis': {
                 'before': getattr(student, 'diagnosis_before', ''),
                 'comment': getattr(student, 'diagnosis_comment', ''),
                 'after': getattr(student, 'diagnosis_after', '')
             },
-            'summary': getattr(student, 'summary', ''),  # Summary
+            'summary': getattr(student, 'summary', ''),
             'paragraphs': [
                 {
                     'para_num': para.para_num,
@@ -341,39 +347,52 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                     'feedback': para.feedback,
                     'polished_text': para.polished_text,
                     'intent': para.intent
-                }
-                for para in student.paragraphs
+                } for para in student.paragraphs
             ],
             'exercises': [
                 {
                     'type': ex.type,
                     'prompt': ex.prompt,
-                    'hint': ex.hints if hasattr(ex, 'hints') else getattr(ex, 'hint', []),  # Fix field consistency
+                    'hint': ex.hints if hasattr(ex, 'hints') else getattr(ex, 'hint', []),
                     'sample': ex.sample
-                }
-                for ex in student.exercises
+                } for ex in student.exercises
             ],
             'images': {
-                'original_image_path': None,      # To be populated if image data available
-                'composited_image_path': None     # To be populated with annotation overlay
+                'original_image_path': None,
+                'composited_image_path': None
             },
             'feedback_summary': student.feedback_summary
         }
-        
-        # Try to get image paths if available
+
+        # 如缺失则从 EvaluationResult 做兜底回填
+        if (not student_data['analysis']['outline'] and not student_data['analysis']['issues']) or not student_data['diagnostics']:
+            try:
+                evaluation = load_evaluation_by_essay(student.essay_id)
+                if evaluation:
+                    ctx = to_context(evaluation)
+                    analysis_ctx = ctx.get('analysis', {}) or {}
+                    student_data['analysis']['outline'] = student_data['analysis']['outline'] or analysis_ctx.get('outline', [])
+                    student_data['analysis']['issues'] = student_data['analysis']['issues'] or analysis_ctx.get('issues', [])
+                    student_data['diagnostics'] = student_data['diagnostics'] or ctx.get('diagnostics', []) or []
+                    diag = ctx.get('diagnosis', {}) or {}
+                    for k in ('before', 'comment', 'after'):
+                        if not student_data['diagnosis'].get(k):
+                            student_data['diagnosis'][k] = diag.get(k, '')
+            except Exception:
+                # 兜底失败忽略，不影响整体报告
+                pass
+
+        # 图片仍需上线游提供 scanned_images 才能显示
         if hasattr(student, 'scanned_images') and student.scanned_images:
-            original_path = student.scanned_images[0] if student.scanned_images else None
+            original_path = student.scanned_images[0]
             student_data['images']['original_image_path'] = original_path
-            
-            # Try to compose annotations if available
             annotations = getattr(student, 'annotations', None)
             if original_path and annotations:
                 composited_path = compose_annotations(original_path, annotations)
                 student_data['images']['composited_image_path'] = composited_path
-        
+
         students_data.append(student_data)
-    
-    # Create combined context
+
     context = {
         'assignment': {
             'title': assignment_vm.title,
@@ -382,9 +401,8 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
         },
         'students': students_data,
         'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'now': datetime.now()  # For strftime filter
+        'now': datetime.now()
     }
-    
     # Debug: print context structure
     logger.info(f"Rendering assignment with {len(students_data)} students")
     

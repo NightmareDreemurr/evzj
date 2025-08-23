@@ -149,8 +149,6 @@ def _create_minimal_template(template_path: str):
     
     doc.save(template_path)
     logger.info(f"Created minimal template: {template_path}")
-
-# 仅展示需要替换的函数片段，其他代码保持不变
 def _create_assignment_template(template_path: str):
     """Create assignment batch template with student loop and page breaks"""
     from docx import Document
@@ -161,17 +159,14 @@ def _create_assignment_template(template_path: str):
     title = doc.add_heading('{{ assignment.title }} 批量作文评估报告', 0)
     title.alignment = 1  # Center
 
-
     # Assignment metadata
     doc.add_heading('作业信息', level=1)
     info_para = doc.add_paragraph()
     info_para.add_run('作业标题：').bold = True
     info_para.add_run('{{ assignment.title }}\n')
     info_para.add_run('班级：').bold = True
-    # 修正：只显示名称
     info_para.add_run('{{ assignment.classroom.name|default(assignment.classroom) }}\n')
     info_para.add_run('教师：').bold = True
-    # 修正：只显示名称
     info_para.add_run('{{ assignment.teacher.name|default(assignment.teacher) }}\n')
     info_para.add_run('生成时间：').bold = True
     if DOCXTPL_AVAILABLE:
@@ -179,74 +174,65 @@ def _create_assignment_template(template_path: str):
     else:
         info_para.add_run('{{ current_time }}')
 
-    # Student reports loop
-    doc.add_paragraph('{% for s in students %}')
+    doc.add_page_break()
 
-    # Student page header
-    doc.add_heading('{{ s.student_name }} 作文评估报告', level=1)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% for s in students %}')
+        doc.add_heading('{{ s.student_name }} 作文评估报告', level=1)
 
-    # Basic student info
-    basic_info = doc.add_paragraph()
-    basic_info.add_run('学生：').bold = True
-    basic_info.add_run('{{ s.student_name }}\n')
-    basic_info.add_run('题目：').bold = True
-    basic_info.add_run('{{ s.topic }}\n')
-    basic_info.add_run('字数：').bold = True
-    basic_info.add_run('{{ s.words|default("未统计") }}\n')
-    basic_info.add_run('总分：').bold = True
-    basic_info.add_run('{{ s.scores.total }}')
+        basic_info = doc.add_paragraph()
+        basic_info.add_run('学生：').bold = True
+        basic_info.add_run('{{ s.student_name }}\n')
+        basic_info.add_run('题目：').bold = True
+        basic_info.add_run('{{ s.topic }}\n')
+        basic_info.add_run('字数：').bold = True
+        basic_info.add_run('{{ s.words|default("未统计") }}\n')
+        basic_info.add_run('总分：').bold = True
+        basic_info.add_run('{{ s.scores.total }}')
 
-    # Scoring dimensions table - 修正为 rubrics，并使用 i.max
-    doc.add_heading('评分维度', level=2)
-    doc.add_paragraph("""
-    {% if s.scores.rubrics %}
-    | 维度 | 得分 | 满分 | 权重 | 理由 |
-    |------|------|------|------|------|
-    {% for i in s.scores.rubrics %}| {{ i.name }} | {{ i.score }} | {{ i.max }} | {{ i.weight|default('') }} | {{ i.reason|default('') }} |
-    {% endfor %}{% else %}（暂无评分维度数据）{% endif %}
-            """.strip())
+        # Scoring dimensions table - 与服务端一致使用 items/max_score
+        doc.add_heading('评分维度', level=2)
+        doc.add_paragraph("""
+{% if s.scores.items and s.scores.items|length > 0 %}
+| 维度 | 得分 | 满分 | 权重 | 理由 |
+|------|------|------|------|------|
+{% for i in s.scores.items %}| {{ i.name }} | {{ i.score }} | {{ i.max_score }} | {{ i.weight|default('') }} | {{ i.reason|default('') }} |
+{% endfor %}{% else %}（暂无评分维度数据）{% endif %}
+        """.strip())
 
-    # Cleaned text
-    doc.add_heading('清洗后文本', level=2)
-    doc.add_paragraph('{{ s.text.cleaned|default("") }}')
+        doc.add_heading('清洗后文本', level=2)
+        doc.add_paragraph('{{ s.text.cleaned|default("") }}')
 
-    # Analysis and diagnostics
-    doc.add_heading('分析与诊断', level=2)
-
-    # Structure analysis
-    doc.add_heading('结构分析', level=3)
-    doc.add_paragraph("""
+        doc.add_heading('分析与诊断', level=2)
+        doc.add_heading('结构分析', level=3)
+        doc.add_paragraph("""
 {% for o in s.analysis.outline %}
 第{{ o.para }}段：{{ o.intent }}
 {% endfor %}
-    """.strip())
+        """.strip())
 
-    # Issue list
-    doc.add_heading('问题清单', level=3)
-    doc.add_paragraph("""
+        doc.add_heading('问题清单', level=3)
+        doc.add_paragraph("""
 {% for iss in s.analysis.issues %}
 - {{ iss }}
 {% endfor %}
-    """.strip())
+        """.strip())
 
-    # Diagnostic suggestions
-    doc.add_heading('诊断建议', level=3)
-    doc.add_paragraph("""
-    {% for d in s.diagnostics %}
-    {% if d.para %}第{{ d.para }}段{% else %}全文{% endif %}｜{{ d.issue }}｜证据：{{ d.evidence }}｜建议：{{ d.advice|default([])|join('；') }}
-    {% else %}（暂无诊断建议）{% endfor %}
-            """.strip())
+        doc.add_heading('诊断建议', level=3)
+        doc.add_paragraph("""
+{% for d in s.diagnostics %}
+{% if d.para %}第{{ d.para }}段{% else %}全文{% endif %}｜{{ d.issue }}｜证据：{{ d.evidence }}｜建议：{{ d.advice|default([])|join('；') }}
+{% else %}（暂无诊断建议）{% endfor %}
+        """.strip())
 
-    # Diagnosis summary
-    doc.add_heading('诊断总结', level=3)
-    doc.add_paragraph('{{ s.diagnosis.before|default("") }}')
-    doc.add_paragraph('{{ s.diagnosis.comment|default("") }}')
-    doc.add_paragraph('{{ s.diagnosis.after|default("") }}')
-    doc.add_paragraph('{{ s.summary|default("") }}')
+        doc.add_heading('诊断总结', level=3)
+        doc.add_paragraph('{{ s.diagnosis.before|default("") }}')
+        doc.add_paragraph('{{ s.diagnosis.comment|default("") }}')
+        doc.add_paragraph('{{ s.diagnosis.after|default("") }}')
+        doc.add_paragraph('{{ s.summary|default("") }}')
 
-    # Paragraph-level enhancements
-    doc.add_heading('段落级增强', level=2)
-    doc.add_paragraph("""
+        doc.add_heading('段落级增强', level=2)
+        doc.add_paragraph("""
 {% for p in s.paragraphs %}
 第{{ p.para_num }}段：意图：{{ p.intent|default('') }}
 原文：{{ p.original_text|default('') }}
@@ -254,39 +240,39 @@ def _create_assignment_template(template_path: str):
 优化：{{ p.polished_text|default('') }}
 
 {% endfor %}
-    """.strip())
+        """.strip())
 
-    # Personalized exercises - 兼容 hint/hints
-    doc.add_heading('个性化练习', level=2)
-    doc.add_paragraph("""
-    {% if s.exercises and s.exercises|length > 0 %}
-    {% for ex in s.exercises %}
-    [{{ ex.type }}] {{ ex.prompt }}
-    要点：{{ (ex.hint if ex.hint is not none else ex.hints)|default([])|join('；') }}
-    示例：{{ ex.sample|default('') }}
+        # 兼容 hint/hints
+        doc.add_heading('个性化练习', level=2)
+        doc.add_paragraph("""
+{% if s.exercises and s.exercises|length > 0 %}
+{% for ex in s.exercises %}
+[{{ ex.type }}] {{ ex.prompt }}
+要点：{{ (ex.hint if ex.hint is not none else ex.hints)|default([])|join('；') }}
+示例：{{ ex.sample|default('') }}
 
-    {% endfor %}{% else %}（暂无个性化练习）{% endif %}
-            """.strip())
+{% endfor %}{% else %}（暂无个性化练习）{% endif %}
+        """.strip())
 
-    # Images section - 当前仅占位提示
-    doc.add_heading('作文图片', level=2)
-    doc.add_paragraph('{% if s.images.original_image_path %}原图：[图片]{% else %}（无原图）{% endif %}')
-    doc.add_paragraph('{% if s.images.composited_image_path %}批注图：[图片]{% else %}（无批注图）{% endif %}')
+        doc.add_heading('作文图片', level=2)
+        doc.add_paragraph('{% if s.images.original_image_path %}原图：[图片]{% else %}（无原图）{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image_path %}批注图：[图片]{% else %}（无批注图）{% endif %}')
 
-    # Page break between students (except for the last one)
-    doc.add_paragraph('{% if not loop.last %}')
-    doc.add_page_break()
-    doc.add_paragraph('{% endif %}')
+        doc.add_paragraph('{% if not loop.last %}')
+        doc.add_page_break()
+        doc.add_paragraph('{% endif %}')
+        doc.add_paragraph('{% endfor %}')
+    else:
+        doc.add_paragraph('[学生报告循环 - 需要 docxtpl 支持]')
 
-    # End student loop
-    doc.add_paragraph('{% endfor %}')
-
-    # Footer
     doc.add_paragraph().add_run('\n' + '='*50)
     footer = doc.add_paragraph()
     footer.add_run('报告生成：e文智教系统 - ').bold = True
-    footer.add_run('{{ now|strftime("%Y年%m月%d日") }}')
-    footer.alignment = 1  # Center
+    if DOCXTPL_AVAILABLE:
+        footer.add_run('{{ now|strftime("%Y年%m月%d日") }}')
+    else:
+        footer.add_run('{{ current_time }}')
+    footer.alignment = 1
 
     doc.save(template_path)
 
