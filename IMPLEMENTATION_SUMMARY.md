@@ -16,6 +16,11 @@
 - `PUT /api/submissions/{id}/evaluation`：保存教师审核后的数据
 - 支持权限控制、数据验证和状态跟踪
 
+### 3. OCR 文本自动校正
+- OCR 提交的作文在预分析和评分前会自动进行 AI 校正
+- 只对 `is_from_ocr=True` 且内容与原始 OCR 文本相同的作文进行校正
+- 校正后的文本保存到 `essay.content` 字段，确保教师看到的是清理后的文本
+
 ### 3. 教师端 UI 增强
 在 `review_submission.html` 中新增完整的增强内容编辑面板：
 - **段落大纲分析**：编辑每段的写作意图
@@ -46,7 +51,7 @@
 OCR → ai_corrector → ai_pregrader → ai_grader → DOCX（绕过教师审核）
 
 新流程（已修复）：
-OCR → ai_corrector → ai_pregrader → ai_grader → EvaluationResult（状态：ai_generated）
+OCR → OCR自动校正 → ai_pregrader → ai_grader → EvaluationResult（状态：ai_generated）
                                                        ↓
 教师端 UI 展示和编辑 → 保存修改 → EvaluationResult（状态：teacher_reviewed）
                                                        ↓
