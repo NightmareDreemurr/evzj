@@ -841,7 +841,7 @@ def _render_assignment_zip(assignment_vm: AssignmentReportVM) -> zipstream.ZipSt
     Returns:
         ZipStream generator
     """
-    z = zipstream.ZipStream(mode='w', compression=zipstream.ZIP_DEFLATED)
+    z = zipstream.ZipStream(compress_type=zipstream.ZIP_DEFLATED)
     
     for student in assignment_vm.students:
         try:
@@ -849,7 +849,7 @@ def _render_assignment_zip(assignment_vm: AssignmentReportVM) -> zipstream.ZipSt
             filename = f"{student.student_name}_{student.topic}_{student.essay_id}.docx"
             # Sanitize filename
             filename = "".join(c for c in filename if c.isalnum() or c in "._-")
-            z.writestr(filename, student_bytes)
+            z.add(student_bytes, filename)
         except Exception as e:
             logger.error(f"Failed to render student {student.student_name}: {e}")
             continue
@@ -866,8 +866,14 @@ def _render_assignment_zip_teacher_view(assignment_vm: AssignmentReportVM) -> zi
         
     Returns:
         ZipStream generator
+        
+    Raises:
+        ValueError: If no documents could be generated
     """
-    z = zipstream.ZipStream(mode='w', compression=zipstream.ZIP_DEFLATED)
+    z = zipstream.ZipStream(compress_type=zipstream.ZIP_DEFLATED)
+    
+    successful_count = 0
+    failed_students = []
     
     for student in assignment_vm.students:
         try:
@@ -880,10 +886,41 @@ def _render_assignment_zip_teacher_view(assignment_vm: AssignmentReportVM) -> zi
             from datetime import datetime
             timestamp = datetime.now().strftime('%Y%m%d')
             filename = f"{safe_student_name}_{safe_assignment_title}_{timestamp}.docx"
-            z.writestr(filename, student_bytes)
+            z.add(student_bytes, filename)
+            successful_count += 1
         except Exception as e:
-            logger.error(f"Failed to render teacher view for student {student.student_name}: {e}")
+            logger.error(f"Failed to render teacher view for student {student.student_name} (essay_id: {student.essay_id}): {e}")
+            failed_students.append({
+                'student_name': student.student_name,
+                'essay_id': student.essay_id,
+                'error': str(e)
+            })
             continue
+    
+    # Add validation consistent with combined mode
+    if successful_count == 0:
+        total_students = len(assignment_vm.students)
+        error_details = []
+        for failure in failed_students:
+            error_details.append(f"- {failure['student_name']} (essay_id: {failure['essay_id']}): {failure['error']}")
+        
+        detailed_error = (
+            f"No teacher view documents could be generated for assignment '{assignment_vm.title}'. "
+            f"All {total_students} students failed:\n" + "\n".join(error_details) + 
+            f"\n\nCommon causes:\n"
+            f"- Essays have no evaluation data (check if AI grading completed)\n"
+            f"- Essays are missing from database\n" 
+            f"- Teacher review required but not completed\n"
+            f"- Data integrity issues with essay/evaluation records"
+        )
+        raise ValueError(detailed_error)
+    
+    # Log summary of results
+    if failed_students:
+        logger.warning(f"ZIP export partially successful: {successful_count}/{len(assignment_vm.students)} students. "
+                      f"Failed students: {[f['student_name'] for f in failed_students]}")
+    else:
+        logger.info(f"ZIP export successful for all {successful_count} students")
     
     return z
 
@@ -905,6 +942,7 @@ def _render_assignment_combined_teacher_view(assignment_vm: AssignmentReportVM) 
     
     # Generate individual teacher view documents
     temp_files = []
+    failed_students = []
     try:
         for i, student in enumerate(assignment_vm.students):
             try:
@@ -916,11 +954,40 @@ def _render_assignment_combined_teacher_view(assignment_vm: AssignmentReportVM) 
                 temp_file.close()
                 temp_files.append(temp_file.name)
             except Exception as e:
-                logger.error(f"Failed to render teacher view for student {student.student_name}: {e}")
+                logger.error(f"Failed to render teacher view for student {student.student_name} (essay_id: {student.essay_id}): {e}")
+                failed_students.append({
+                    'student_name': student.student_name,
+                    'essay_id': student.essay_id,
+                    'error': str(e)
+                })
                 continue
         
         if not temp_files:
-            raise ValueError("No teacher view documents could be generated")
+            # Provide detailed error information for debugging
+            total_students = len(assignment_vm.students)
+            error_details = []
+            for failure in failed_students:
+                error_details.append(f"- {failure['student_name']} (essay_id: {failure['essay_id']}): {failure['error']}")
+            
+            detailed_error = (
+                f"No teacher view documents could be generated for assignment '{assignment_vm.title}'. "
+                f"All {total_students} students failed:\n" + "\n".join(error_details) + 
+                f"\n\nCommon causes:\n"
+                f"- Essays have no evaluation data (check if AI grading completed)\n"
+                f"- Essays are missing from database\n"
+                f"- Teacher review required but not completed\n"
+                f"- Data integrity issues with essay/evaluation records"
+            )
+            raise ValueError(detailed_error)
+        
+        # Log summary of results
+        successful_count = len(temp_files)
+        total_students = len(assignment_vm.students)
+        if failed_students:
+            logger.warning(f"Combined export partially successful: {successful_count}/{total_students} students. "
+                          f"Failed students: {[f['student_name'] for f in failed_students]}")
+        else:
+            logger.info(f"Combined export successful for all {successful_count} students")
         
         # Create cover page and compose documents
         master = Document(temp_files[0])
