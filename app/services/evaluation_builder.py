@@ -75,19 +75,23 @@ def build_and_persist_evaluation(essay_id: int) -> Optional[EvaluationResult]:
             logger.warning(f"Failed to get cleaned text for essay {essay_id}: {e}")
             cleaned_text = original_text
         
-        # Step 3: Generate pre-analysis data
+        # Step 3: Generate pre-analysis data (if feature enabled)
         preanalysis_data = {}
-        try:
-            context = _build_context_for_essay(essay)
-            logger.info(f"Generating pre-analysis for essay {essay_id}")
-            preanalysis_data = generate_preanalysis(original_text, cleaned_text, context)
-            
-            if not validate_pregrader_output(preanalysis_data):
-                logger.warning(f"Invalid pre-analysis output for essay {essay_id}, using empty structure")
-                preanalysis_data = {"analysis": {"outline": []}, "diagnostics": [], "exercises": [], "summary": "", "diagnosis": {}}
+        if current_app.config.get('EVAL_PREBUILD_ENABLED', True):
+            try:
+                context = _build_context_for_essay(essay)
+                logger.info(f"Generating pre-analysis for essay {essay_id}")
+                preanalysis_data = generate_preanalysis(original_text, cleaned_text, context)
                 
-        except Exception as e:
-            logger.error(f"Failed to generate pre-analysis for essay {essay_id}: {e}")
+                if not validate_pregrader_output(preanalysis_data):
+                    logger.warning(f"Invalid pre-analysis output for essay {essay_id}, using empty structure")
+                    preanalysis_data = {"analysis": {"outline": []}, "diagnostics": [], "exercises": [], "summary": "", "diagnosis": {}}
+                    
+            except Exception as e:
+                logger.error(f"Failed to generate pre-analysis for essay {essay_id}: {e}")
+                preanalysis_data = {"analysis": {"outline": []}, "diagnostics": [], "exercises": [], "summary": "", "diagnosis": {}}
+        else:
+            # Feature disabled, use empty structure
             preanalysis_data = {"analysis": {"outline": []}, "diagnostics": [], "exercises": [], "summary": "", "diagnosis": {}}
         
         # Step 4: Get or generate AI grader scores

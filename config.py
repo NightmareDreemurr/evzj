@@ -23,6 +23,10 @@ class Config:
 
     # 并行处理配置
     OCR_MAX_CONCURRENCY = int(os.getenv("OCR_MAX_CONCURRENCY", 5))
+    
+    # Enhanced evaluation feature flags
+    EVAL_PREBUILD_ENABLED = os.getenv("EVAL_PREBUILD_ENABLED", "true").lower() == "true"
+    EVAL_REQUIRE_REVIEW_BEFORE_EXPORT = os.getenv("EVAL_REQUIRE_REVIEW_BEFORE_EXPORT", "false").lower() == "true"
 
 
     @staticmethod
