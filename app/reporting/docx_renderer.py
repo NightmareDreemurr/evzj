@@ -723,8 +723,8 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
             table.cell(row_idx, 0).text = rubric.name
             table.cell(row_idx, 1).text = str(rubric.score)
             table.cell(row_idx, 1).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-            table.cell(row_idx, 2).text = getattr(rubric, 'selected_rubric_level', '') or getattr(rubric, 'reason', '')
-            table.cell(row_idx, 3).text = getattr(rubric, 'feedback', '') or getattr(rubric, 'reason', '')
+            table.cell(row_idx, 2).text = getattr(rubric, 'level', '')
+            table.cell(row_idx, 3).text = getattr(rubric, 'reason', '')
             
             # Add dimension details section after table
         

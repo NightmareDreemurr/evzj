@@ -267,7 +267,8 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
                 score=dim.get('score', 0),
                 max=dim.get('max_score', 0) or 10,  # Default max if not provided
                 weight=1.0,
-                reason=dim.get('feedback', '') or dim.get('selected_rubric_level', '')
+                reason=dim.get('feedback', ''),
+                level=dim.get('selected_rubric_level', '')
             )
             
             # Add example sentences data if available
