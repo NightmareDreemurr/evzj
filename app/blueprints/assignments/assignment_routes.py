@@ -931,33 +931,61 @@ def _generate_report_background(app, assignment_id, task_key, user_id):
 @assignments_bp.route('/essays/<int:essay_id>/report/download')
 @login_required
 def download_essay_report(essay_id):
-    """Download DOCX report for a single essay"""
+    """Download DOCX report for a single essay - now uses teacher view format"""
     from flask import send_file
-    from app.dao.evaluation_dao import load_evaluation_by_essay
-    from app.reporting.docx_renderer import render_essay_docx
+    from app.reporting.service import render_teacher_view_docx
+    import io
     
     try:
-        # Load evaluation data
-        evaluation = load_evaluation_by_essay(essay_id)
-        if not evaluation:
-            flash('无法加载作文评估数据', 'danger')
-            return redirect(url_for('assignments.list_assignments'))
+        # Check for explicit view parameter
+        view_type = request.args.get('view', 'teacher')  # Default to teacher view
         
-        # Render DOCX
-        output_path = render_essay_docx(evaluation)
-        
-        # Generate filename for download
-        student = evaluation.meta.student.replace(' ', '_').replace('/', '_')
-        topic = str(evaluation.meta.topic).replace(' ', '_').replace('/', '_')
-        date_str = str(evaluation.meta.date).replace('-', '').replace('/', '')
-        filename = f"{student}_{topic}_{date_str}.docx"
-        
-        return send_file(
-            output_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
+        if view_type == 'teacher':
+            # Use teacher view format (no diff)
+            docx_bytes = render_teacher_view_docx(essay_id)
+            
+            # Build evaluation data for filename generation
+            from app.reporting.service import build_teacher_view_evaluation
+            evaluation = build_teacher_view_evaluation(essay_id)
+            if evaluation:
+                student = evaluation.studentName.replace(' ', '_').replace('/', '_')
+                topic = str(evaluation.assignmentTitle or "essay").replace(' ', '_').replace('/', '_')
+                date_str = str(evaluation.submittedAt or "").replace('-', '').replace('/', '').replace(' ', '_')[:8]
+                filename = f"{student}_{topic}_{date_str}_teacher_view.docx"
+            else:
+                filename = f"essay_{essay_id}_teacher_view.docx"
+            
+            return send_file(
+                io.BytesIO(docx_bytes),
+                as_attachment=True,
+                download_name=filename,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+        else:
+            # Legacy format (kept for compatibility if needed)
+            from app.dao.evaluation_dao import load_evaluation_by_essay
+            from app.reporting.docx_renderer import render_essay_docx
+            
+            evaluation = load_evaluation_by_essay(essay_id)
+            if not evaluation:
+                flash('无法加载作文评估数据', 'danger')
+                return redirect(url_for('assignments.list_assignments'))
+            
+            # Render legacy DOCX
+            output_path = render_essay_docx(evaluation)
+            
+            # Generate filename for download
+            student = evaluation.meta.student.replace(' ', '_').replace('/', '_')
+            topic = str(evaluation.meta.topic).replace(' ', '_').replace('/', '_')
+            date_str = str(evaluation.meta.date).replace('-', '').replace('/', '')
+            filename = f"{student}_{topic}_{date_str}.docx"
+            
+            return send_file(
+                output_path,
+                as_attachment=True,
+                download_name=filename,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
         
     except Exception as e:
         logger.error(f"Failed to download essay report {essay_id}: {e}")
@@ -972,7 +1000,7 @@ def download_assignment_report(assignment_id):
     from flask import send_file
     from app.dao.evaluation_dao import load_evaluations_by_assignment
     from app.reporting.docx_renderer import render_assignment_docx
-    from app.reporting.service import render_assignment_docx as render_assignment_batch
+    from app.reporting.service import render_assignment_docx_teacher_view as render_assignment_batch
     import io
     
     # Check for new batch mode parameters
@@ -1048,9 +1076,29 @@ def download_assignment_report(assignment_id):
         
     except NotImplementedError:
         flash('作业汇总导出功能暂未实现，已为您导出代表作文', 'info')
-        # Try to export first essay instead
+        # Export representative essay using teacher view format
         if evaluations:
-            return redirect(url_for('assignments.download_essay_report', essay_id=evaluations[0].meta.student_id))
+            try:
+                from app.reporting.service import render_teacher_view_docx
+                # Use first essay as representative
+                representative_essay_id = evaluations[0].meta.student_id
+                docx_bytes = render_teacher_view_docx(representative_essay_id)
+                
+                # Generate filename for representative essay
+                assignment = db.session.get(EssayAssignment, assignment_id)
+                assignment_title = assignment.title.replace(' ', '_').replace('/', '_') if assignment else f"assignment_{assignment_id}"
+                filename = f"{assignment_title}_representative_report.docx"
+                
+                return send_file(
+                    io.BytesIO(docx_bytes),
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                )
+            except Exception as rep_e:
+                logger.error(f"Failed to export representative essay {representative_essay_id}: {rep_e}")
+                # Fallback to redirect
+                return redirect(url_for('assignments.download_essay_report', essay_id=evaluations[0].meta.student_id))
         else:
             flash('无可导出的作文数据', 'warning')
             return redirect(url_for('assignments.assignment_report', assignment_id=assignment_id))
@@ -1074,10 +1122,10 @@ def download_assignment_report_batch(assignment_id):
         abort(400, "Mode must be 'combined' or 'zip'")
     
     try:
-        from app.reporting.service import render_assignment_docx
+        from app.reporting.service import render_assignment_docx_teacher_view
         import io
         
-        result = render_assignment_docx(assignment_id, mode=mode)
+        result = render_assignment_docx_teacher_view(assignment_id, mode=mode)
         
         # Generate safe filename
         assignment = db.session.get(EssayAssignment, assignment_id)
