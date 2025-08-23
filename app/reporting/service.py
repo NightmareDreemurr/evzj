@@ -271,9 +271,14 @@ def _render_assignment_combined(assignment_vm: AssignmentReportVM) -> bytes:
     """
     try:
         return _render_with_docxtpl_combined(assignment_vm)
-    except Exception as e:
-        logger.warning(f"docxtpl rendering failed: {e}, falling back to docxcompose")
+    except (ImportError, FileNotFoundError) as e:
+        # Only fallback for missing dependencies or IO issues
+        logger.warning(f"docxtpl rendering failed due to missing dependency/file: {e}, falling back to docxcompose")
         return _render_with_docxcompose(assignment_vm)
+    except Exception as e:
+        # Template and context errors should be raised to help debugging
+        logger.error(f"Template rendering failed: {e}")
+        raise
 
 
 def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
@@ -283,22 +288,19 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
     import os
     from pathlib import Path
     
-    # Use new assignment template
-    project_root = Path(__file__).parent.parent.parent
-    assignment_template_path = project_root / "templates" / "word" / "assignment_compiled.docx"
-    
-    if not assignment_template_path.exists():
-        logger.warning("Assignment template not found, falling back to basic template")
-        from app.reporting.docx_renderer import ensure_template_exists
-        template_path = ensure_template_exists()
-        return _render_with_docxtpl_basic(assignment_vm, template_path)
+    # Ensure assignment template exists, create if missing
+    from app.reporting.docx_renderer import ensure_assignment_template_exists
+    assignment_template_path = ensure_assignment_template_exists()
     
     # Load the main assignment template
-    doc = DocxTemplate(str(assignment_template_path))
+    doc = DocxTemplate(assignment_template_path)
     
     # Prepare context with enhanced student data
     students_data = []
     for student in assignment_vm.students:
+        # Import image overlay module for annotation composition
+        from app.reporting.image_overlay import compose_annotations
+        
         # Convert StudentReportVM to context dict
         student_data = {
             'student_name': student.student_name,
@@ -311,11 +313,27 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                     {
                         'name': item.name,
                         'score': item.score,
-                        'max_score': item.max_score
+                        'max_score': item.max_score,
+                        'weight': getattr(item, 'weight', ''),
+                        'reason': getattr(item, 'reason', '')
                     }
                     for item in student.scores.items
                 ]
             },
+            'text': {
+                'cleaned': getattr(student, 'cleaned_text', '') or student.feedback  # Fallback to feedback
+            },
+            'analysis': {
+                'outline': getattr(student, 'outline', []),  # Structure analysis
+                'issues': getattr(student, 'issues', [])     # Issue list
+            },
+            'diagnostics': getattr(student, 'diagnostics', []),  # Diagnostic suggestions
+            'diagnosis': {
+                'before': getattr(student, 'diagnosis_before', ''),
+                'comment': getattr(student, 'diagnosis_comment', ''),
+                'after': getattr(student, 'diagnosis_after', '')
+            },
+            'summary': getattr(student, 'summary', ''),  # Summary
             'paragraphs': [
                 {
                     'para_num': para.para_num,
@@ -330,13 +348,29 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                 {
                     'type': ex.type,
                     'prompt': ex.prompt,
-                    'hints': ex.hints,
+                    'hint': ex.hints if hasattr(ex, 'hints') else getattr(ex, 'hint', []),  # Fix field consistency
                     'sample': ex.sample
                 }
                 for ex in student.exercises
             ],
+            'images': {
+                'original_image_path': None,      # To be populated if image data available
+                'composited_image_path': None     # To be populated with annotation overlay
+            },
             'feedback_summary': student.feedback_summary
         }
+        
+        # Try to get image paths if available
+        if hasattr(student, 'scanned_images') and student.scanned_images:
+            original_path = student.scanned_images[0] if student.scanned_images else None
+            student_data['images']['original_image_path'] = original_path
+            
+            # Try to compose annotations if available
+            annotations = getattr(student, 'annotations', None)
+            if original_path and annotations:
+                composited_path = compose_annotations(original_path, annotations)
+                student_data['images']['composited_image_path'] = composited_path
+        
         students_data.append(student_data)
     
     # Create combined context
@@ -347,15 +381,32 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
             'teacher': assignment_vm.teacher
         },
         'students': students_data,
-        'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        'current_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'now': datetime.now()  # For strftime filter
     }
     
     # Debug: print context structure
     logger.info(f"Rendering assignment with {len(students_data)} students")
     
+    # Register strftime filter for Jinja2 environment
+    from jinja2 import Environment
+    env = Environment(autoescape=False)
+    
+    def strftime_filter(dt, fmt):
+        """Custom strftime filter that handles both datetime objects and strings"""
+        if dt is None:
+            return ''
+        if isinstance(dt, str):
+            return dt  # If already a string, return as-is
+        if hasattr(dt, 'strftime'):
+            return dt.strftime(fmt)
+        return str(dt)
+    
+    env.filters['strftime'] = strftime_filter
+    
     # Render template
     try:
-        doc.render(context)
+        doc.render(context, jinja_env=env)
     except Exception as e:
         logger.error(f"Template rendering failed: {e}")
         logger.error(f"Context keys: {list(context.keys())}")
@@ -373,6 +424,7 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
 def _render_with_docxtpl_basic(assignment_vm: AssignmentReportVM, template_path: str) -> bytes:
     """Fallback rendering using basic template (original implementation)."""
     from docxtpl import DocxTemplate
+    from datetime import datetime
     
     # Create a combined context with all student data
     combined_context = {
@@ -394,13 +446,30 @@ def _render_with_docxtpl_basic(assignment_vm: AssignmentReportVM, template_path:
             student_context['student_name'] = student.student_name
             combined_context['students'].append(student_context)
     
+    # Register strftime filter for Jinja2 environment
+    from jinja2 import Environment
+    env = Environment(autoescape=False)
+    
+    def strftime_filter(dt, fmt):
+        """Custom strftime filter that handles both datetime objects and strings"""
+        if dt is None:
+            return ''
+        if isinstance(dt, str):
+            return dt  # If already a string, return as-is
+        if hasattr(dt, 'strftime'):
+            return dt.strftime(fmt)
+        return str(dt)
+    
+    env.filters['strftime'] = strftime_filter
+    
     # Render template
     doc = DocxTemplate(template_path)
     
     # For now, render first student as representative
     if combined_context['students']:
         context = combined_context['students'][0]
-        doc.render(context)
+        context['now'] = datetime.now()  # Add now for strftime filter
+        doc.render(context, jinja_env=env)
     
     # Save to bytes
     output = io.BytesIO()

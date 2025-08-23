@@ -300,11 +300,77 @@ GET /assignments/<assignment_id>/report/download
 
 #### 自动生成模板
 
-首次运行时，系统会在 `templates/word/ReportTemplate.docx` 自动生成最小模板。
+首次运行时，系统会自动生成以下模板：
+- `templates/word/ReportTemplate.docx` - 单篇作文评估模板
+- `templates/word/assignment_compiled.docx` - 作业批量合并模板（新增）
+
+#### 作业合并模板 assignment_compiled.docx
+
+新增的作业合并模板支持以下功能：
+
+**模板变量：**
+```jinja2
+# 作业信息
+{{ assignment.title }}          # 作业标题
+{{ assignment.classroom }}      # 班级名称
+{{ assignment.teacher }}        # 教师姓名
+{{ now|strftime("%Y年%m月%d日") }}  # 生成时间
+
+# 学生循环（每个学生一页）
+{% for s in students %}
+  {{ s.student_name }}          # 学生姓名
+  {{ s.topic }}                 # 作文题目
+  {{ s.words }}                 # 字数统计
+  {{ s.scores.total }}          # 总分
+  
+  # 评分维度表格
+  {% for i in s.scores.items %}
+  | {{ i.name }} | {{ i.score }} | {{ i.max_score }} | {{ i.weight }} | {{ i.reason }} |
+  {% endfor %}
+  
+  # 清洗后文本
+  {{ s.text.cleaned }}
+  
+  # 分析与诊断
+  {% for o in s.analysis.outline %}第{{ o.para }}段：{{ o.intent }}{% endfor %}
+  {% for iss in s.analysis.issues %}{{ iss }}{% endfor %}
+  {% for d in s.diagnostics %}{{ d.issue }}｜{{ d.evidence }}｜{{ d.advice|join('；') }}{% endfor %}
+  
+  # 诊断总结
+  {{ s.diagnosis.before }}
+  {{ s.diagnosis.comment }}
+  {{ s.diagnosis.after }}
+  {{ s.summary }}
+  
+  # 段落级增强
+  {% for p in s.paragraphs %}
+  第{{ p.para_num }}段：{{ p.intent }}
+  原文：{{ p.original_text }}
+  反馈：{{ p.feedback }}
+  优化：{{ p.polished_text }}
+  {% endfor %}
+  
+  # 个性化练习
+  {% for ex in s.exercises %}
+  [{{ ex.type }}] {{ ex.prompt }}
+  要点：{{ ex.hint|join('；') }}
+  示例：{{ ex.sample }}
+  {% endfor %}
+  
+  # 作文图片（若有）
+  {{ s.images.original_image_path }}     # 原图
+  {{ s.images.composited_image_path }}   # 批注叠加图
+{% endfor %}
+```
+
+**自动生成机制：**
+- 系统启动时自动检查模板是否存在
+- 缺失时自动创建包含完整字段的可用模板
+- 支持手动编辑自定义样式和布局
 
 #### 自定义模板
 
-1. 编辑 `templates/word/ReportTemplate.docx` 文件
+1. 编辑 `templates/word/ReportTemplate.docx` 或 `templates/word/assignment_compiled.docx` 文件
 2. 使用以下模板变量：
 
 ```jinja2
@@ -318,6 +384,39 @@ GET /assignments/<assignment_id>/report/download
 {{ text.cleaned }}          # 清洗后文本
 {% for r in scores.rubrics %}{{ r.name }}: {{ r.score }}/{{ r.max }}{% endfor %}
 ```
+
+#### DOCX 格式美化
+
+系统生成的模板包含以下样式优化：
+
+**字体与排版：**
+- 中文字体：SimSun（宋体）兜底，支持思源黑体等现代字体
+- 英文字体：默认系统字体
+- 正文行距：1.25-1.5 倍行距
+- 段落间距：段前后 6-8pt
+
+**标题层级：**
+- 报告大标题：居中对齐，大号字体
+- 一级标题：学生页标题（学生姓名 + 题目）
+- 二级标题：小节标题（评分结果/清洗后文本/分析与诊断等）
+- 三级标题：细分内容（结构分析/问题清单/诊断建议等）
+
+**表格样式：**
+- 评分维度表格：表头加粗，列宽优化
+- 表格列：维度名称/得分/满分/权重/理由
+- 数值对齐：分数居中，文字左对齐
+
+**页面布局：**
+- 每个学生独立一页，使用分页符分隔
+- 页眉：作业标题 ｜ 班级 ｜ 教师姓名
+- 页脚：页码和生成时间
+- 图片：自适应页面宽度，保持纵横比
+
+**内容组织：**
+- 清洗后文本：正文样式，合适的段间距
+- 分析/诊断：列表样式，清晰的层级结构
+- 段落增强：缩进格式，便于阅读
+- 个性化练习：标题突出，内容结构化
 
 #### 高级模板功能（需要 docxtpl）
 
@@ -352,6 +451,57 @@ GET /assignments/<assignment_id>/report/download
 - `strftime`: 日期时间格式化，支持 datetime 对象和字符串
 - 其他标准 Jinja2 过滤器：`join`, `default`, `length` 等
 
+**strftime 过滤器示例：**
+```jinja2
+{{ now|strftime("%Y年%m月%d日 %H:%M:%S") }}     # 2024年01月01日 09:30:00
+{{ now|strftime("%Y-%m-%d") }}                 # 2024-01-01
+```
+
+#### 图片与教师批注叠加
+
+系统支持在 DOCX 报告中插入作文原图和教师圈画批注的叠加图：
+
+**数据要求：**
+```python
+# 学生数据中的图片字段
+student_data = {
+    'images': {
+        'original_image_path': '/path/to/essay_scan.jpg',    # 原始扫描图
+        'composited_image_path': '/path/to/annotated.png'    # 叠加批注后的图片
+    }
+}
+
+# 教师批注数据格式
+annotations = [
+    {
+        'type': 'rectangle',              # 'rectangle'|'circle'|'highlight'|'text'
+        'coordinates': [x1, y1, x2, y2],  # 坐标数组
+        'color': 'red',                   # 颜色名称或 [r, g, b]
+        'thickness': 2,                   # 线条粗细
+        'text': '批注文字'                 # 文字批注内容（可选）
+    }
+]
+```
+
+**自动处理机制：**
+- 若原图路径存在且有批注数据，自动生成叠加图
+- 若无批注数据或原图缺失，优雅跳过图片插入
+- 生成的叠加图自动适应页面宽度，保持纵横比
+
+#### 字段兼容性
+
+**exercises 字段统一：**
+- 新版本使用 `hint` 字段存储练习要点
+- 自动兼容历史数据的 `hints` 字段
+- 模板中统一使用 `{{ ex.hint|join('；') }}`
+
+**分析与诊断字段：**
+- `analysis.outline`: 结构分析（段落意图）
+- `analysis.issues`: 问题清单  
+- `diagnostics`: 诊断建议（段落/问题/证据/建议）
+- `diagnosis`: 诊断总结（before/comment/after）
+- `text.cleaned`: 清洗后文本
+
 ### 故障排除
 
 #### 常见问题
@@ -363,16 +513,17 @@ GET /assignments/<assignment_id>/report/download
 #### 错误处理
 
 - 评估数据缺失时会提供友好的错误提示
-- **模板语法错误**: 系统不再静默回退，会明确报告模板问题
-- **作业汇总导出**: 缺少汇总模板时提供明确提示，不再自动导出第一篇作文
+- **模板语法错误**: 系统不再静默回退，会明确报告模板问题便于调试
+- **strftime 过滤器缺失**: 已修复，系统自动注册 strftime 过滤器
+- **作业汇总导出**: 自动创建缺失的 assignment_compiled.docx 模板
 
-#### 作业汇总导出行为
+#### 批量导出行为（已修复）
 
-- 汇总导出需要专用模板 `templates/word/assignment_compiled.docx`
-- 如果模板不存在，会返回明确错误信息而非静默导出单篇作文
-- 推荐使用单篇作文批量下载或创建专用汇总模板
-- 文件生成失败时会回退到安全的默认处理
-- 网络或权限问题会显示具体的错误信息
+- **模板自动生成**: 缺少 `assignment_compiled.docx` 时自动创建可用模板
+- **过滤器注册**: 自动注册 strftime 等必要过滤器，支持 `{{ now|strftime }}` 语法
+- **字段一致性**: 统一 exercises 使用 `hint` 字段，兼容历史 `hints` 数据
+- **错误处理**: 模板错误会抛出明确异常便于调试，不再静默降级
+- **内容完整性**: 支持分析诊断、段落增强、图片叠加等完整报告内容
 
 #### 调试建议
 
@@ -380,11 +531,17 @@ GET /assignments/<assignment_id>/report/download
 # 检查DOCX生成功能
 python -c "from app.reporting.docx_renderer import render_essay_docx; print('DOCX功能可用')"
 
-# 运行DOCX相关测试
-pytest tests/test_docx_renderer.py -v
+# 检查模板生成（包括批量模板）
+python -c "from app.reporting.docx_renderer import ensure_assignment_template_exists; print('批量模板:', ensure_assignment_template_exists())"
 
-# 检查模板生成
-python -c "from app.reporting.docx_renderer import ensure_template_exists; print(ensure_template_exists())"
+# 检查图片叠加功能
+python -c "from app.reporting.image_overlay import compose_annotations; print('图片叠加功能可用')"
+
+# 运行新增的模板测试
+pytest tests/test_docx_service_templates.py -v
+
+# 运行所有DOCX相关测试
+pytest tests/test_*docx* -v
 ```
 
 运行 `make test` 查看完整测试结果。 

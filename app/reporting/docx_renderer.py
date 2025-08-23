@@ -48,6 +48,28 @@ def ensure_template_exists(template_path: str = None) -> str:
     return template_path
 
 
+def ensure_assignment_template_exists() -> str:
+    """
+    Ensure the assignment batch template exists, creating one if necessary.
+    
+    Returns:
+        Path to the assignment template file
+    """
+    project_root = Path(__file__).parent.parent.parent
+    template_dir = project_root / "templates" / "word"
+    template_dir.mkdir(parents=True, exist_ok=True)
+    template_path = str(template_dir / "assignment_compiled.docx")
+    
+    if os.path.exists(template_path):
+        logger.info(f"Using existing assignment template: {template_path}")
+        return template_path
+    
+    # Create assignment batch template
+    logger.info(f"Creating assignment batch template at: {template_path}")
+    _create_assignment_template(template_path)
+    return template_path
+
+
 def _create_minimal_template(template_path: str):
     """Create a minimal DOCX template for reports"""
     doc = Document()
@@ -127,6 +149,153 @@ def _create_minimal_template(template_path: str):
     
     doc.save(template_path)
     logger.info(f"Created minimal template: {template_path}")
+
+
+def _create_assignment_template(template_path: str):
+    """Create assignment batch template with student loop and page breaks"""
+    doc = Document()
+    
+    # Assignment header
+    title = doc.add_heading('{{ assignment.title }} 批量作文评估报告', 0)
+    title.alignment = 1  # Center
+    
+    # Assignment metadata
+    doc.add_heading('作业信息', level=1)
+    info_para = doc.add_paragraph()
+    info_para.add_run('作业标题：').bold = True
+    info_para.add_run('{{ assignment.title }}\n')
+    info_para.add_run('班级：').bold = True
+    info_para.add_run('{{ assignment.classroom }}\n')
+    info_para.add_run('教师：').bold = True
+    info_para.add_run('{{ assignment.teacher }}\n')
+    info_para.add_run('生成时间：').bold = True
+    if DOCXTPL_AVAILABLE:
+        info_para.add_run('{{ now|strftime("%Y年%m月%d日 %H:%M:%S") }}')
+    else:
+        info_para.add_run('{{ current_time }}')
+    
+    # Add a page break before student reports
+    doc.add_page_break()
+    
+    # Student reports loop
+    if DOCXTPL_AVAILABLE:
+        # Student loop with page breaks
+        doc.add_paragraph('{% for s in students %}')
+        
+        # Student page header
+        student_title = doc.add_heading('{{ s.student_name }} 作文评估报告', level=1)
+        
+        # Basic student info
+        basic_info = doc.add_paragraph()
+        basic_info.add_run('学生：').bold = True
+        basic_info.add_run('{{ s.student_name }}\n')
+        basic_info.add_run('题目：').bold = True
+        basic_info.add_run('{{ s.topic }}\n')
+        basic_info.add_run('字数：').bold = True
+        basic_info.add_run('{{ s.words|default("未统计") }}\n')
+        basic_info.add_run('总分：').bold = True
+        basic_info.add_run('{{ s.scores.total }}')
+        
+        # Scoring dimensions table
+        doc.add_heading('评分维度', level=2)
+        doc.add_paragraph("""
+{% if s.scores.items %}
+| 维度 | 得分 | 满分 | 权重 | 理由 |
+|------|------|------|------|------|
+{% for i in s.scores.items %}| {{ i.name }} | {{ i.score }} | {{ i.max_score }} | {{ i.weight|default('') }} | {{ i.reason|default('') }} |
+{% endfor %}{% endif %}
+        """.strip())
+        
+        # Cleaned text
+        doc.add_heading('清洗后文本', level=2)
+        doc.add_paragraph('{{ s.text.cleaned|default("") }}')
+        
+        # Analysis and diagnostics
+        doc.add_heading('分析与诊断', level=2)
+        
+        # Structure analysis
+        doc.add_heading('结构分析', level=3)
+        doc.add_paragraph("""
+{% for o in s.analysis.outline %}
+第{{ o.para }}段：{{ o.intent }}
+{% endfor %}
+        """.strip())
+        
+        # Issue list
+        doc.add_heading('问题清单', level=3)
+        doc.add_paragraph("""
+{% for iss in s.analysis.issues %}
+- {{ iss }}
+{% endfor %}
+        """.strip())
+        
+        # Diagnostic suggestions
+        doc.add_heading('诊断建议', level=3)
+        doc.add_paragraph("""
+{% for d in s.diagnostics %}
+{% if d.para %}第{{ d.para }}段{% else %}全文{% endif %}｜{{ d.issue }}｜证据：{{ d.evidence }}｜建议：{{ d.advice|join('；') }}
+{% endfor %}
+        """.strip())
+        
+        # Diagnosis summary
+        doc.add_heading('诊断总结', level=3)
+        doc.add_paragraph('{{ s.diagnosis.before|default("") }}')
+        doc.add_paragraph('{{ s.diagnosis.comment|default("") }}')
+        doc.add_paragraph('{{ s.diagnosis.after|default("") }}')
+        doc.add_paragraph('{{ s.summary|default("") }}')
+        
+        # Paragraph-level enhancements
+        doc.add_heading('段落级增强', level=2)
+        doc.add_paragraph("""
+{% for p in s.paragraphs %}
+第{{ p.para_num }}段：意图：{{ p.intent|default('') }}
+原文：{{ p.original_text|default('') }}
+反馈：{{ p.feedback|default('') }}
+优化：{{ p.polished_text|default('') }}
+
+{% endfor %}
+        """.strip())
+        
+        # Personalized exercises
+        doc.add_heading('个性化练习', level=2)
+        doc.add_paragraph("""
+{% for ex in s.exercises %}
+[{{ ex.type }}] {{ ex.prompt }}
+要点：{{ ex.hint|join('；') }}
+示例：{{ ex.sample|default('') }}
+
+{% endfor %}
+        """.strip())
+        
+        # Images section
+        doc.add_heading('作文图片', level=2)
+        doc.add_paragraph('{% if s.images.original_image_path %}原图：[图片]{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image_path %}批注图：[图片]{% endif %}')
+        
+        # Page break between students (except for the last one)
+        doc.add_paragraph('{% if not loop.last %}')
+        doc.add_page_break()
+        doc.add_paragraph('{% endif %}')
+        
+        # End student loop
+        doc.add_paragraph('{% endfor %}')
+    
+    else:
+        # Fallback for non-docxtpl
+        doc.add_paragraph('[学生报告循环 - 需要 docxtpl 支持]')
+    
+    # Footer
+    doc.add_paragraph().add_run('\n' + '='*50)
+    footer = doc.add_paragraph()
+    footer.add_run('报告生成：e文智教系统 - ').bold = True
+    if DOCXTPL_AVAILABLE:
+        footer.add_run('{{ now|strftime("%Y年%m月%d日") }}')
+    else:
+        footer.add_run('{{ current_time }}')
+    footer.alignment = 1  # Center
+    
+    doc.save(template_path)
+    logger.info(f"Created assignment batch template: {template_path}")
 
 
 def render_essay_docx(evaluation: EvaluationResult, output_path: str = None, review_status: str = None) -> str:
