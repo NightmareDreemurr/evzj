@@ -213,7 +213,10 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     # Transform scoring data to match teacher view structure  
     grading_result = {
         'total_score': context.get('scores', {}).get('total', 0),
-        'dimensions': []
+        'dimensions': [],
+        'strengths': context.get('strengths', []),
+        'improvements': context.get('improvements', []),
+        'overall_comment': context.get('overall_comment', '')
     }
     
     # Map rubrics to dimensions format expected by teacher view
@@ -222,6 +225,27 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     # Get original grading result if available for dimension examples
     original_grading_result = getattr(evaluation, 'original_grading_result', {})
     original_dimensions = original_grading_result.get('dimensions', []) if original_grading_result else []
+    
+    for i, rubric in enumerate(rubrics):
+        dimension = {
+            'dimension_name': rubric.get('name', ''),
+            'score': rubric.get('score', 0),
+            'selected_rubric_level': rubric.get('level', ''),
+            'feedback': rubric.get('reason', ''),
+            'example_good_sentence': [],
+            'example_improvement_suggestion': []
+        }
+        
+        # Check if the rubric already has example data (from properly populated RubricScore)
+        if hasattr(rubric, 'example_good_sentence') and getattr(rubric, 'example_good_sentence'):
+            dimension['example_good_sentence'] = getattr(rubric, 'example_good_sentence')
+        elif rubric.get('example_good_sentence'):
+            dimension['example_good_sentence'] = rubric.get('example_good_sentence')
+            
+        if hasattr(rubric, 'example_improvement_suggestion') and getattr(rubric, 'example_improvement_suggestion'):
+            dimension['example_improvement_suggestion'] = getattr(rubric, 'example_improvement_suggestion')
+        elif rubric.get('example_improvement_suggestion'):
+            dimension['example_improvement_suggestion'] = rubric.get('example_improvement_suggestion')
     
     for i, rubric in enumerate(rubrics):
         dimension = {
