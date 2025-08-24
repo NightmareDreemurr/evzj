@@ -713,7 +713,8 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
             ],
             'images': {
                 'original_image_path': None,
-                'composited_image_path': None
+                'composited_image_path': None,
+                'friendly_message': None  # Will be set if needed
             },
             'feedback_summary': student.feedback_summary
         }
@@ -754,21 +755,29 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                 from docxtpl import InlineImage
                 from docx.shared import Inches
                 import logging
+                from app.utils.path_resolver import resolve_upload_path, get_friendly_image_message
                 logger = logging.getLogger(__name__)
                 
                 # Priority: use composited image if available, otherwise original
                 image_to_use = student_data['images'].get('composited_image_path') or original_path
                 
-                if image_to_use and os.path.exists(image_to_use):
+                # Try to resolve the image path, handling cross-platform path issues
+                resolved_image_path = resolve_upload_path(image_to_use) if image_to_use else None
+                
+                if resolved_image_path:
                     try:
-                        # Use composited image for display (contains both original + annotations)
-                        student_data['images']['composited_image'] = InlineImage(doc, image_to_use, width=Inches(6))
-                        logger.info(f"Created InlineImage for {'composited' if student_data['images'].get('composited_image_path') else 'original'} image: {image_to_use}")
+                        # Use resolved image for display (contains both original + annotations)
+                        student_data['images']['composited_image'] = InlineImage(doc, resolved_image_path, width=Inches(6))
+                        logger.info(f"Created InlineImage for {'composited' if student_data['images'].get('composited_image_path') else 'original'} image: {resolved_image_path}")
                     except Exception as e:
-                        logger.warning(f"Failed to create InlineImage for {image_to_use}: {e}")
+                        logger.warning(f"Failed to create InlineImage for {resolved_image_path}: {e}")
+                        # Set friendly message for template fallback
+                        student_data['images']['friendly_message'] = get_friendly_image_message()
                 else:
                     if image_to_use:
-                        logger.warning(f"Image file not found: {image_to_use}")
+                        logger.warning(f"Image file could not be resolved: {image_to_use}")
+                    # Set friendly message for template fallback
+                    student_data['images']['friendly_message'] = get_friendly_image_message()
                         
             except ImportError:
                 # InlineImage not available, will fallback to text placeholders

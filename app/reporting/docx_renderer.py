@@ -203,10 +203,10 @@ def _create_minimal_template(template_path: str):
         doc.add_heading('作文图片', level=2)
         doc.add_paragraph('{% if images.composited_image_path %}')
         # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% else %}教师批注图片：{{ images.composited_image_path }}{% endif %}')
+        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% else %}{{ images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
         doc.add_paragraph('{% else %}')
         # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% else %}原图：{{ images.original_image_path }}{% endif %}')
+        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% else %}{{ images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
         doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
     else:
@@ -484,10 +484,10 @@ def _create_assignment_template(template_path: str):
         doc.add_heading('作文图片', level=2)
         doc.add_paragraph('{% if s.images.composited_image_path %}')
         # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% else %}教师批注图片：{{ s.images.composited_image_path }}{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% else %}{{ s.images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
         doc.add_paragraph('{% else %}')
         # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% else %}原图：{{ s.images.original_image_path }}{% endif %}')
+        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% else %}{{ s.images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
         doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
 
@@ -696,7 +696,9 @@ def _render_with_python_docx(evaluation: EvaluationResult, output_path: str, rev
 def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_status: str = None):
     """Render teacher view aligned structure using python-docx"""
     # 1) 抬头信息（页首）
-    title = doc.add_heading(f'批阅作业 - {evaluation.assignmentTitle or "未知作业"}（{evaluation.studentName or "未知学生"}）', 0)
+    assignment_title = evaluation.assignmentTitle or evaluation.meta.topic or "未知作业"
+    student_name = evaluation.studentName or evaluation.meta.student or "未知学生"
+    title = doc.add_heading(f'批阅作业 - {assignment_title}（{student_name}）', 0)
     title.alignment = 1  # Center
     
     # Add review status warning if needed
@@ -709,11 +711,12 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
     doc.add_heading('基本信息', level=1)
     basic_info = doc.add_paragraph()
     basic_info.add_run('作业：').bold = True
-    basic_info.add_run(f'{evaluation.assignmentTitle or "未知作业"}\n')
+    basic_info.add_run(f'{assignment_title}\n')
     basic_info.add_run('学生：').bold = True
-    basic_info.add_run(f'{evaluation.studentName or "未知学生"}\n')
+    basic_info.add_run(f'{student_name}\n')
     basic_info.add_run('提交时间：').bold = True
-    basic_info.add_run(f'{evaluation.submittedAt or "未知时间"}')
+    submitted_at = evaluation.submittedAt or str(evaluation.meta.date) or "未知时间"
+    basic_info.add_run(submitted_at)
     
     # 2) 总分与维度评分表
     doc.add_heading('评分结果', level=1)
@@ -796,7 +799,9 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
     
     # 3) 作文正文（当前文本）
     doc.add_heading('作文正文', level=1)
-    essay_content = evaluation.currentEssayContent or ""
+    essay_content = evaluation.currentEssayContent
+    if not essay_content and evaluation.text:
+        essay_content = evaluation.text.cleaned or evaluation.text.original
     if not essay_content:
         essay_content = "作文内容将在此处显示。建议学生认真审题，组织好文章结构，表达清楚完整的思想。"
     doc.add_paragraph(essay_content)
@@ -812,29 +817,39 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                 from pathlib import Path
                 from docx.shared import Inches
                 from app.reporting.image_overlay import compose_overlay_images
+                from app.utils.path_resolver import resolve_upload_path, get_friendly_image_message
                 
-                if Path(essay.original_image_path).exists():
+                # Resolve the original image path
+                resolved_original_path = resolve_upload_path(essay.original_image_path)
+                
+                if resolved_original_path:
                     composed_image_path = None
                     
                     # If we have both original and overlay, compose them
-                    if essay.annotated_overlay_path and Path(essay.annotated_overlay_path).exists():
-                        composed_image_path = compose_overlay_images(essay.original_image_path, essay.annotated_overlay_path)
-                        if composed_image_path:
-                            doc.add_paragraph('作文图片（含教师批注）：')
-                            doc.add_picture(composed_image_path, width=Inches(6))
+                    if essay.annotated_overlay_path:
+                        resolved_overlay_path = resolve_upload_path(essay.annotated_overlay_path)
+                        if resolved_overlay_path:
+                            composed_image_path = compose_overlay_images(resolved_original_path, resolved_overlay_path)
+                            if composed_image_path:
+                                doc.add_paragraph('作文图片（含教师批注）：')
+                                doc.add_picture(composed_image_path, width=Inches(6))
+                            else:
+                                # Fallback: show original and overlay separately if composition failed
+                                doc.add_paragraph('原始图片：')
+                                doc.add_picture(resolved_original_path, width=Inches(6))
+                                doc.add_paragraph('教师批注图片：')
+                                doc.add_picture(resolved_overlay_path, width=Inches(6))
                         else:
-                            # Fallback: show original and overlay separately if composition failed
-                            doc.add_paragraph('原始图片：')
-                            doc.add_picture(essay.original_image_path, width=Inches(6))
-                            doc.add_paragraph('教师批注图片：')
-                            doc.add_picture(essay.annotated_overlay_path, width=Inches(6))
+                            # Only original image exists, overlay path can't be resolved
+                            doc.add_paragraph('作文图片：')
+                            doc.add_picture(resolved_original_path, width=Inches(6))
                     else:
                         # Only original image exists, no annotations
                         doc.add_paragraph('作文图片：')
-                        doc.add_picture(essay.original_image_path, width=Inches(6))
+                        doc.add_picture(resolved_original_path, width=Inches(6))
                         
                 else:
-                    doc.add_paragraph('图片文件未找到')
+                    doc.add_paragraph(get_friendly_image_message())
             except Exception as e:
                 logger.warning(f"Failed to add image to DOCX: {e}")
                 doc.add_paragraph('图片加载失败')

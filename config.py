@@ -19,7 +19,7 @@ class Config:
     BAIDU_OCR_GENERAL_URL = os.getenv("BAIDU_OCR_GENERAL_URL")
 
     # File Uploads
-    UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads')
+    UPLOAD_FOLDER = os.getenv('UPLOADS_DIR') or os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads')
 
     # 并行处理配置
     OCR_MAX_CONCURRENCY = int(os.getenv("OCR_MAX_CONCURRENCY", 5))
