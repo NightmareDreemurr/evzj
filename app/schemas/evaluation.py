@@ -321,12 +321,22 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     if not context['parentSummary']:
         context['parentSummary'] = context.get('summary', '总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。')
     
-    # Add empty images context for template compatibility
-    context.setdefault('images', {
+    # Add images context with actual essay image data if available
+    images_context = {
         'original_image': None,
         'original_image_path': None, 
         'composited_image': None,
         'composited_image_path': None
-    })
+    }
+    
+    # If essay instance is available, populate image context from essay database fields
+    if hasattr(evaluation, '_essay_instance') and evaluation._essay_instance:
+        essay = evaluation._essay_instance
+        if essay.original_image_path:
+            images_context['original_image_path'] = essay.original_image_path
+        if essay.annotated_overlay_path:
+            images_context['composited_image_path'] = essay.annotated_overlay_path
+    
+    context.setdefault('images', images_context)
     
     return context
