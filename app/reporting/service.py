@@ -787,6 +787,8 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
         'now': datetime.now()
     }
     # Debug: print context structure
+    import logging
+    logger = logging.getLogger(__name__)
     logger.info(f"Rendering assignment with {len(students_data)} students")
     
     # Register strftime filter for Jinja2 environment
