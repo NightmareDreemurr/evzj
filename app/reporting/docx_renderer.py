@@ -169,7 +169,7 @@ def _create_minimal_template(template_path: str):
 • {{ sentence }}
 {% endfor %}
 {% else %}
-• 文章基本符合要求，表达较为清楚
+• 无
 {% endif %}
 
 待改进句：
@@ -179,7 +179,7 @@ def _create_minimal_template(template_path: str):
 - 建议：{{ suggestion.suggested|default('') }}
 {% endfor %}
 {% else %}
-• 建议进一步丰富表达方式，提升语言准确性
+• 无
 {% endif %}
 
 {% endfor %}
@@ -747,7 +747,7 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                     doc.add_paragraph(f'• {sentence}')
             elif not is_ai_enhanced:
                 # Only show fallback if this is not an AI-enhanced evaluation
-                doc.add_paragraph('• 文章基本符合要求，表达较为清楚')
+                doc.add_paragraph('• 无')
             # If AI-enhanced but no example sentences, don't show anything
             
             # Improvement suggestions
@@ -765,7 +765,7 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                         doc.add_paragraph(f'• {suggestion}')
             elif not is_ai_enhanced:
                 # Only show fallback if this is not an AI-enhanced evaluation
-                doc.add_paragraph('• 建议进一步丰富表达方式，提升语言准确性')
+                doc.add_paragraph('• 无')
             # If AI-enhanced but no improvement suggestions, don't show anything
     else:
         # Provide meaningful fallback for rubrics when no scoring data

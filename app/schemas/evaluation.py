@@ -246,40 +246,33 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
             dimension['example_improvement_suggestion'] = getattr(rubric, 'example_improvement_suggestion')
         elif rubric.get('example_improvement_suggestion'):
             dimension['example_improvement_suggestion'] = rubric.get('example_improvement_suggestion')
-    
-    for i, rubric in enumerate(rubrics):
-        dimension = {
-            'dimension_name': rubric.get('name', ''),
-            'score': rubric.get('score', 0),
-            'selected_rubric_level': rubric.get('level', ''),
-            'feedback': rubric.get('reason', ''),
-            'example_good_sentence': [],
-            'example_improvement_suggestion': []
-        }
-        
-        # Find matching dimension from original data to get examples
-        matching_original = None
-        for orig_dim in original_dimensions:
-            if orig_dim.get('dimension_name') == rubric.get('name'):
-                matching_original = orig_dim
-                break
-        
-        if matching_original:
-            # Populate example_good_sentence
-            good_sentence = matching_original.get('example_good_sentence', '')
-            if good_sentence and good_sentence.strip():
-                dimension['example_good_sentence'] = [good_sentence.strip()]
+
+        # Find matching dimension from original data to get examples if not already set
+        if not dimension['example_good_sentence'] or not dimension['example_improvement_suggestion']:
+            matching_original = None
+            for orig_dim in original_dimensions:
+                if orig_dim.get('dimension_name') == rubric.get('name'):
+                    matching_original = orig_dim
+                    break
             
-            # Populate example_improvement_suggestion
-            improvement_suggestion = matching_original.get('example_improvement_suggestion', {})
-            if improvement_suggestion and isinstance(improvement_suggestion, dict):
-                original_text = improvement_suggestion.get('original', '')
-                suggested_text = improvement_suggestion.get('suggested', '')
-                if original_text and suggested_text:
-                    dimension['example_improvement_suggestion'] = [{
-                        'original': original_text.strip(),
-                        'suggested': suggested_text.strip()
-                    }]
+            if matching_original:
+                # Populate example_good_sentence if not already set
+                if not dimension['example_good_sentence']:
+                    good_sentence = matching_original.get('example_good_sentence', '')
+                    if good_sentence and good_sentence.strip():
+                        dimension['example_good_sentence'] = [good_sentence.strip()]
+                
+                # Populate example_improvement_suggestion if not already set
+                if not dimension['example_improvement_suggestion']:
+                    improvement_suggestion = matching_original.get('example_improvement_suggestion', {})
+                    if improvement_suggestion and isinstance(improvement_suggestion, dict):
+                        original_text = improvement_suggestion.get('original', '')
+                        suggested_text = improvement_suggestion.get('suggested', '')
+                        if original_text and suggested_text:
+                            dimension['example_improvement_suggestion'] = [{
+                                'original': original_text.strip(),
+                                'suggested': suggested_text.strip()
+                            }]
         
         grading_result['dimensions'].append(dimension)
     
