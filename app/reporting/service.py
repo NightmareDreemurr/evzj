@@ -161,8 +161,11 @@ def build_student_vm(essay_id: int, require_review: bool = None) -> Optional[Stu
         paragraphs = map_paragraphs_to_vm(evaluation)
         exercises = map_exercises_to_vm(evaluation)
         feedback_summary = build_feedback_summary(evaluation)
-        # For now, scanned_images is empty - can be populated from file storage later
+        
+        # Populate scanned_images from Essay model
         scanned_images = []
+        if essay.original_image_path:
+            scanned_images.append(essay.original_image_path)
         
         return StudentReportVM(
             student_id=student_id,
@@ -733,14 +736,18 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                 # 兜底失败忽略，不影响整体报告
                 pass
 
-        # 图片仍需上线游提供 scanned_images 才能显示
-        if hasattr(student, 'scanned_images') and student.scanned_images:
-            original_path = student.scanned_images[0]
+        # Get image data from the essay model via the student VM
+        essay = db.session.get(Essay, student.essay_id)
+        if essay and essay.original_image_path:
+            original_path = essay.original_image_path
             student_data['images']['original_image_path'] = original_path
-            annotations = getattr(student, 'annotations', None)
-            if original_path and annotations:
-                composited_path = compose_annotations(original_path, annotations)
-                student_data['images']['composited_image_path'] = composited_path
+            
+            # If we have both original and overlay, compose them
+            if essay.annotated_overlay_path:
+                from app.reporting.image_overlay import compose_overlay_images
+                composited_path = compose_overlay_images(original_path, essay.annotated_overlay_path)
+                if composited_path:
+                    student_data['images']['composited_image_path'] = composited_path
             
             # Create InlineImage instances for docxtpl rendering
             try:
@@ -749,28 +756,19 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
                 import logging
                 logger = logging.getLogger(__name__)
                 
-                # Create InlineImage for original image if it exists
-                if original_path and os.path.exists(original_path):
-                    try:
-                        student_data['images']['original_image'] = InlineImage(doc, original_path, width=Inches(6))
-                        logger.info(f"Created InlineImage for original image: {original_path}")
-                    except Exception as e:
-                        logger.warning(f"Failed to create InlineImage for original image {original_path}: {e}")
-                else:
-                    if original_path:
-                        logger.warning(f"Original image file not found: {original_path}")
+                # Priority: use composited image if available, otherwise original
+                image_to_use = student_data['images'].get('composited_image_path') or original_path
                 
-                # Create InlineImage for composited image if it exists
-                if student_data['images'].get('composited_image_path'):
-                    composited_path = student_data['images']['composited_image_path']
-                    if os.path.exists(composited_path):
-                        try:
-                            student_data['images']['composited_image'] = InlineImage(doc, composited_path, width=Inches(6))
-                            logger.info(f"Created InlineImage for composited image: {composited_path}")
-                        except Exception as e:
-                            logger.warning(f"Failed to create InlineImage for composited image {composited_path}: {e}")
-                    else:
-                        logger.warning(f"Composited image file not found: {composited_path}")
+                if image_to_use and os.path.exists(image_to_use):
+                    try:
+                        # Use composited image for display (contains both original + annotations)
+                        student_data['images']['composited_image'] = InlineImage(doc, image_to_use, width=Inches(6))
+                        logger.info(f"Created InlineImage for {'composited' if student_data['images'].get('composited_image_path') else 'original'} image: {image_to_use}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create InlineImage for {image_to_use}: {e}")
+                else:
+                    if image_to_use:
+                        logger.warning(f"Image file not found: {image_to_use}")
                         
             except ImportError:
                 # InlineImage not available, will fallback to text placeholders
