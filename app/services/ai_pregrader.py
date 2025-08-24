@@ -7,6 +7,7 @@ import json
 import logging
 from flask import current_app
 from typing import Dict, Any, Optional
+from app.services.grading_utils import format_grading_standard_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -96,13 +97,43 @@ def _build_analysis_prompt(text: str, context: Dict[str, Any]) -> str:
     topic = context.get('topic', '未知题目')
     grade = context.get('grade', '未知年级')
     
+    # Get grading standard information if available
+    grading_standard_text = ""
+    has_grading_standard = False
+    if 'grading_standard' in context and context['grading_standard']:
+        grading_standard_text = format_grading_standard_for_prompt(context['grading_standard'])
+        has_grading_standard = grading_standard_text != "没有提供评分标准。"
+    
+    # Build the grading standard section
+    grading_standard_section = ""
+    if has_grading_standard:
+        grading_standard_section = f"""
+## 评分标准
+请在分析过程中参考以下评分标准，确保你的诊断和建议与实际评分标准保持一致：
+
+{grading_standard_text}
+
+"""
+    
+    # Adjust diagnostic and exercise instructions based on whether we have grading standards
+    diagnostic_instruction = ""
+    exercise_instruction = ""
+    summary_instruction = ""
+    diagnosis_instruction = ""
+    
+    if has_grading_standard:
+        diagnostic_instruction = "- 重要：请结合上述评分标准中的维度和评分要求进行分析"
+        exercise_instruction = "- 重要：练习应该针对评分标准中的具体维度进行设计"
+        summary_instruction = "- 重要：评价应该基于评分标准的各个维度"
+        diagnosis_instruction = "- 重要：问题诊断和改进建议应该与评分标准相对应"
+    
     prompt = f"""
 请对以下学生作文进行全面分析，并严格按照JSON格式返回结果。
 
 ## 作文信息
 - 题目：{topic}
 - 年级：{grade}
-
+{grading_standard_section}
 ## 作文内容
 {text}
 
@@ -117,22 +148,26 @@ def _build_analysis_prompt(text: str, context: Dict[str, Any]) -> str:
 ### 2. 问题诊断 (diagnostics)  
 - 识别作文中的具体问题
 - 提供问题证据和改进建议
+{diagnostic_instruction}
 - 格式：[{{"para": 段落编号或null, "issue": "问题类型", "evidence": "问题证据", "advice": ["改进建议1", "改进建议2"]}}]
 
 ### 3. 个性化练习 (exercises)
 - 根据发现的问题设计针对性练习
 - 提供练习要点和示例
+{exercise_instruction}
 - 格式：[{{"type": "练习类型", "prompt": "练习要求", "hint": ["要点1", "要点2"], "sample": "示例内容"}}]
 
 ### 4. 综合评价 (summary)
 - 面向家长和教师的作文总体评价
 - 简明扼要，突出优点和改进方向
+{summary_instruction}
 - 格式：字符串
 
 ### 5. 诊断反馈 (diagnosis)
 - before: 主要问题描述
 - comment: 具体改进建议  
 - after: 改进后的预期效果
+{diagnosis_instruction}
 - 格式：{{"before": "问题描述", "comment": "改进建议", "after": "预期效果"}}
 
 ## 返回格式
