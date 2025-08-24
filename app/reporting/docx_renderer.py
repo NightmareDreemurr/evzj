@@ -740,9 +740,10 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
             if hasattr(rubric, 'example_good_sentence') and rubric.example_good_sentence:
                 for sentence in rubric.example_good_sentence:
                     doc.add_paragraph(f'• {sentence}')
-            else:
-                # Provide meaningful fallback for bright points
+            elif not hasattr(rubric, 'example_good_sentence'):
+                # Only show fallback if the field doesn't exist at all (not from AI evaluation)
                 doc.add_paragraph('• 文章基本符合要求，表达较为清楚')
+            # If field exists but is empty, don't show anything (real data exists but is empty)
             
             # Improvement suggestions
             improve_para = doc.add_paragraph()
@@ -757,9 +758,10 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                         doc.add_paragraph(f'- 原文：{original}\n- 建议：{suggested}')
                     else:
                         doc.add_paragraph(f'• {suggestion}')
-            else:
-                # Provide meaningful fallback for improvement suggestions  
+            elif not hasattr(rubric, 'example_improvement_suggestion'):
+                # Only show fallback if the field doesn't exist at all (not from AI evaluation)
                 doc.add_paragraph('• 建议进一步丰富表达方式，提升语言准确性')
+            # If field exists but is empty, don't show anything (real data exists but is empty)
     else:
         # Provide meaningful fallback for rubrics when no scoring data
         doc.add_paragraph('本次作文评估采用系统性标准，重点关注内容理解、结构组织、语言表达和文采创新等维度。建议继续加强写作练习以提升各项能力。')
