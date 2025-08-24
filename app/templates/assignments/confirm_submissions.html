@@ -59,6 +59,36 @@
                             </select>
                         </div>
 
+                        <!-- Progress Bar Section -->
+                        {% set processing_statuses = ['uploaded', 'preprocessing', 'ocr_processing', 'matching'] %}
+                        {% if sub.status in processing_statuses %}
+                        <div class="progress-container mb-3" data-submission-id="{{ sub.id }}">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-muted">处理进度:</small>
+                                <small class="text-muted">
+                                    {% if sub.status == 'uploaded' %}10%
+                                    {% elif sub.status == 'preprocessing' %}25%
+                                    {% elif sub.status == 'ocr_processing' %}50%
+                                    {% elif sub.status == 'matching' %}90%
+                                    {% else %}0%{% endif %}
+                                </small>
+                            </div>
+                            <div class="progress" style="height: 16px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                     style="width: {% if sub.status == 'uploaded' %}10%{% elif sub.status == 'preprocessing' %}25%{% elif sub.status == 'ocr_processing' %}50%{% elif sub.status == 'matching' %}90%{% else %}0%{% endif %};" 
+                                     aria-valuenow="{% if sub.status == 'uploaded' %}10{% elif sub.status == 'preprocessing' %}25{% elif sub.status == 'ocr_processing' %}50{% elif sub.status == 'matching' %}90{% else %}0{% endif %}" 
+                                     aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small class="progress-text text-muted d-block mt-1">
+                                {% if sub.status == 'uploaded' %}已上传，等待处理...
+                                {% elif sub.status == 'preprocessing' %}预处理中...
+                                {% elif sub.status == 'ocr_processing' %}文字识别（OCR）中...
+                                {% elif sub.status == 'matching' %}正在智能匹配学生...
+                                {% else %}处理中...{% endif %}
+                            </small>
+                        </div>
+                        {% endif %}
+
                         <div class="ocr-text-container">
                             <p class="small text-muted mb-1">识别文本预览:</p>
                             <div class="ocr-text-preview p-2 bg-light border rounded small">
@@ -236,6 +266,80 @@ document.addEventListener('DOMContentLoaded', function () {
             submissionIdToDelete = null;
         });
     });
+});
+
+// Progress polling logic
+document.addEventListener('DOMContentLoaded', function() {
+    const submissionsToPoll = new Map();
+    
+    function findSubmissionsToPoll() {
+        submissionsToPoll.clear();
+        const progressContainers = document.querySelectorAll('.progress-container');
+        progressContainers.forEach(container => {
+            const submissionId = container.dataset.submissionId;
+            if (submissionId) {
+                submissionsToPoll.set(submissionId, container);
+            }
+        });
+    }
+
+    function updateProgressUI(statusData) {
+        let hasActiveTasks = false;
+        for (const submissionId in statusData) {
+            const data = statusData[submissionId];
+            
+            if (data.is_finished) {
+                // Refresh the page when processing is complete
+                window.location.reload();
+            } else {
+                hasActiveTasks = true;
+                const container = document.querySelector(`.progress-container[data-submission-id='${submissionId}']`);
+                if (!container) continue;
+
+                const progressBar = container.querySelector('.progress-bar');
+                const progressText = container.querySelector('.progress-text');
+                const progressPercentage = container.querySelector('small.text-muted:last-child');
+                
+                if (progressBar) {
+                    progressBar.style.width = data.progress + '%';
+                    progressBar.setAttribute('aria-valuenow', data.progress);
+                }
+                if (progressText) {
+                    progressText.textContent = data.text;
+                }
+                if (progressPercentage) {
+                    progressPercentage.textContent = data.progress + '%';
+                }
+            }
+        }
+        return hasActiveTasks;
+    }
+    
+    async function pollSubmissionStatuses() {
+        findSubmissionsToPoll();
+        if (submissionsToPoll.size === 0) return;
+
+        const ids = Array.from(submissionsToPoll.keys()).join(',');
+        try {
+            const response = await fetch(`/assignments/api/pending_submissions/status?ids=${ids}`);
+            if (response.ok) {
+                const data = await response.json();
+                const stillProcessing = updateProgressUI(data);
+                if (stillProcessing) {
+                    setTimeout(pollSubmissionStatuses, 3000); // Poll every 3 seconds
+                }
+            } else {
+                console.error('Failed to fetch submission statuses:', response.statusText);
+                setTimeout(pollSubmissionStatuses, 10000); // Retry after 10 seconds on error
+            }
+        } catch (error) {
+            console.error('Error polling submission statuses:', error);
+            setTimeout(pollSubmissionStatuses, 10000); // Retry after 10 seconds on error
+        }
+    }
+
+    // Start polling if there are active submissions
+    pollSubmissionStatuses();
 });
 </script>
 {% endblock %} 

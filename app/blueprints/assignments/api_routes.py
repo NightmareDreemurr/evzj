@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from dictdiffer import diff
 
 from app.extensions import db
-from app.models import Essay, PendingSubmission
+from app.models import Essay, PendingSubmission, EssayAssignment
 from app.decorators import teacher_required
 from app.services.evaluation_builder import load_evaluation_from_essay
 from app.schemas.evaluation import EvaluationResult
@@ -94,9 +94,49 @@ STATUS_PROGRESS_MAP = {
 }
 
 
-@assignments_bp.route('/pending_submission/<int:pending_submission_id>/status')
+@assignments_bp.route('/api/pending_submissions/status')
 @login_required
-def get_pending_submission_status(pending_submission_id):
+@teacher_required
+def get_pending_submissions_status():
+    """
+    API endpoint to get the status of multiple pending submissions.
+    Expects a comma-separated list of pending submission IDs in the 'ids' query parameter.
+    """
+    submission_ids_str = request.args.get('ids')
+    if not submission_ids_str:
+        return jsonify({"error": "No submission IDs provided"}), 400
+
+    submission_ids = [int(id) for id in submission_ids_str.split(',') if id.isdigit()]
+    
+    # Query the database for the status of the pending submissions
+    submissions = db.session.query(PendingSubmission.id, PendingSubmission.status, PendingSubmission.error_message, PendingSubmission.assignment_id).filter(PendingSubmission.id.in_(submission_ids)).all()
+    
+    # Permission check - ensure teacher owns all these assignments
+    assignment_ids = list(set([sub[3] for sub in submissions]))
+    teacher_assignments = db.session.query(EssayAssignment.id).filter(
+        EssayAssignment.id.in_(assignment_ids),
+        EssayAssignment.teacher_profile_id == current_user.teacher_profile.id
+    ).all()
+    
+    if len(teacher_assignments) != len(assignment_ids):
+        return jsonify({'error': 'Permission denied'}), 403
+    
+    status_map = {}
+    for submission_id, status, error_message, assignment_id in submissions:
+        is_finished = status in ['match_completed', 'failed']
+        
+        status_info = STATUS_PROGRESS_MAP.get(status, {'progress': 0, 'text': '未知状态'})
+        
+        status_map[submission_id] = {
+            'is_finished': is_finished,
+            'progress': status_info['progress'],
+            'text': status_info['text'],
+            'status': status
+        }
+        
+    return jsonify(status_map)
+
+
     """
     API endpoint to get the real-time status of a pending submission.
     """
