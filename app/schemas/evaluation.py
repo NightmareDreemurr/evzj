@@ -321,4 +321,12 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     if not context['parentSummary']:
         context['parentSummary'] = context.get('summary', '总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。')
     
+    # Add empty images context for template compatibility
+    context.setdefault('images', {
+        'original_image': None,
+        'original_image_path': None, 
+        'composited_image': None,
+        'composited_image_path': None
+    })
+    
     return context

@@ -197,6 +197,14 @@ def _create_minimal_template(template_path: str):
     else:
         doc.add_paragraph('[作文正文内容]')
 
+    # 3.1) 作文图片（如果有的话）
+    doc.add_heading('作文图片', level=2)
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% elif images.original_image_path %}原图：{{ images.original_image_path }}{% else %}（无原图）{% endif %}')
+        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% elif images.composited_image_path %}教师批注图片：{{ images.composited_image_path }}{% else %}（无批注图）{% endif %}')
+    else:
+        doc.add_paragraph('[作文图片]')
+
     # 4) 综合评价与寄语
     doc.add_heading('综合评价与寄语', level=1)
     if DOCXTPL_AVAILABLE:
