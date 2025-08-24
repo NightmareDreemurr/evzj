@@ -30,6 +30,60 @@ from app.schemas.evaluation import EvaluationResult, Meta, TextBlock, Scores, Ru
 logger = logging.getLogger(__name__)
 
 
+def _normalize_example_fields(dim: dict) -> dict:
+    """
+    Normalize example fields from raw dimension data to expected formats.
+    
+    Args:
+        dim: Raw dimension dictionary from grading_result
+        
+    Returns:
+        Dictionary with normalized example_good_sentence and example_improvement_suggestion
+    """
+    normalized = {}
+    
+    # Normalize example_good_sentence to List[str]
+    if 'example_good_sentence' in dim:
+        value = dim['example_good_sentence']
+        if isinstance(value, str):
+            # Single string -> list with one item
+            normalized['example_good_sentence'] = [value] if value.strip() else []
+        elif isinstance(value, list):
+            # Already a list, but ensure all items are strings
+            normalized['example_good_sentence'] = [str(item) for item in value if item]
+        else:
+            # Other types -> empty list
+            normalized['example_good_sentence'] = []
+    
+    # Normalize example_improvement_suggestion to List[Dict[str, str]]
+    if 'example_improvement_suggestion' in dim:
+        value = dim['example_improvement_suggestion']
+        if isinstance(value, dict) and 'original' in value and 'suggested' in value:
+            # Single dict with original/suggested -> list with one item
+            normalized['example_improvement_suggestion'] = [value]
+        elif isinstance(value, str):
+            # String -> empty list (can't extract original/suggested from plain string)
+            normalized['example_improvement_suggestion'] = []
+        elif isinstance(value, list):
+            # List -> normalize each item
+            suggestions = []
+            for item in value:
+                if isinstance(item, dict) and 'original' in item and 'suggested' in item:
+                    suggestions.append({
+                        'original': str(item['original']),
+                        'suggested': str(item['suggested'])
+                    })
+                elif isinstance(item, str):
+                    # String items can't be normalized to original/suggested structure
+                    continue
+            normalized['example_improvement_suggestion'] = suggestions
+        else:
+            # Other types -> empty list
+            normalized['example_improvement_suggestion'] = []
+    
+    return normalized
+
+
 def build_student_vm(essay_id: int, require_review: bool = None) -> Optional[StudentReportVM]:
     """
     Build StudentReportVM from essay evaluation data.
@@ -271,11 +325,12 @@ def build_teacher_view_evaluation(essay_id: int) -> Optional[EvaluationResult]:
                 level=dim.get('selected_rubric_level', '')
             )
             
-            # Add example sentences data if available
-            if 'example_good_sentence' in dim:
-                rubric.example_good_sentence = dim['example_good_sentence']
-            if 'example_improvement_suggestion' in dim:
-                rubric.example_improvement_suggestion = dim['example_improvement_suggestion']
+            # Add normalized example sentences data if available
+            normalized_examples = _normalize_example_fields(dim)
+            if 'example_good_sentence' in normalized_examples:
+                rubric.example_good_sentence = normalized_examples['example_good_sentence']
+            if 'example_improvement_suggestion' in normalized_examples:
+                rubric.example_improvement_suggestion = normalized_examples['example_improvement_suggestion']
             
             rubrics.append(rubric)
         

@@ -18,7 +18,7 @@ class RubricScore(BaseModel):
     
     # Optional fields for enhanced AI feedback
     example_good_sentence: Optional[List[str]] = Field(default=None, description="优秀句子示例")
-    example_improvement_suggestion: Optional[List[str]] = Field(default=None, description="改进建议示例")
+    example_improvement_suggestion: Optional[List[Dict[str, str]]] = Field(default=None, description="改进建议示例")
 
 
 class Span(BaseModel):
