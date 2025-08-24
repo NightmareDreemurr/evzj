@@ -198,11 +198,19 @@ def _create_minimal_template(template_path: str):
         doc.add_paragraph('[作文正文内容]')
 
     # 3.1) 作文图片（如果有的话）
-    doc.add_heading('作文图片', level=2)
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% elif images.original_image_path %}原图：{{ images.original_image_path }}{% else %}（无原图）{% endif %}')
-        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% elif images.composited_image_path %}教师批注图片：{{ images.composited_image_path }}{% else %}（无批注图）{% endif %}')
+        doc.add_paragraph('{% if images.original_image_path %}')
+        doc.add_heading('作文图片', level=2)
+        doc.add_paragraph('{% if images.composited_image_path %}')
+        # 如果有批注，只显示合成图片（原图+批注）
+        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% else %}教师批注图片：{{ images.composited_image_path }}{% endif %}')
+        doc.add_paragraph('{% else %}')
+        # 如果没有批注，只显示原图
+        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% else %}原图：{{ images.original_image_path }}{% endif %}')
+        doc.add_paragraph('{% endif %}')
+        doc.add_paragraph('{% endif %}')
     else:
+        doc.add_heading('作文图片', level=2)
         doc.add_paragraph('[作文图片]')
 
     # 4) 综合评价与寄语
@@ -471,10 +479,17 @@ def _create_assignment_template(template_path: str):
 {% endfor %}{% else %}（暂无个性化练习）{% endif %}
         """.strip())
 
-        # Images section — 使用 InlineImage 变量或路径占位符
+        # Images section — 修正图片显示逻辑
+        doc.add_paragraph('{% if s.images.original_image_path %}')
         doc.add_heading('作文图片', level=2)
-        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% elif s.images.original_image_path %}原图：{{ s.images.original_image_path }}{% else %}（无原图）{% endif %}')
-        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% elif s.images.composited_image_path %}教师批注图片：{{ s.images.composited_image_path }}{% else %}（无批注图）{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image_path %}')
+        # 如果有批注，只显示合成图片（原图+批注）
+        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% else %}教师批注图片：{{ s.images.composited_image_path }}{% endif %}')
+        doc.add_paragraph('{% else %}')
+        # 如果没有批注，只显示原图
+        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% else %}原图：{{ s.images.original_image_path }}{% endif %}')
+        doc.add_paragraph('{% endif %}')
+        doc.add_paragraph('{% endif %}')
 
         # Page break between students (except for the last one)
         doc.add_paragraph('{% if not loop.last %}')
