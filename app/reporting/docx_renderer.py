@@ -199,15 +199,10 @@ def _create_minimal_template(template_path: str):
 
     # 3.1) 作文图片（如果有的话）
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% if images.original_image_path %}')
+        doc.add_paragraph('{% if images.primary_image_path %}')
         doc.add_heading('作文图片', level=2)
-        doc.add_paragraph('{% if images.composited_image_path %}')
-        # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
-        doc.add_paragraph('{% else %}')
-        # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
-        doc.add_paragraph('{% endif %}')
+        # Use InlineImage objects directly if available
+        doc.add_paragraph('{% if images.primary_image %}{{ images.primary_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
         doc.add_paragraph('{% endif %}')
     else:
         doc.add_heading('作文图片', level=2)
@@ -480,14 +475,11 @@ def _create_assignment_template(template_path: str):
         """.strip())
 
         # Images section — 修正图片显示逻辑
-        doc.add_paragraph('{% if s.images.original_image_path %}')
+        doc.add_paragraph('{% if s.images.primary_image_path %}')
         doc.add_heading('作文图片', level=2)
-        doc.add_paragraph('{% if s.images.composited_image_path %}')
-        # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% elif s.images.friendly_message %}{{ s.images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
-        doc.add_paragraph('{% else %}')
-        # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% elif s.images.friendly_message %}{{ s.images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
+        # Use InlineImage objects directly if available
+        doc.add_paragraph('{% if s.images.primary_image %}{{ s.images.primary_image }}{% elif s.images.friendly_message %}{{ s.images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
+        doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
 
@@ -610,7 +602,7 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str, review_
     
     try:
         doc = DocxTemplate(template_path)
-        context = to_context(evaluation)
+        context = to_context(evaluation, doc_template=doc)
         
         # Add current timestamp and enhance context
         from datetime import datetime
@@ -641,7 +633,7 @@ def _render_with_docxtpl(evaluation: EvaluationResult, output_path: str, review_
                     'improvements': context.get('improvements', [])
                 }
         
-        # Create Jinja environment with strftime filter (P0)
+        # Create Jinja environment with custom filters (P0)
         from jinja2 import Environment
         env = Environment(autoescape=False)
         

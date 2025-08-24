@@ -156,7 +156,7 @@ class StandardDTO(BaseModel):
     dimensions: List[Dict[str, Any]] = Field(default_factory=list, description="评分维度详情")
 
 
-def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
+def to_context(evaluation: EvaluationResult, doc_template=None) -> Dict[str, Any]:
     """Convert EvaluationResult to template context for docxtpl rendering"""
     context = evaluation.model_dump()
     
@@ -349,25 +349,26 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
             
         # Try to create InlineImage objects for docxtpl rendering if paths exist
         if essay.original_image_path or essay.annotated_overlay_path:
-            _populate_image_context(images_context, essay)
+            _populate_image_context(images_context, essay, doc_template)
     
     context.setdefault('images', images_context)
     
     return context
 
 
-def _populate_image_context(images_context: Dict[str, Any], essay) -> None:
+def _populate_image_context(images_context: Dict[str, Any], essay, doc_template=None) -> None:
     """
-    Populate image context with InlineImage objects for docxtpl rendering.
+    Populate image context with resolved paths and InlineImage objects for docxtpl rendering.
     
-    Handles path resolution, creates InlineImage objects when possible, and sets
-    friendly error messages when images cannot be loaded.
+    Handles path resolution and creates InlineImage objects when a DocxTemplate is provided.
     
     Args:
         images_context: Dictionary to populate with image data
         essay: Essay instance with image paths
+        doc_template: DocxTemplate instance for creating InlineImage objects (optional)
     """
     import logging
+    import os
     from app.utils.path_resolver import resolve_upload_path, get_friendly_image_message
     
     logger = logging.getLogger(__name__)
@@ -375,57 +376,89 @@ def _populate_image_context(images_context: Dict[str, Any], essay) -> None:
     original_path = essay.original_image_path
     overlay_path = essay.annotated_overlay_path
     
+    # Enhanced logging as requested in problem statement
+    logger.info(f"Image context population started - Original: {original_path}, Overlay: {overlay_path}")
+    
     # Log what we're trying to resolve
     if original_path:
         logger.info(f"Attempting to resolve original image path: {original_path}")
+        logger.debug(f"Original image path details - exists: {os.path.exists(original_path) if original_path else False}, type: {type(original_path)}")
     if overlay_path:
         logger.info(f"Attempting to resolve overlay image path: {overlay_path}")
+        logger.debug(f"Overlay image path details - exists: {os.path.exists(overlay_path) if overlay_path else False}, type: {type(overlay_path)}")
     
-    try:
-        from docxtpl import InlineImage
-        from docx.shared import Inches
-        from docx import Document
+    # Try to resolve paths
+    resolved_original = resolve_upload_path(original_path) if original_path else None
+    resolved_overlay = resolve_upload_path(overlay_path) if overlay_path else None
+    
+    # Enhanced logging for resolution results
+    if original_path:
+        if resolved_original:
+            logger.info(f"✅ Successfully resolved original image path: {original_path} -> {resolved_original}")
+            logger.debug(f"Resolved original image file size: {os.path.getsize(resolved_original)} bytes")
+        else:
+            logger.warning(f"❌ Failed to resolve original image path: {original_path}")
+            logger.debug(f"Resolution failure details - path exists: {os.path.exists(original_path) if original_path else False}")
+    
+    if overlay_path:
+        if resolved_overlay:
+            logger.info(f"✅ Successfully resolved overlay image path: {overlay_path} -> {resolved_overlay}")
+            logger.debug(f"Resolved overlay image file size: {os.path.getsize(resolved_overlay)} bytes")
+        else:
+            logger.warning(f"❌ Failed to resolve overlay image path: {overlay_path}")
+            logger.debug(f"Resolution failure details - path exists: {os.path.exists(overlay_path) if overlay_path else False}")
+    
+    # Store resolved paths for fallback scenarios
+    if resolved_original:
+        images_context['original_image_path'] = resolved_original
+    
+    if resolved_overlay:
+        images_context['composited_image_path'] = resolved_overlay
+    
+    # Priority: use overlay (composed) image if available, otherwise original
+    primary_image_path = resolved_overlay or resolved_original
+    
+    if primary_image_path:
+        images_context['primary_image_path'] = primary_image_path
+        logger.info(f"✅ Primary image path set to: {primary_image_path}")
         
-        # Create a temporary document for InlineImage creation
-        temp_doc = Document()
-        
-        # Try to resolve paths and create images
-        resolved_original = resolve_upload_path(original_path) if original_path else None
-        resolved_overlay = resolve_upload_path(overlay_path) if overlay_path else None
-        
-        # Log resolution results
-        if original_path and not resolved_original:
-            logger.warning(f"Failed to resolve original image path: {original_path}")
-        if overlay_path and not resolved_overlay:
-            logger.warning(f"Failed to resolve overlay image path: {overlay_path}")
-        
-        # Priority: use overlay (composed) image if available, otherwise original
-        primary_image_path = resolved_overlay or resolved_original
-        
-        if primary_image_path:
+        # If we have a DocxTemplate, create InlineImage objects
+        if doc_template:
+            logger.debug(f"DocxTemplate provided, creating InlineImage objects")
             try:
-                # Create the primary image for display
-                images_context['composited_image'] = InlineImage(temp_doc, primary_image_path, width=Inches(6))
-                logger.info(f"Successfully created InlineImage for: {primary_image_path}")
+                from docxtpl import InlineImage
+                from docx.shared import Inches
                 
-                # Also create original image if it's different from the composed one
-                if resolved_original and resolved_original != primary_image_path:
-                    images_context['original_image'] = InlineImage(temp_doc, resolved_original, width=Inches(6))
-                    logger.info(f"Successfully created original InlineImage for: {resolved_original}")
+                # Create InlineImage for the primary image
+                images_context['primary_image'] = InlineImage(doc_template, primary_image_path, width=Inches(6))
+                logger.info(f"✅ Successfully created primary InlineImage for: {primary_image_path}")
                 
+                # Also create separate images if we have both original and overlay
+                if resolved_original and resolved_overlay:
+                    images_context['original_image'] = InlineImage(doc_template, resolved_original, width=Inches(6))
+                    images_context['composited_image'] = InlineImage(doc_template, resolved_overlay, width=Inches(6))
+                    logger.info(f"✅ Created separate original and composited InlineImages")
+                elif resolved_original:
+                    images_context['original_image'] = images_context['primary_image']
+                    logger.debug(f"Using primary image as original image")
+                elif resolved_overlay:
+                    images_context['composited_image'] = images_context['primary_image']
+                    logger.debug(f"Using primary image as composited image")
+                    
             except Exception as e:
-                logger.error(f"Failed to create InlineImage for {primary_image_path}: {e}")
+                logger.error(f"❌ Failed to create InlineImage objects: {e}")
+                logger.debug(f"InlineImage creation failure details", exc_info=True)
                 images_context['friendly_message'] = get_friendly_image_message()
         else:
-            # No images could be resolved
-            if original_path or overlay_path:
-                logger.warning(f"No images could be resolved. Original: {original_path}, Overlay: {overlay_path}")
-                images_context['friendly_message'] = get_friendly_image_message()
-            
-    except ImportError:
-        logger.debug("docxtpl not available, skipping InlineImage creation")
+            logger.debug(f"No DocxTemplate provided, skipping InlineImage creation")
+    else:
+        # No images could be resolved
         if original_path or overlay_path:
+            logger.warning(f"❌ No images could be resolved. Original: {original_path}, Overlay: {overlay_path}")
             images_context['friendly_message'] = get_friendly_image_message()
-    except Exception as e:
-        logger.error(f"Unexpected error during image context population: {e}")
-        images_context['friendly_message'] = get_friendly_image_message()
+        else:
+            logger.debug(f"No image paths provided, skipping image processing")
+    
+    # Final status logging
+    logger.info(f"Image context population completed. Available keys: {list(images_context.keys())}")
+    logger.debug(f"Image context contents: {images_context}")
