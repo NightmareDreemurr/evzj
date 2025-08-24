@@ -741,6 +741,40 @@ def _render_with_docxtpl_combined(assignment_vm: AssignmentReportVM) -> bytes:
             if original_path and annotations:
                 composited_path = compose_annotations(original_path, annotations)
                 student_data['images']['composited_image_path'] = composited_path
+            
+            # Create InlineImage instances for docxtpl rendering
+            try:
+                from docxtpl import InlineImage
+                from docx.shared import Inches
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                # Create InlineImage for original image if it exists
+                if original_path and os.path.exists(original_path):
+                    try:
+                        student_data['images']['original_image'] = InlineImage(doc, original_path, width=Inches(6))
+                        logger.info(f"Created InlineImage for original image: {original_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to create InlineImage for original image {original_path}: {e}")
+                else:
+                    if original_path:
+                        logger.warning(f"Original image file not found: {original_path}")
+                
+                # Create InlineImage for composited image if it exists
+                if student_data['images'].get('composited_image_path'):
+                    composited_path = student_data['images']['composited_image_path']
+                    if os.path.exists(composited_path):
+                        try:
+                            student_data['images']['composited_image'] = InlineImage(doc, composited_path, width=Inches(6))
+                            logger.info(f"Created InlineImage for composited image: {composited_path}")
+                        except Exception as e:
+                            logger.warning(f"Failed to create InlineImage for composited image {composited_path}: {e}")
+                    else:
+                        logger.warning(f"Composited image file not found: {composited_path}")
+                        
+            except ImportError:
+                # InlineImage not available, will fallback to text placeholders
+                logger.debug("InlineImage not available, using text placeholders for images")
 
         students_data.append(student_data)
 

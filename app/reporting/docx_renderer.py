@@ -463,10 +463,10 @@ def _create_assignment_template(template_path: str):
 {% endfor %}{% else %}（暂无个性化练习）{% endif %}
         """.strip())
 
-        # Images section — 目前为占位说明
+        # Images section — 使用 InlineImage 变量或路径占位符
         doc.add_heading('作文图片', level=2)
-        doc.add_paragraph('{% if s.images.original_image_path %}原图：[图片]{% else %}（无原图）{% endif %}')
-        doc.add_paragraph('{% if s.images.composited_image_path %}批注图：[图片]{% else %}（无批注图）{% endif %}')
+        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% elif s.images.original_image_path %}原图：{{ s.images.original_image_path }}{% else %}（无原图）{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% elif s.images.composited_image_path %}教师批注图片：{{ s.images.composited_image_path }}{% else %}（无批注图）{% endif %}')
 
         # Page break between students (except for the last one)
         doc.add_paragraph('{% if not loop.last %}')

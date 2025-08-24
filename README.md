@@ -182,8 +182,23 @@ python regenerate_report.py --assignment <assignment_id>
 
 **新特性说明：**
 - **DOCX默认格式**: 使用`python-docx`生成格式化的Word文档，包含标题、分段、加粗等样式
+- **图片嵌入**: 批量导出的DOCX文档现在支持直接嵌入原始作文图片和教师批注图片，使用docxtpl InlineImage功能
 - **CLI增强**: 支持`--essay-id`、`--format`和`--output`参数
 - **向后兼容**: 保持原有`--assignment`参数的支持
+
+#### DOCX图片嵌入功能
+
+当学生数据包含有效的图片路径时，生成的DOCX文档将自动嵌入实际图片：
+
+- **原始图片**: 当`scanned_images`字段包含有效路径时，会在文档中嵌入原始作文扫描图片
+- **批注图片**: 当存在教师批注数据时，系统会自动合成带批注的图片并嵌入文档
+- **优雅降级**: 如果图片文件不存在，文档会显示友好的提示信息而不是报错
+
+**模板自定义说明**: 自动生成的`assignment_compiled.docx`模板已包含正确的图片占位符。如需自定义模板，请在模板中使用以下占位符：
+- `{{ s.images.original_image }}` - 原始图片的InlineImage对象
+- `{{ s.images.composited_image }}` - 合成批注图片的InlineImage对象
+
+如需重新生成默认模板，可删除`templates/word/assignment_compiled.docx`文件，系统会自动创建新版本。
 
 ### 智能元数据解析
 
