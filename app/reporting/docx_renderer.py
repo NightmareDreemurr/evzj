@@ -203,10 +203,10 @@ def _create_minimal_template(template_path: str):
         doc.add_heading('作文图片', level=2)
         doc.add_paragraph('{% if images.composited_image_path %}')
         # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% else %}{{ images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
+        doc.add_paragraph('{% if images.composited_image %}{{ images.composited_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
         doc.add_paragraph('{% else %}')
         # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% else %}{{ images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
+        doc.add_paragraph('{% if images.original_image %}{{ images.original_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
         doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
     else:
@@ -484,10 +484,10 @@ def _create_assignment_template(template_path: str):
         doc.add_heading('作文图片', level=2)
         doc.add_paragraph('{% if s.images.composited_image_path %}')
         # 如果有批注，只显示合成图片（原图+批注）
-        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% else %}{{ s.images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
+        doc.add_paragraph('{% if s.images.composited_image %}{{ s.images.composited_image }}{% elif s.images.friendly_message %}{{ s.images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
         doc.add_paragraph('{% else %}')
         # 如果没有批注，只显示原图
-        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% else %}{{ s.images.friendly_message|default("图片缺失或不可访问") }}{% endif %}')
+        doc.add_paragraph('{% if s.images.original_image %}{{ s.images.original_image }}{% elif s.images.friendly_message %}{{ s.images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
         doc.add_paragraph('{% endif %}')
         doc.add_paragraph('{% endif %}')
 

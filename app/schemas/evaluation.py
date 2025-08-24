@@ -346,7 +346,86 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
             images_context['original_image_path'] = essay.original_image_path
         if essay.annotated_overlay_path:
             images_context['composited_image_path'] = essay.annotated_overlay_path
+            
+        # Try to create InlineImage objects for docxtpl rendering if paths exist
+        if essay.original_image_path or essay.annotated_overlay_path:
+            _populate_image_context(images_context, essay)
     
     context.setdefault('images', images_context)
     
     return context
+
+
+def _populate_image_context(images_context: Dict[str, Any], essay) -> None:
+    """
+    Populate image context with InlineImage objects for docxtpl rendering.
+    
+    Handles path resolution, creates InlineImage objects when possible, and sets
+    friendly error messages when images cannot be loaded.
+    
+    Args:
+        images_context: Dictionary to populate with image data
+        essay: Essay instance with image paths
+    """
+    import logging
+    from app.utils.path_resolver import resolve_upload_path, get_friendly_image_message
+    
+    logger = logging.getLogger(__name__)
+    
+    original_path = essay.original_image_path
+    overlay_path = essay.annotated_overlay_path
+    
+    # Log what we're trying to resolve
+    if original_path:
+        logger.info(f"Attempting to resolve original image path: {original_path}")
+    if overlay_path:
+        logger.info(f"Attempting to resolve overlay image path: {overlay_path}")
+    
+    try:
+        from docxtpl import InlineImage
+        from docx.shared import Inches
+        from docx import Document
+        
+        # Create a temporary document for InlineImage creation
+        temp_doc = Document()
+        
+        # Try to resolve paths and create images
+        resolved_original = resolve_upload_path(original_path) if original_path else None
+        resolved_overlay = resolve_upload_path(overlay_path) if overlay_path else None
+        
+        # Log resolution results
+        if original_path and not resolved_original:
+            logger.warning(f"Failed to resolve original image path: {original_path}")
+        if overlay_path and not resolved_overlay:
+            logger.warning(f"Failed to resolve overlay image path: {overlay_path}")
+        
+        # Priority: use overlay (composed) image if available, otherwise original
+        primary_image_path = resolved_overlay or resolved_original
+        
+        if primary_image_path:
+            try:
+                # Create the primary image for display
+                images_context['composited_image'] = InlineImage(temp_doc, primary_image_path, width=Inches(6))
+                logger.info(f"Successfully created InlineImage for: {primary_image_path}")
+                
+                # Also create original image if it's different from the composed one
+                if resolved_original and resolved_original != primary_image_path:
+                    images_context['original_image'] = InlineImage(temp_doc, resolved_original, width=Inches(6))
+                    logger.info(f"Successfully created original InlineImage for: {resolved_original}")
+                
+            except Exception as e:
+                logger.error(f"Failed to create InlineImage for {primary_image_path}: {e}")
+                images_context['friendly_message'] = get_friendly_image_message()
+        else:
+            # No images could be resolved
+            if original_path or overlay_path:
+                logger.warning(f"No images could be resolved. Original: {original_path}, Overlay: {overlay_path}")
+                images_context['friendly_message'] = get_friendly_image_message()
+            
+    except ImportError:
+        logger.debug("docxtpl not available, skipping InlineImage creation")
+        if original_path or overlay_path:
+            images_context['friendly_message'] = get_friendly_image_message()
+    except Exception as e:
+        logger.error(f"Unexpected error during image context population: {e}")
+        images_context['friendly_message'] = get_friendly_image_message()
