@@ -205,10 +205,19 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
     
     # Map teacher-view aligned fields for export compatibility
     # These fields should be populated when creating EvaluationResult for export
-    context.setdefault('assignmentTitle', context.get('assignmentTitle') or meta.get('topic', '未知作业'))
-    context.setdefault('studentName', context.get('studentName') or meta.get('student', '未知学生'))
-    context.setdefault('submittedAt', context.get('submittedAt') or meta.get('date', '未知时间'))
-    context.setdefault('currentEssayContent', context.get('currentEssayContent', ''))
+    if not context.get('assignmentTitle'):
+        context['assignmentTitle'] = meta.get('topic', '未知作业')
+    if not context.get('studentName'):
+        context['studentName'] = meta.get('student', '未知学生')
+    if not context.get('submittedAt'):
+        context['submittedAt'] = meta.get('date', '未知时间')
+    if not context.get('currentEssayContent'):
+        # Try to get from text field if available
+        text_block = context.get('text')
+        if text_block:
+            context['currentEssayContent'] = text_block.get('cleaned') or text_block.get('original', '')
+        else:
+            context['currentEssayContent'] = ''
     
     # Transform scoring data to match teacher view structure  
     grading_result = {
@@ -326,7 +335,8 @@ def to_context(evaluation: EvaluationResult) -> Dict[str, Any]:
         'original_image': None,
         'original_image_path': None, 
         'composited_image': None,
-        'composited_image_path': None
+        'composited_image_path': None,
+        'friendly_message': None  # Will be set if needed
     }
     
     # If essay instance is available, populate image context from essay database fields
