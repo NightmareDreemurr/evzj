@@ -128,41 +128,65 @@ class TestImageOverlay:
         # Test unknown color (should default to red)
         assert _parse_color('unknown') == (255, 0, 0)
     
+    def test_compose_overlay_images_missing_files(self):
+        """Test compose_overlay_images with missing files."""
+        from app.reporting.image_overlay import compose_overlay_images
+        
+        # Test with non-existent files
+        result = compose_overlay_images('/nonexistent/original.jpg', '/nonexistent/overlay.png')
+        assert result is None
+        
+        # Test with missing original
+        result = compose_overlay_images('/nonexistent/original.jpg', '/tmp/test.png')
+        assert result is None
+        
+        # Test with missing overlay
+        result = compose_overlay_images('/tmp/test.jpg', '/nonexistent/overlay.png')
+        assert result is None
+    
     @pytest.mark.skipif(not os.getenv('TEST_WITH_IMAGES'), reason="Image tests require TEST_WITH_IMAGES=1")
-    def test_compose_annotations_with_real_image(self):
-        """Test image composition with a real image file (optional test)."""
-        # Create a simple test image
+    def test_compose_overlay_images_with_real_files(self):
+        """Test image composition with real image files (optional test)."""
+        from app.reporting.image_overlay import compose_overlay_images
+        
+        # Create a simple test original image
         try:
             from PIL import Image
         except ImportError:
             pytest.skip("PIL not available")
         
-        # Create a small test image
+        # Create a small test original image
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            original_image = Image.new('RGB', (100, 100), color='white')
+            original_image.save(f.name, 'JPEG')
+            original_path = f.name
+        
+        # Create a small test overlay image with transparency  
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
-            test_image = Image.new('RGB', (100, 100), color='white')
-            test_image.save(f.name, 'PNG')
-            test_image_path = f.name
+            overlay_image = Image.new('RGBA', (100, 100), color=(255, 0, 0, 128))  # Semi-transparent red
+            overlay_image.save(f.name, 'PNG')
+            overlay_path = f.name
         
         try:
-            # Test with simple rectangle annotation
-            annotations = [{
-                'type': 'rectangle',
-                'coordinates': [10, 10, 50, 50],
-                'color': 'red',
-                'thickness': 2
-            }]
-            
-            result = compose_annotations(test_image_path, annotations)
+            # Test composition
+            result = compose_overlay_images(original_path, overlay_path)
             
             if result:  # Only check if composition was successful
                 assert os.path.exists(result)
-                assert result.endswith('.png')
+                assert result.endswith(('.png', '.jpg'))  # Could be either format
+                
+                # Verify the result is a valid image
+                with Image.open(result) as composed:
+                    assert composed.size == (100, 100)
+                    assert composed.mode == 'RGB'
+                
                 # Clean up the composed image
                 os.unlink(result)
         
         finally:
-            # Clean up test image
-            os.unlink(test_image_path)
+            # Clean up test images
+            os.unlink(original_path)
+            os.unlink(overlay_path)
 
 
 class TestInlineImageGeneration:
@@ -181,6 +205,7 @@ class TestInlineImageGeneration:
         mock_student = Mock()
         mock_student.student_name = 'Test Student'
         mock_student.student_no = '12345'
+        mock_student.essay_id = 1  # Add essay_id for new database lookup
         mock_student.topic = 'Test Topic'
         mock_student.words = 300
         mock_student.feedback_summary = 'Test summary'
@@ -212,8 +237,10 @@ class TestInlineImageGeneration:
                  patch('app.reporting.docx_renderer.ensure_assignment_template_exists'), \
                  patch('app.dao.evaluation_dao.load_evaluation_by_essay'), \
                  patch('app.reporting.image_overlay.compose_annotations'), \
+                 patch('app.reporting.image_overlay.compose_overlay_images'), \
                  patch('docxtpl.InlineImage') as mock_inline_image, \
-                 patch('os.path.exists', return_value=True):
+                 patch('os.path.exists', return_value=True), \
+                 patch('app.reporting.service.db.session.get', return_value=None):
                 
                 from app.reporting.service import _render_with_docxtpl_combined
                 
@@ -244,6 +271,7 @@ class TestInlineImageGeneration:
         mock_student = Mock()
         mock_student.student_name = 'Test Student'
         mock_student.student_no = '12345'
+        mock_student.essay_id = 1  # Add essay_id for new database lookup
         mock_student.topic = 'Test Topic'
         mock_student.words = 300
         mock_student.feedback_summary = 'Test summary'
@@ -264,7 +292,9 @@ class TestInlineImageGeneration:
         with patch('docxtpl.DocxTemplate'), \
              patch('app.reporting.docx_renderer.ensure_assignment_template_exists'), \
              patch('app.dao.evaluation_dao.load_evaluation_by_essay'), \
-             patch('app.reporting.image_overlay.compose_annotations'):
+             patch('app.reporting.image_overlay.compose_annotations'), \
+             patch('app.reporting.image_overlay.compose_overlay_images'), \
+             patch('app.reporting.service.db.session.get', return_value=None):
             
             from app.reporting.service import _render_with_docxtpl_combined
             

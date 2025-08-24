@@ -792,24 +792,32 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         if essay and essay.original_image_path:
             doc.add_heading('作文图片', level=2)
             
-            # Try to add the original image
+            # Try to add the composed image (original + annotations)
             try:
                 from pathlib import Path
                 from docx.shared import Inches
+                from app.reporting.image_overlay import compose_overlay_images
+                
                 if Path(essay.original_image_path).exists():
-                    doc.add_paragraph('原始图片：')
-                    doc.add_picture(essay.original_image_path, width=Inches(6))
+                    composed_image_path = None
                     
-                    # Try to add annotated image if available
+                    # If we have both original and overlay, compose them
                     if essay.annotated_overlay_path and Path(essay.annotated_overlay_path).exists():
-                        doc.add_paragraph('教师批注图片：')
-                        doc.add_picture(essay.annotated_overlay_path, width=Inches(6))
-                    # Or try to compose annotations if we have manual review data
-                    elif hasattr(essay, 'manual_review') and essay.manual_review:
-                        from app.reporting.image_overlay import compose_annotations
-                        # This would need annotation data from manual review
-                        # For now, just show the original image
-                        pass
+                        composed_image_path = compose_overlay_images(essay.original_image_path, essay.annotated_overlay_path)
+                        if composed_image_path:
+                            doc.add_paragraph('作文图片（含教师批注）：')
+                            doc.add_picture(composed_image_path, width=Inches(6))
+                        else:
+                            # Fallback: show original and overlay separately if composition failed
+                            doc.add_paragraph('原始图片：')
+                            doc.add_picture(essay.original_image_path, width=Inches(6))
+                            doc.add_paragraph('教师批注图片：')
+                            doc.add_picture(essay.annotated_overlay_path, width=Inches(6))
+                    else:
+                        # Only original image exists, no annotations
+                        doc.add_paragraph('作文图片：')
+                        doc.add_picture(essay.original_image_path, width=Inches(6))
+                        
                 else:
                     doc.add_paragraph('图片文件未找到')
             except Exception as e:

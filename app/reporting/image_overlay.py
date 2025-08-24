@@ -161,6 +161,66 @@ def _parse_color(color) -> tuple:
     return color_map.get(str(color).lower(), (255, 0, 0))  # Default to red
 
 
+def compose_overlay_images(original_image_path: str, overlay_image_path: str) -> Optional[str]:
+    """
+    Compose an original image with an annotation overlay image.
+    
+    Args:
+        original_image_path: Path to the original scanned essay image
+        overlay_image_path: Path to the annotation overlay image (PNG with transparency)
+    
+    Returns:
+        Path to the composed image file, or None if composition failed
+    """
+    if not PIL_AVAILABLE:
+        logger.warning("PIL/Pillow not available, skipping image composition")
+        return None
+    
+    if not os.path.exists(original_image_path):
+        logger.warning(f"Original image not found: {original_image_path}")
+        return None
+        
+    if not os.path.exists(overlay_image_path):
+        logger.warning(f"Overlay image not found: {overlay_image_path}")
+        return None
+    
+    try:
+        # Load the original image
+        with Image.open(original_image_path) as original:
+            # Convert to RGBA to ensure proper transparency handling
+            if original.mode != 'RGBA':
+                original = original.convert('RGBA')
+            
+            # Load the overlay image
+            with Image.open(overlay_image_path) as overlay:
+                # Ensure overlay is in RGBA mode for transparency
+                if overlay.mode != 'RGBA':
+                    overlay = overlay.convert('RGBA')
+                
+                # Resize overlay to match original if they have different sizes
+                if overlay.size != original.size:
+                    overlay = overlay.resize(original.size, Image.Resampling.LANCZOS)
+                
+                # Composite the images (overlay on top of original)
+                composed = Image.alpha_composite(original, overlay)
+                
+                # Convert back to RGB for DOCX compatibility
+                composed = composed.convert('RGB')
+                
+                # Save to temporary file
+                temp_dir = tempfile.gettempdir()
+                temp_filename = f"essay_composed_{os.path.basename(original_image_path)}"
+                temp_path = os.path.join(temp_dir, temp_filename)
+                
+                composed.save(temp_path, format='PNG', quality=95)
+                logger.info(f"Composed image with overlay saved to: {temp_path}")
+                return temp_path
+                
+    except Exception as e:
+        logger.error(f"Failed to compose overlay images {original_image_path} + {overlay_image_path}: {e}")
+        return None
+
+
 def cleanup_temp_images():
     """
     Clean up temporary annotated images from the temp directory.
@@ -169,7 +229,7 @@ def cleanup_temp_images():
     try:
         temp_dir = tempfile.gettempdir()
         for filename in os.listdir(temp_dir):
-            if filename.startswith('essay_annotated_') and filename.endswith(('.png', '.jpg', '.jpeg')):
+            if (filename.startswith('essay_annotated_') or filename.startswith('essay_composed_')) and filename.endswith(('.png', '.jpg', '.jpeg')):
                 temp_path = os.path.join(temp_dir, filename)
                 try:
                     os.unlink(temp_path)
