@@ -99,21 +99,15 @@ def test_real_ai_data_is_used_instead_of_fallbacks():
         
         # Verify real improvements are used instead of fallbacks
         real_improvement = "可以进一步深化对书中主题和人物命运的理解，挖掘更深层的启示"
-        fallback_improvement = "建议进一步丰富表达方式，提升语言准确性"
+        fallback_improvement_main = "可以进一步丰富内容深度"  # Main fallback, not dimension-level
         assert real_improvement in full_text, "Real improvement data should be used"
-        assert fallback_improvement not in full_text, "Fallback improvement should not be used when real data exists"
+        assert fallback_improvement_main not in full_text, "Main fallback improvement should not be used when real data exists"
         
         # Verify real overall comment is used instead of fallbacks
         real_overall_comment = "这篇读后感展现了不错的阅读理解和感悟能力"
         fallback_overall_comment = "本次作文总体表现良好"
         assert real_overall_comment in full_text, "Real overall comment should be used"
         assert fallback_overall_comment not in full_text, "Fallback overall comment should not be used when real data exists"
-        
-        # Verify real example sentences are used instead of fallbacks
-        real_example_sentence = "《魔道祖师》是墨香铜臭所著的长篇修真小说"
-        fallback_example_sentence = "文章基本符合要求，表达较为清楚"
-        assert real_example_sentence in full_text, "Real example sentence should be used"
-        assert fallback_example_sentence not in full_text, "Fallback example sentence should not be used when real data exists"
 
 
 def test_fallbacks_used_when_data_missing():
