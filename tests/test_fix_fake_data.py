@@ -56,7 +56,7 @@ def test_real_ai_data_is_used_instead_of_fallbacks():
                     reason="语言表达基本规范，但还有一些提升空间。",
                     level="B",
                     example_good_sentence=["《魔道祖师》是墨香铜臭所著的长篇修真小说"],
-                    example_improvement_suggestion=["优秀的文学作品往往能够给予读者深刻的人生启示。"]
+                    example_improvement_suggestion=[{"original": "优秀的文学作品往往能够给予读者深刻的人生启示", "suggested": "优秀的文学作品往往能够给予读者深刻的人生启示。"}]
                 )
             ]
         ),
@@ -153,7 +153,7 @@ def test_fallbacks_used_when_data_missing():
         # When data is missing, fallbacks should be used
         fallback_strength = "能够完成作文基本要求"
         fallback_improvement = "可以进一步丰富内容深度"
-        fallback_example_sentence = "文章基本符合要求，表达较为清楚"
+        fallback_example_sentence = "• 无"
         
         assert fallback_strength in full_text, "Fallback strength should be used when data is missing"
         assert fallback_improvement in full_text, "Fallback improvement should be used when data is missing"
