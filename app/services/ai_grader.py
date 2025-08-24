@@ -3,26 +3,7 @@ import requests
 from flask import current_app
 from app.extensions import db
 from app.models import Essay, PromptStyleTemplate, GradeLevel
-
-def _format_grading_standard_for_prompt(standard):
-    """Formats the grading standard from DB objects into a string for the AI prompt."""
-    if not standard:
-        return "没有提供评分标准。"
-    
-    # Using a list and join for better performance and readability
-    prompt_lines = [
-        f"作文题目: {standard.title}",
-        f"总分: {standard.total_score}\n"
-    ]
-
-    for dim in sorted(standard.dimensions, key=lambda d: d.id):
-        prompt_lines.append(f"--- 维度: {dim.name} (满分: {dim.max_score}) ---")
-        # Sort rubrics by score to maintain a consistent order (A, B, C...)
-        for rubric in sorted(dim.rubrics, key=lambda r: r.max_score, reverse=True):
-            prompt_lines.append(f"  - {rubric.level_name} ({rubric.min_score}~{rubric.max_score}分): {rubric.description}")
-        prompt_lines.append("") # Add a blank line for spacing
-
-    return "\n".join(prompt_lines)
+from app.services.grading_utils import format_grading_standard_for_prompt as _format_grading_standard_for_prompt
 
 
 def _build_prompt(essay_text, grading_standard_text, style_instructions, is_from_ocr=False):

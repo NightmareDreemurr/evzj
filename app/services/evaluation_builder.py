@@ -152,8 +152,30 @@ def _build_context_for_essay(essay: Essay) -> Dict[str, Any]:
             # Get grading standard info
             if essay.assignment.grading_standard:
                 standard = essay.assignment.grading_standard
-                context['grade'] = getattr(standard, 'grade', '')
+                # Handle both old and new grading standard structure
+                grade = ""
+                if hasattr(standard, 'grade_level') and standard.grade_level and hasattr(standard.grade_level, 'name'):
+                    grade = str(standard.grade_level.name)
+                elif hasattr(standard, 'grade'):
+                    grade = str(getattr(standard, 'grade', ''))
+                context['grade'] = grade
                 context['total_score'] = getattr(standard, 'total_score', 100)
+                # Add the full grading standard for detailed analysis
+                context['grading_standard'] = standard
+        
+        # Also check for grading standard directly on essay if not via assignment
+        if 'grading_standard' not in context:
+            grading_standard = essay.assignment.grading_standard if essay.assignment else essay.grading_standard
+            if grading_standard:
+                context['grading_standard'] = grading_standard
+                # Handle both old and new grading standard structure
+                grade = ""
+                if hasattr(grading_standard, 'grade_level') and grading_standard.grade_level and hasattr(grading_standard.grade_level, 'name'):
+                    grade = str(grading_standard.grade_level.name)
+                elif hasattr(grading_standard, 'grade'):
+                    grade = str(getattr(grading_standard, 'grade', ''))
+                context['grade'] = grade
+                context['total_score'] = getattr(grading_standard, 'total_score', 100)
         
         # Get student info
         if essay.enrollment and essay.enrollment.student and essay.enrollment.student.user:
