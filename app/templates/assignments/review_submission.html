@@ -1082,6 +1082,24 @@
     #enhanced-content-panel h6 {
         margin-bottom: 0.5rem !important;
     }
+    
+    /* Fix for card header flexbox layout in mobile */
+    #enhanced-content-panel .card-header {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+    }
+    
+    #enhanced-content-panel .card-header > * {
+        flex-shrink: 0;
+        width: auto !important;
+    }
+    
+    #enhanced-content-panel .card-header h6 {
+        flex: 1;
+        margin-bottom: 0 !important;
+    }
 }
 
 /* Desktop Split-Screen Scrolling */
