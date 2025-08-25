@@ -159,10 +159,8 @@ def _create_minimal_template(template_path: str):
 {%- endfor -%}
 {% for row in table_data %}{{ row[0] }}	{{ row[1] }}	{{ row[2] }}	{{ row[3] }}
 {% endfor %}
-
 {% for dim in gradingResult.dimensions %}
 {{ dim.dimension_name }}维度详情：
-
 亮点句子：
 {% if dim.example_good_sentence and dim.example_good_sentence|length > 0 %}
 {% for sentence in dim.example_good_sentence %}
@@ -171,7 +169,6 @@ def _create_minimal_template(template_path: str):
 {% else %}
 • 无
 {% endif %}
-
 待改进句：
 {% if dim.example_improvement_suggestion and dim.example_improvement_suggestion|length > 0 %}
 {% for suggestion in dim.example_improvement_suggestion %}
@@ -181,7 +178,6 @@ def _create_minimal_template(template_path: str):
 {% else %}
 • 无
 {% endif %}
-
 {% endfor %}
 {% else %}
 本次作文评估采用系统性标准，重点关注内容理解、结构组织、语言表达和文采创新等维度。建议继续加强写作练习以提升各项能力。
@@ -319,15 +315,11 @@ def _create_minimal_template(template_path: str):
         doc.add_paragraph("""
 {% if summaryData %}
 问题总结：{{ summaryData.problemSummary|default("本次作文分析发现的主要问题包括结构组织、语言表达等方面。") }}
-
 改进建议：{{ summaryData.improvementPlan|default("建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。") }}
-
 预期效果：{{ summaryData.expectedOutcome|default("通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。") }}
 {% else %}
 问题总结：本次作文分析发现的主要问题包括结构组织、语言表达等方面。
-
 改进建议：建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。
-
 预期效果：通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。
 {% endif %}
         """.strip())
@@ -360,11 +352,10 @@ def _create_assignment_template(template_path: str):
     doc = Document()
 
     # Assignment header
-    title = doc.add_heading('{{ assignment.title }} 批量作文评估报告', 0)
+    title = doc.add_heading('作业批量报告', 0)
     title.alignment = 1  # Center
-
+    
     # Assignment metadata
-    doc.add_heading('作业信息', level=1)
     info_para = doc.add_paragraph()
     info_para.add_run('作业标题：').bold = True
     info_para.add_run('{{ assignment.title }}\n')
@@ -375,7 +366,7 @@ def _create_assignment_template(template_path: str):
     info_para.add_run('{{ assignment.teacher.name|default(assignment.teacher) }}\n')
     info_para.add_run('生成时间：').bold = True
     if DOCXTPL_AVAILABLE:
-        info_para.add_run('{{ now|strftime("%Y年%m月%d日 %H:%M:%S") }}')
+        info_para.add_run('{{ now|strftime("%Y-%m-%d %H:%M:%S") }}')
     else:
         info_para.add_run('{{ current_time }}')
 
@@ -458,7 +449,6 @@ def _create_assignment_template(template_path: str):
 原文：{{ p.original_text|default('') }}
 反馈：{{ p.feedback|default('') }}
 优化：{{ p.polished_text|default('') }}
-
 {% endfor %}
         """.strip())
 
@@ -470,7 +460,6 @@ def _create_assignment_template(template_path: str):
 [{{ ex.type }}] {{ ex.prompt }}
 要点：{{ (ex.hint if ex.hint is not none else ex.hints)|default([])|join('；') }}
 示例：{{ ex.sample|default('') }}
-
 {% endfor %}{% else %}（暂无个性化练习）{% endif %}
         """.strip())
 
