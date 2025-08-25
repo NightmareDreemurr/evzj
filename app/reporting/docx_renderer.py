@@ -193,7 +193,7 @@ def _create_minimal_template(template_path: str):
 
     # 3.1) 作文图片（如果有的话）
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% if images.primary_image_path %}')
+        doc.add_paragraph('{% if images.get("primary_image_path") or images.get("friendly_message") %}')
         doc.add_heading('作文图片', level=2)
         # Use InlineImage objects directly if available
         doc.add_paragraph('{% if images.primary_image %}{{ images.primary_image }}{% elif images.friendly_message %}{{ images.friendly_message }}{% else %}图片缺失或不可访问{% endif %}')
@@ -275,60 +275,58 @@ def _create_minimal_template(template_path: str):
     else:
         doc.add_paragraph('[段落大纲分析]')
 
-    # 诊断建议
-    doc.add_heading('诊断建议', level=2)
+    # 诊断建议 - 只在有内容时显示
     if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% if diagnoses and diagnoses|length > 0 %}')
+        doc.add_heading('诊断建议', level=2)
         doc.add_paragraph("""
-{% if diagnoses and diagnoses|length > 0 %}
 {% for diag in diagnoses %}
 {{ diag.id }}. {{ diag.target }} - {{ diag.evidence }} 
    建议：{% for suggestion in diag.suggestions %}{{ suggestion }}{% if not loop.last %}；{% endif %}{% endfor %}
 {% endfor %}
-{% else %}
-建议重点关注：1. 加强审题能力；2. 提升语言表达的准确性；3. 增强文章的逻辑性和条理性。
-{% endif %}
         """.strip())
+        doc.add_paragraph('{% endif %}')
     else:
+        doc.add_heading('诊断建议', level=2)
         doc.add_paragraph('[诊断建议]')
 
-    # 个性化练习
-    doc.add_heading('个性化练习', level=2)
+    # 个性化练习 - 只在有内容时显示
     if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% if personalizedPractices and personalizedPractices|length > 0 %}')
+        doc.add_heading('个性化练习', level=2)
         doc.add_paragraph("""
-{% if personalizedPractices and personalizedPractices|length > 0 %}
 {% for practice in personalizedPractices %}
 {{ loop.index }}. {{ practice.title }}
    要求：{{ practice.requirement }}
 {% endfor %}
-{% else %}
-推荐练习：1. 每日阅读优秀文章并摘录好词好句；2. 练习写作文提纲；3. 加强审题训练，确保文章切题。
-{% endif %}
         """.strip())
+        doc.add_paragraph('{% endif %}')
     else:
+        doc.add_heading('个性化练习', level=2)
         doc.add_paragraph('[个性化练习]')
 
-    # 综合诊断总结
-    doc.add_heading('综合诊断总结', level=2)
+    # 综合诊断总结 - 只在有内容时显示
     if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% if summaryData %}')
+        doc.add_heading('综合诊断总结', level=2)
         doc.add_paragraph("""
-{% if summaryData %}
 问题总结：{{ summaryData.problemSummary|default("本次作文分析发现的主要问题包括结构组织、语言表达等方面。") }}
 改进建议：{{ summaryData.improvementPlan|default("建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。") }}
 预期效果：{{ summaryData.expectedOutcome|default("通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。") }}
-{% else %}
-问题总结：本次作文分析发现的主要问题包括结构组织、语言表达等方面。
-改进建议：建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。
-预期效果：通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。
-{% endif %}
         """.strip())
+        doc.add_paragraph('{% endif %}')
     else:
+        doc.add_heading('综合诊断总结', level=2)
         doc.add_paragraph('[综合诊断总结]')
 
-    # 给家长的总结
-    doc.add_heading('给家长的总结', level=2)
+    # 给家长的总结 - 只在有内容时显示
     if DOCXTPL_AVAILABLE:
-        doc.add_paragraph('{% if parentSummary %}{{ parentSummary }}{% else %}总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。建议家长鼓励孩子多读多写，持续提升写作能力。{% endif %}')
+        doc.add_paragraph('{% if parentSummary %}')
+        doc.add_heading('给家长的总结', level=2)
+        doc.add_paragraph('{{ parentSummary }}')
+        doc.add_paragraph('{% endif %}')
     else:
+        doc.add_heading('给家长的总结', level=2)
         doc.add_paragraph('[给家长的总结]')
 
     # Footer
