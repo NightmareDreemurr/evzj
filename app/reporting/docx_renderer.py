@@ -124,10 +124,12 @@ def _create_minimal_template(template_path: str):
 {%- set info_data = [
     ('作业', assignmentTitle),
     ('学生', studentName), 
+    ('班级', meta.class_|default('')),
+    ('教师', meta.teacher|default('')),
     ('提交时间', submittedAt)
 ] -%}
-{% for label, value in info_data %}{{ label }}：{{ value }}
-{% endfor %}
+{% for label, value in info_data %}{% if value %}{{ label }}：{{ value }}
+{% endif %}{% endfor %}
         """.strip())
     else:
         info_para = doc.add_paragraph()
@@ -161,22 +163,18 @@ def _create_minimal_template(template_path: str):
 {% endfor %}
 {% for dim in gradingResult.dimensions %}
 {{ dim.dimension_name }}维度详情：
-亮点句子：
 {% if dim.example_good_sentence and dim.example_good_sentence|length > 0 %}
+亮点句子：
 {% for sentence in dim.example_good_sentence %}
 • {{ sentence }}
 {% endfor %}
-{% else %}
-• 无
 {% endif %}
-待改进句：
 {% if dim.example_improvement_suggestion and dim.example_improvement_suggestion|length > 0 %}
+待改进句：
 {% for suggestion in dim.example_improvement_suggestion %}
 - 原文：{{ suggestion.original|default('') }}
 - 建议：{{ suggestion.suggested|default('') }}
 {% endfor %}
-{% else %}
-• 无
 {% endif %}
 {% endfor %}
 {% else %}
@@ -739,30 +737,19 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         for rubric in evaluation.scores.rubrics:
             dim_detail = doc.add_heading(f'{rubric.name}维度详情：', level=3)
             
-            # Bright points (placeholder - would need to be populated from actual data)
-            bright_para = doc.add_paragraph()
-            bright_para.add_run('亮点句子：').bold = True
-            
-            # Check if this is an AI-enhanced evaluation (has AI-generated enhancement fields)
-            is_ai_enhanced = (hasattr(evaluation, 'strengths') and evaluation.strengths) or \
-                            (hasattr(evaluation, 'improvements') and evaluation.improvements) or \
-                            (hasattr(evaluation, 'overall_comment') and evaluation.overall_comment)
-            
             # Check if rubric has example_good_sentence data
-            if hasattr(rubric, 'example_good_sentence') and rubric.example_good_sentence:
+            has_good_sentences = hasattr(rubric, 'example_good_sentence') and rubric.example_good_sentence
+            if has_good_sentences:
+                bright_para = doc.add_paragraph()
+                bright_para.add_run('亮点句子：').bold = True
                 for sentence in rubric.example_good_sentence:
                     doc.add_paragraph(f'• {sentence}')
-            elif not is_ai_enhanced:
-                # Only show fallback if this is not an AI-enhanced evaluation
-                doc.add_paragraph('• 无')
-            # If AI-enhanced but no example sentences, don't show anything
-            
-            # Improvement suggestions
-            improve_para = doc.add_paragraph()
-            improve_para.add_run('待改进句：').bold = True
             
             # Check if rubric has example_improvement_suggestion data
-            if hasattr(rubric, 'example_improvement_suggestion') and rubric.example_improvement_suggestion:
+            has_improvements = hasattr(rubric, 'example_improvement_suggestion') and rubric.example_improvement_suggestion
+            if has_improvements:
+                improve_para = doc.add_paragraph()
+                improve_para.add_run('待改进句：').bold = True
                 for suggestion in rubric.example_improvement_suggestion:
                     original = getattr(suggestion, 'original', '') if hasattr(suggestion, 'original') else suggestion.get('original', '') if isinstance(suggestion, dict) else ''
                     suggested = getattr(suggestion, 'suggested', '') if hasattr(suggestion, 'suggested') else suggestion.get('suggested', '') if isinstance(suggestion, dict) else ''
@@ -770,10 +757,6 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                         doc.add_paragraph(f'- 原文：{original}\n- 建议：{suggested}')
                     else:
                         doc.add_paragraph(f'• {suggestion}')
-            elif not is_ai_enhanced:
-                # Only show fallback if this is not an AI-enhanced evaluation
-                doc.add_paragraph('• 无')
-            # If AI-enhanced but no improvement suggestions, don't show anything
     else:
         # Provide meaningful fallback for rubrics when no scoring data
         doc.add_paragraph('本次作文评估采用系统性标准，重点关注内容理解、结构组织、语言表达和文采创新等维度。建议继续加强写作练习以提升各项能力。')
@@ -813,21 +796,21 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
                             composed_image_path = compose_overlay_images(resolved_original_path, resolved_overlay_path)
                             if composed_image_path:
                                 doc.add_paragraph('作文图片（含教师批注）：')
-                                doc.add_picture(composed_image_path, width=Inches(6))
+                                doc.add_picture(composed_image_path, width=Inches(4.5), height=Inches(3.5))
                             else:
                                 # Fallback: show original and overlay separately if composition failed
                                 doc.add_paragraph('原始图片：')
-                                doc.add_picture(resolved_original_path, width=Inches(6))
+                                doc.add_picture(resolved_original_path, width=Inches(4.5), height=Inches(3.5))
                                 doc.add_paragraph('教师批注图片：')
-                                doc.add_picture(resolved_overlay_path, width=Inches(6))
+                                doc.add_picture(resolved_overlay_path, width=Inches(4.5), height=Inches(3.5))
                         else:
                             # Only original image exists, overlay path can't be resolved
                             doc.add_paragraph('作文图片：')
-                            doc.add_picture(resolved_original_path, width=Inches(6))
+                            doc.add_picture(resolved_original_path, width=Inches(4.5), height=Inches(3.5))
                     else:
                         # Only original image exists, no annotations
                         doc.add_paragraph('作文图片：')
-                        doc.add_picture(resolved_original_path, width=Inches(6))
+                        doc.add_picture(resolved_original_path, width=Inches(4.5), height=Inches(3.5))
                         
                 else:
                     doc.add_paragraph(get_friendly_image_message())
@@ -920,10 +903,10 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         summary_para = doc.add_paragraph()
         summary_para.add_run('问题总结：').bold = True
         problem_summary = evaluation.summaryData.get("problemSummary", "") or "本次作文分析发现的主要问题包括结构组织、语言表达等方面。"
-        summary_para.add_run(f'{problem_summary}\n\n')
+        summary_para.add_run(f'{problem_summary}\n')
         summary_para.add_run('改进建议：').bold = True
         improvement_plan = evaluation.summaryData.get("improvementPlan", "") or "建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。"
-        summary_para.add_run(f'{improvement_plan}\n\n')
+        summary_para.add_run(f'{improvement_plan}\n')
         summary_para.add_run('预期效果：').bold = True
         expected_outcome = evaluation.summaryData.get("expectedOutcome", "") or "通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。"
         summary_para.add_run(f'{expected_outcome}')
@@ -931,9 +914,9 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         # Provide meaningful fallback for summary data
         summary_para = doc.add_paragraph()
         summary_para.add_run('问题总结：').bold = True
-        summary_para.add_run('本次作文分析发现的主要问题包括结构组织、语言表达等方面。\n\n')
+        summary_para.add_run('本次作文分析发现的主要问题包括结构组织、语言表达等方面。\n')
         summary_para.add_run('改进建议：').bold = True
-        summary_para.add_run('建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。\n\n')
+        summary_para.add_run('建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。\n')
         summary_para.add_run('预期效果：').bold = True
         summary_para.add_run('通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。')
     
