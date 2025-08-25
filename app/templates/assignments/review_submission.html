@@ -1039,6 +1039,56 @@
 #enhanced-content-panel .badge.bg-info {
     background-color: #17a2b8 !important;
 }
+
+/* Desktop Split-Screen Scrolling */
+@media (min-width: 769px) {
+    .row {
+        height: calc(100vh - 180px); /* Adjust based on header/navigation height */
+        overflow: hidden;
+    }
+    
+    .col-lg-7, .col-lg-5 {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+    
+    /* Add subtle visual separation between columns */
+    .col-lg-5 {
+        border-left: 1px solid #e9ecef;
+        background-color: #fafbfc;
+    }
+    
+    /* Ensure proper spacing for scrollable content */
+    .col-lg-7 > .card:last-child,
+    .col-lg-5 > .card:last-child {
+        margin-bottom: 2rem;
+    }
+    
+    /* Style scrollbars for better UX */
+    .col-lg-7::-webkit-scrollbar,
+    .col-lg-5::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .col-lg-7::-webkit-scrollbar-track,
+    .col-lg-5::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .col-lg-7::-webkit-scrollbar-thumb,
+    .col-lg-5::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    
+    .col-lg-7::-webkit-scrollbar-thumb:hover,
+    .col-lg-5::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
