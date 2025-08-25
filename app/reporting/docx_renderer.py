@@ -865,9 +865,9 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         # Provide meaningful fallback for outline
         doc.add_paragraph('本次作文结构分析：建议注意段落之间的逻辑关系，确保文章结构清晰，层次分明。')
     
-    # 诊断建议
-    doc.add_heading('诊断建议', level=2)
+    # 诊断建议 - 只在有内容时显示
     if evaluation.diagnoses:
+        doc.add_heading('诊断建议', level=2)
         for diag in evaluation.diagnoses:
             diag_para = doc.add_paragraph()
             diag_id = diag.get('id', 0)
@@ -877,13 +877,10 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
             diag_para.add_run(f'{diag_id}. {target} - {evidence}')
             if suggestions:
                 diag_para.add_run(f'\n   建议：{suggestions}')
-    else:
-        # Provide meaningful fallback for diagnoses
-        doc.add_paragraph('建议重点关注：1. 加强审题能力；2. 提升语言表达的准确性；3. 增强文章的逻辑性和条理性。')
     
-    # 个性化练习
-    doc.add_heading('个性化练习', level=2)
+    # 个性化练习 - 只在有内容时显示
     if evaluation.personalizedPractices:
+        doc.add_heading('个性化练习', level=2)
         for i, practice in enumerate(evaluation.personalizedPractices, 1):
             practice_para = doc.add_paragraph()
             title = practice.get('title', '')
@@ -891,13 +888,10 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
             practice_para.add_run(f'{i}. {title}')
             if requirement:
                 practice_para.add_run(f'\n   要求：{requirement}')
-    else:
-        # Provide meaningful fallback for practices
-        doc.add_paragraph('推荐练习：1. 每日阅读优秀文章并摘录好词好句；2. 练习写作文提纲；3. 加强审题训练，确保文章切题。')
     
-    # 综合诊断总结
-    doc.add_heading('综合诊断总结', level=2)
+    # 综合诊断总结 - 只在有内容时显示
     if evaluation.summaryData:
+        doc.add_heading('综合诊断总结', level=2)
         summary_para = doc.add_paragraph()
         summary_para.add_run('问题总结：').bold = True
         problem_summary = evaluation.summaryData.get("problemSummary", "") or "本次作文分析发现的主要问题包括结构组织、语言表达等方面。"
@@ -908,23 +902,11 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         summary_para.add_run('预期效果：').bold = True
         expected_outcome = evaluation.summaryData.get("expectedOutcome", "") or "通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。"
         summary_para.add_run(f'{expected_outcome}')
-    else:
-        # Provide meaningful fallback for summary data
-        summary_para = doc.add_paragraph()
-        summary_para.add_run('问题总结：').bold = True
-        summary_para.add_run('本次作文分析发现的主要问题包括结构组织、语言表达等方面。\n')
-        summary_para.add_run('改进建议：').bold = True
-        summary_para.add_run('建议从基础写作技巧、段落结构、词汇运用等方面进行针对性改进。\n')
-        summary_para.add_run('预期效果：').bold = True
-        summary_para.add_run('通过有针对性的练习和指导，预期能够在作文质量上取得明显提升。')
     
-    # 给家长的总结
-    doc.add_heading('给家长的总结', level=2)
-    parent_summary = evaluation.parentSummary or ""
-    if not parent_summary:
-        # Provide meaningful fallback for parent summary
-        parent_summary = "总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。建议家长鼓励孩子多读多写，持续提升写作能力。"
-    doc.add_paragraph(parent_summary)
+    # 给家长的总结 - 只在有内容时显示
+    if evaluation.parentSummary:
+        doc.add_heading('给家长的总结', level=2)
+        doc.add_paragraph(evaluation.parentSummary)
     
     # Footer
     doc.add_paragraph().add_run('\n' + '='*50)

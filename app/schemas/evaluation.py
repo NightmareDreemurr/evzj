@@ -319,16 +319,17 @@ def to_context(evaluation: EvaluationResult, doc_template=None) -> Dict[str, Any
             } for ex in context['exercises']
         ]
     
-    # Create summary data if not provided
-    if not context['summaryData']:
-        context['summaryData'] = {
-            'problemSummary': '本次作文分析发现的主要问题...',
-            'improvementPlan': '建议从以下方面进行改进...',
-            'expectedOutcome': '通过有针对性的练习，预期能够...'
-        }
+    # Don't create automatic fallback summary data - let empty modules be hidden
+    # if not context['summaryData']:
+    #     context['summaryData'] = {
+    #         'problemSummary': '本次作文分析发现的主要问题...',
+    #         'improvementPlan': '建议从以下方面进行改进...',
+    #         'expectedOutcome': '通过有针对性的练习，预期能够...'
+    #     }
     
-    if not context['parentSummary']:
-        context['parentSummary'] = context.get('summary', '总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。')
+    # Don't create automatic fallback parent summary - let empty modules be hidden  
+    # if not context['parentSummary']:
+    #     context['parentSummary'] = context.get('summary', '总体而言，该作文具有一定的优点，同时也存在一些需要改进的地方。')
     
     # Add images context with actual essay image data if available
     images_context = {
