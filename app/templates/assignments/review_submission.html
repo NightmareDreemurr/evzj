@@ -231,8 +231,8 @@
                 </div>
                 <div class="card-body">
                     <!-- 段落大纲分析 -->
-                    <div class="mb-4">
-                        <h6 class="text-primary mb-3">段落大纲分析</h6>
+                    <div class="mb-2">
+                        <h6 class="text-primary mb-2">段落大纲分析</h6>
                         <div id="outline-container">
                             {% if evaluation_data.analysis and evaluation_data.analysis.outline %}
                                 {% for item in evaluation_data.analysis.outline %}
@@ -257,8 +257,8 @@
                     </div>
 
                     <!-- 诊断建议 -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="text-primary mb-0">诊断建议</h6>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="add-diagnostic-btn">
                                 <i class="fas fa-plus"></i> 添加诊断
@@ -267,8 +267,8 @@
                         <div id="diagnostics-container">
                             {% if evaluation_data.diagnostics %}
                                 {% for diagnostic in evaluation_data.diagnostics %}
-                                <div class="diagnostic-item mb-3 border rounded p-3" data-index="{{ loop.index0 }}">
-                                    <div class="row mb-2">
+                                <div class="diagnostic-item mb-2 border rounded p-2" data-index="{{ loop.index0 }}">
+                                    <div class="row mb-1">
                                         <div class="col-3">
                                             <label class="form-label">段落位置:</label>
                                             <input type="number" class="form-control form-control-sm diagnostic-para" value="{{ diagnostic.para or '' }}" placeholder="段落号">
@@ -278,13 +278,13 @@
                                             <input type="text" class="form-control form-control-sm diagnostic-issue" value="{{ diagnostic.issue }}" placeholder="描述发现的问题...">
                                         </div>
                                     </div>
-                                    <div class="row mb-2">
+                                    <div class="row mb-1">
                                         <div class="col-12">
                                             <label class="form-label">证据:</label>
                                             <textarea class="form-control form-control-sm diagnostic-evidence" rows="2" placeholder="支持这个问题的具体证据...">{{ diagnostic.evidence }}</textarea>
                                         </div>
                                     </div>
-                                    <div class="row mb-2">
+                                    <div class="row mb-1">
                                         <div class="col-12">
                                             <label class="form-label">改进建议:</label>
                                             <div class="advice-container">
@@ -310,8 +310,8 @@
                     </div>
 
                     <!-- 个性化练习 -->
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="text-primary mb-0">个性化练习</h6>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="add-exercise-btn">
                                 <i class="fas fa-plus"></i> 添加练习
@@ -320,8 +320,8 @@
                         <div id="exercises-container">
                             {% if evaluation_data.exercises %}
                                 {% for exercise in evaluation_data.exercises %}
-                                <div class="exercise-item mb-3 border rounded p-3" data-index="{{ loop.index0 }}">
-                                    <div class="row mb-2">
+                                <div class="exercise-item mb-2 border rounded p-2" data-index="{{ loop.index0 }}">
+                                    <div class="row mb-1">
                                         <div class="col-4">
                                             <label class="form-label">练习类型:</label>
                                             <input type="text" class="form-control form-control-sm exercise-type" value="{{ exercise.type }}" placeholder="练习类型">
@@ -331,7 +331,7 @@
                                             <input type="text" class="form-control form-control-sm exercise-prompt" value="{{ exercise.prompt }}" placeholder="练习题目描述...">
                                         </div>
                                     </div>
-                                    <div class="row mb-2">
+                                    <div class="row mb-1">
                                         <div class="col-6">
                                             <label class="form-label">提示内容:</label>
                                             <div class="hint-container">
@@ -361,18 +361,18 @@
                     </div>
 
                     <!-- 综合诊断总结 -->
-                    <div class="mb-4">
-                        <h6 class="text-primary mb-3">综合诊断总结</h6>
+                    <div class="mb-2">
+                        <h6 class="text-primary mb-2">综合诊断总结</h6>
                         <div class="row">
-                            <div class="col-12 mb-3">
+                            <div class="col-12 mb-2">
                                 <label class="form-label">问题总结:</label>
                                 <textarea class="form-control" id="diagnosis-before" rows="3" placeholder="总结学生作文中的主要问题...">{{ evaluation_data.diagnosis.before if evaluation_data.diagnosis else '' }}</textarea>
                             </div>
-                            <div class="col-12 mb-3">
+                            <div class="col-12 mb-2">
                                 <label class="form-label">改进建议:</label>
                                 <textarea class="form-control" id="diagnosis-comment" rows="3" placeholder="具体的改进建议和指导...">{{ evaluation_data.diagnosis.comment if evaluation_data.diagnosis else '' }}</textarea>
                             </div>
-                            <div class="col-12 mb-3">
+                            <div class="col-12 mb-2">
                                 <label class="form-label">预期效果:</label>
                                 <textarea class="form-control" id="diagnosis-after" rows="3" placeholder="按建议改进后的预期效果...">{{ evaluation_data.diagnosis.after if evaluation_data.diagnosis else '' }}</textarea>
                             </div>
@@ -380,8 +380,8 @@
                     </div>
 
                     <!-- 总结评价 -->
-                    <div class="mb-3">
-                        <h6 class="text-primary mb-3">给家长的总结</h6>
+                    <div class="mb-2">
+                        <h6 class="text-primary mb-2">给家长的总结</h6>
                         <textarea class="form-control" id="evaluation-summary" rows="4" placeholder="面向家长的作文总体评价，简明扼要，突出优点和改进方向...">{{ evaluation_data.summary or '' }}</textarea>
                     </div>
                 </div>
@@ -1006,7 +1006,7 @@
 #enhanced-content-panel .form-label {
     font-weight: 600;
     color: #495057;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 #enhanced-content-panel .input-group-text {
@@ -1038,6 +1038,50 @@
 
 #enhanced-content-panel .badge.bg-info {
     background-color: #17a2b8 !important;
+}
+
+/* Compact spacing for enhanced content panel */
+#enhanced-content-panel .mb-4 {
+    margin-bottom: 1rem !important;
+}
+
+#enhanced-content-panel .mb-3 {
+    margin-bottom: 0.5rem !important;
+}
+
+#enhanced-content-panel .mb-2 {
+    margin-bottom: 0.25rem !important;
+}
+
+#enhanced-content-panel .diagnostic-item,
+#enhanced-content-panel .exercise-item {
+    margin-bottom: 0.75rem !important;
+}
+
+#enhanced-content-panel .outline-item-wrapper {
+    margin-bottom: 0.5rem !important;
+}
+
+@media (max-width: 768px) {
+    /* Even more compact spacing on mobile */
+    #enhanced-content-panel .diagnostic-item,
+    #enhanced-content-panel .exercise-item {
+        margin-bottom: 0.5rem !important;
+        padding: 0.75rem !important;
+    }
+    
+    #enhanced-content-panel .outline-item-wrapper {
+        margin-bottom: 0.25rem !important;
+        padding: 0.5rem !important;
+    }
+    
+    #enhanced-content-panel .row.mb-2 {
+        margin-bottom: 0.25rem !important;
+    }
+    
+    #enhanced-content-panel h6 {
+        margin-bottom: 0.5rem !important;
+    }
 }
 
 /* Desktop Split-Screen Scrolling */
@@ -1695,8 +1739,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const index = container.children.length;
         
         const diagnosticHTML = `
-            <div class="diagnostic-item mb-3 border rounded p-3" data-index="${index}">
-                <div class="row mb-2">
+            <div class="diagnostic-item mb-2 border rounded p-2" data-index="${index}">
+                <div class="row mb-1">
                     <div class="col-3">
                         <label class="form-label">段落位置:</label>
                         <input type="number" class="form-control form-control-sm diagnostic-para" placeholder="段落号">
@@ -1706,13 +1750,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="text" class="form-control form-control-sm diagnostic-issue" placeholder="描述发现的问题...">
                     </div>
                 </div>
-                <div class="row mb-2">
+                <div class="row mb-1">
                     <div class="col-12">
                         <label class="form-label">证据:</label>
                         <textarea class="form-control form-control-sm diagnostic-evidence" rows="2" placeholder="支持这个问题的具体证据..."></textarea>
                     </div>
                 </div>
-                <div class="row mb-2">
+                <div class="row mb-1">
                     <div class="col-12">
                         <label class="form-label">改进建议:</label>
                         <div class="advice-container">
@@ -1734,8 +1778,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const index = container.children.length;
         
         const exerciseHTML = `
-            <div class="exercise-item mb-3 border rounded p-3" data-index="${index}">
-                <div class="row mb-2">
+            <div class="exercise-item mb-2 border rounded p-2" data-index="${index}">
+                <div class="row mb-1">
                     <div class="col-4">
                         <label class="form-label">练习类型:</label>
                         <input type="text" class="form-control form-control-sm exercise-type" placeholder="练习类型">
@@ -1745,7 +1789,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input type="text" class="form-control form-control-sm exercise-prompt" placeholder="练习题目描述...">
                     </div>
                 </div>
-                <div class="row mb-2">
+                <div class="row mb-1">
                     <div class="col-6">
                         <label class="form-label">提示内容:</label>
                         <div class="hint-container">
