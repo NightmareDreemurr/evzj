@@ -8,6 +8,7 @@ import logging
 from flask import current_app
 from typing import Dict, Any, Optional
 from app.services.grading_utils import format_grading_standard_for_prompt
+from app.llm.provider import get_llm_provider, LLMConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -36,40 +37,24 @@ def generate_preanalysis(essay_text: str, cleaned_text: Optional[str] = None, co
         return _get_empty_preanalysis()
     
     try:
-        api_key = current_app.config.get('DEEPSEEK_API_KEY')
-        api_url = current_app.config.get('DEEPSEEK_API_URL')
-        
-        if not api_key or not api_url:
-            logger.warning("DeepSeek API key or URL is not configured for pre-grader")
-            return _get_empty_preanalysis()
-        
         # Use cleaned text if available, otherwise use original
         text_to_analyze = cleaned_text if cleaned_text and cleaned_text.strip() else essay_text
         
-        # Build prompt for comprehensive analysis
+        # Build prompt for comprehensive analysis with system instruction
         prompt = _build_analysis_prompt(text_to_analyze, context or {})
+        system_prompt = "你是一位经验丰富的中文作文教师，擅长分析学生作文并提供有针对性的指导建议。请严格按照JSON格式返回分析结果。\n\n" + prompt
         
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
+        logger.debug(f"Sending pre-analysis request to LLM API with retry logic")
         
-        payload = {
-            "model": current_app.config.get('DEEPSEEK_MODEL_CHAT'),
-            "messages": [
-                {"role": "system", "content": "你是一位经验丰富的中文作文教师，擅长分析学生作文并提供有针对性的指导建议。请严格按照JSON格式返回分析结果。"},
-                {"role": "user", "content": prompt}
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.3,  # Low temperature for consistent analysis
-        }
-        
-        logger.debug(f"Sending pre-analysis request to LLM API")
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
-        
-        result_content = response.json()['choices'][0]['message']['content']
-        analysis_data = json.loads(result_content)
+        # Use LLMProvider for automatic retry logic
+        provider = get_llm_provider()
+        analysis_data = provider.call_llm(
+            prompt=system_prompt,
+            max_retries=2,  # Allow 2 retries for network issues
+            timeout=60,     # 60 second timeout per attempt
+            require_json=True,
+            temperature=0.3
+        )
         
         # Validate and sanitize the response
         validated_data = _validate_and_sanitize_response(analysis_data)
@@ -77,10 +62,7 @@ def generate_preanalysis(essay_text: str, cleaned_text: Optional[str] = None, co
         
         return validated_data
         
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"Pre-grader API request failed with status code {e.response.status_code}")
-        return _get_empty_preanalysis()
-    except requests.exceptions.RequestException as e:
+    except LLMConnectionError as e:
         logger.error(f"Pre-grader API request failed due to network issue: {e}")
         return _get_empty_preanalysis()
     except (json.JSONDecodeError, KeyError) as e:

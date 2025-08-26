@@ -4,6 +4,7 @@ from flask import current_app
 from app.extensions import db
 from app.models import Essay, PromptStyleTemplate, GradeLevel
 from app.services.grading_utils import format_grading_standard_for_prompt as _format_grading_standard_for_prompt
+from app.llm.provider import get_llm_provider, LLMConnectionError
 
 
 def _build_prompt(essay_text, grading_standard_text, style_instructions, is_from_ocr=False):
@@ -155,53 +156,40 @@ def grade_essay_with_ai(essay_id: int) -> None:
         grading_standard_text = _format_grading_standard_for_prompt(grading_standard)
         prompt = _build_prompt(essay.content, grading_standard_text, style_instructions, essay.is_from_ocr)
 
-        # 2. Call the AI API
-        api_key = current_app.config['DEEPSEEK_API_KEY']
-        api_url = current_app.config['DEEPSEEK_API_URL']
-
-        payload = {
-            "model": current_app.config.get('DEEPSEEK_MODEL_CHAT'),
-            # "model": current_app.config.get('DEEPSEEK_MODEL_REASONER'),
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "response_format": {"type": "json_object"}
-        }
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        # 2. Call the AI API with retry logic
+        current_app.logger.debug(f"Calling AI grader with retry logic for Essay ID {essay.id}")
         
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=180)
-        response.raise_for_status()
-
-        # 3. Parse and populate the result
-        ai_result_json = response.json()
-        
-        if "choices" in ai_result_json and ai_result_json["choices"]:
-            content_str = ai_result_json["choices"][0]["message"]["content"]
-            parsed_content = json.loads(content_str)
-            essay.ai_score = parsed_content
+        try:
+            provider = get_llm_provider()
+            ai_result = provider.call_llm(
+                prompt=prompt,
+                max_retries=2,      # Allow 2 retries for network issues
+                timeout=180,        # 180 second timeout per attempt
+                require_json=True,
+                temperature=0.5
+            )
+            
+            # 3. Parse and populate the result
+            essay.ai_score = ai_result
             
             # 计算总分并设置final_score
-            if parsed_content and 'dimensions' in parsed_content:
-                total_score = sum(dim.get('score', 0) for dim in parsed_content['dimensions'])
+            if ai_result and 'dimensions' in ai_result:
+                total_score = sum(dim.get('score', 0) for dim in ai_result['dimensions'])
                 essay.final_score = total_score
             
             essay.status = 'graded'
             current_app.logger.info(f"Essay ID {essay.id} successfully graded by AI with total score: {essay.final_score}")
             db.session.commit()
-        else:
-            raise ValueError("AI response JSON is empty or malformed.")
-
-    except requests.RequestException as e:
-        db.session.rollback()
-        essay_to_update = db.session.get(Essay, essay_id)
-        if essay_to_update:
-            essay_to_update.status = 'error_api'
-            essay_to_update.error_message = f"AI评分服务API请求失败: {str(e)[:500]}"
-            current_app.logger.error(f"AI grading API request failed for Essay ID {essay_id}: {e}")
-            db.session.commit()
-    except (json.JSONDecodeError, ValueError) as e:
+            
+        except LLMConnectionError as e:
+            db.session.rollback()
+            essay_to_update = db.session.get(Essay, essay_id)
+            if essay_to_update:
+                essay_to_update.status = 'error_api'
+                essay_to_update.error_message = f"AI评分服务API请求失败: {str(e)[:500]}"
+                current_app.logger.error(f"AI grading API request failed for Essay ID {essay_id}: {e}")
+                db.session.commit()
+    except (json.JSONDecodeError, ValueError, KeyError) as e:
         db.session.rollback()
         essay_to_update = db.session.get(Essay, essay_id)
         if essay_to_update:
