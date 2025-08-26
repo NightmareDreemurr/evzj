@@ -3,6 +3,7 @@ import json
 from flask import current_app
 from app.extensions import db
 from app.models import Essay
+from app.llm.provider import get_llm_provider, LLMConnectionError
 
 class AIConnectionError(Exception):
     """Custom exception for AI service connection errors."""
@@ -65,31 +66,30 @@ def correct_text_with_ai(raw_text: str) -> str:
             "我昨天看了一本书，书名叫《小日记》，里面有个小明，他很勇敢。每当我读完这个故事，他就像一盏明灯。"
         )
 
-        payload = {
-            "model": current_app.config.get('DEEPSEEK_MODEL_CHAT'),
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"请校对以下OCR识别的文本：\n\n{raw_text}"}
-            ],
-            "temperature": 0.2, # Lower temperature for more deterministic, corrective tasks
-        }
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=120)
-        response.raise_for_status()
-
-        ai_result_json = response.json()
-
-        if "choices" in ai_result_json and ai_result_json["choices"]:
-            corrected_text = ai_result_json["choices"][0]["message"]["content"].strip()
-            return corrected_text
+        # Use LLMProvider for automatic retry logic
+        prompt = f"请校对以下OCR识别的文本：\n\n{raw_text}"
+        combined_prompt = system_prompt + "\n\n" + prompt
+        
+        current_app.logger.debug(f"Calling AI corrector with retry logic")
+        
+        provider = get_llm_provider()
+        result = provider.call_llm(
+            prompt=combined_prompt,
+            max_retries=2,      # Allow 2 retries for network issues
+            timeout=120,        # 120 second timeout per attempt
+            require_json=False, # Text correction doesn't need JSON format
+            temperature=0.2
+        )
+        
+        # Extract the corrected text from the result
+        if isinstance(result, dict) and 'content' in result:
+            corrected_text = result['content'].strip()
         else:
-            raise ValueError("AI校对服务返回的JSON格式不正确或为空。")
+            corrected_text = str(result).strip()
+            
+        return corrected_text
 
-    except requests.RequestException as e:
+    except LLMConnectionError as e:
         current_app.logger.error(f"AI corrector service API request failed: {e}")
         raise AIConnectionError(f"AI校对服务API请求失败: {e}")
     except (json.JSONDecodeError, ValueError) as e:

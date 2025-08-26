@@ -5,6 +5,7 @@ from flask import current_app
 
 from app.extensions import db
 from app.models import PendingSubmission, EssayAssignment, StudentProfile, User, Enrollment
+from app.llm.provider import get_llm_provider, LLMConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -81,40 +82,26 @@ def _call_llm_api(prompt):
     """
     Calls the DeepSeek API and returns the parsed JSON response.
     """
-    api_key = current_app.config.get("DEEPSEEK_API_KEY")
-    api_url = current_app.config.get("DEEPSEEK_API_URL")
-
-    if not api_key or not api_url:
-        raise AiMatcherError("DeepSeek API key or URL is not configured.")
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-    payload = {
-        "model": current_app.config.get('DEEPSEEK_MODEL_CHAT'),
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant that returns JSON."},
-            {"role": "user", "content": prompt}
-        ],
-        "response_format": {"type": "json_object"},
-        "temperature": 0.1, # Low temperature for deterministic results
-    }
-
+    # Use LLMProvider for automatic retry logic
+    system_prompt = "You are a helpful assistant that returns JSON."
+    combined_prompt = system_prompt + "\n\n" + prompt
+    
     try:
-        logger.debug(f"Sending request to LLM API with payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
+        logger.debug(f"Calling AI matcher with retry logic")
         
-        result_content = response.json()['choices'][0]['message']['content']
-        return json.loads(result_content)
+        provider = get_llm_provider()
+        result = provider.call_llm(
+            prompt=combined_prompt,
+            max_retries=2,      # Allow 2 retries for network issues
+            timeout=60,         # 60 second timeout per attempt
+            require_json=True,  # Matcher needs JSON format
+            temperature=0.1
+        )
+        
+        return result
 
-    except requests.exceptions.HTTPError as e:
-        # Log the specific HTTP error response from the API
-        logger.error(f"LLM API request failed with status code {e.response.status_code}. Response: {e.response.text}")
-        raise AiMatcherError(f"LLM service returned an error: {e.response.status_code} - {e.response.text}")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"LLM API request failed due to a network issue: {e}")
+    except LLMConnectionError as e:
+        logger.error(f"LLM API request failed due to network issue: {e}")
         raise AiMatcherError(f"Could not connect to the LLM service: {e}")
     except (json.JSONDecodeError, KeyError) as e:
         logger.error(f"Failed to parse LLM response: {e}")
