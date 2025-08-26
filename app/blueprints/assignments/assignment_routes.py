@@ -440,6 +440,46 @@ def assignment_detail(assignment_id):
                     "students": students
                 })
 
+        # 2. Overall Score Distribution
+        score_chart_data = None
+        if graded_submissions and assignment.grading_standard:
+            total_score_possible = assignment.grading_standard.total_score
+            if total_score_possible > 0:
+                scores = [s.ai_score.get('total_score', 0) for s in graded_submissions]
+                score_chart_data = {
+                    "scores": scores,
+                    "max_score": total_score_possible
+                }
+
+        # 3. Average Score Rate per Dimension
+        dimension_chart_data = None
+        if graded_submissions and assignment.grading_standard:
+            dim_scores = {}
+            dim_max_scores = {dim.name: dim.max_score for dim in assignment.grading_standard.dimensions}
+            
+            for sub in graded_submissions:
+                if 'dimensions' in sub.ai_score:
+                    for dim_result in sub.ai_score['dimensions']:
+                        dim_name = dim_result.get('dimension_name')
+                        dim_score = dim_result.get('score')
+                        if dim_name and dim_score is not None:
+                            if dim_name not in dim_scores:
+                                dim_scores[dim_name] = []
+                            dim_scores[dim_name].append(dim_score)
+            
+            dim_avg_rate = {}
+            for name, scores in dim_scores.items():
+                max_score = dim_max_scores.get(name)
+                if max_score and max_score > 0 and scores:
+                    avg_score = sum(scores) / len(scores)
+                    dim_avg_rate[name] = round((avg_score / max_score) * 100, 2)
+            
+            if dim_avg_rate:
+                dimension_chart_data = {
+                    "labels": list(dim_avg_rate.keys()),
+                    "values": list(dim_avg_rate.values())
+                }
+
         return render_template(
             'assignments/assignment_detail.html',
             assignment=assignment,
@@ -449,6 +489,8 @@ def assignment_detail(assignment_id):
             status_map=status_map,
             pending_submissions_count=pending_submissions_count,
             status_chart_data_json=json.dumps(status_chart_data),
+            score_chart_data_json=json.dumps(score_chart_data),
+            dimension_chart_data_json=json.dumps(dimension_chart_data),
             now=now
         )
 
