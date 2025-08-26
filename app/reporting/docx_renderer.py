@@ -21,6 +21,44 @@ from app.schemas.evaluation import EvaluationResult, to_context
 logger = logging.getLogger(__name__)
 
 
+def _has_meaningful_content(content) -> bool:
+    """
+    Check if content has meaningful data (not empty, None, or whitespace-only).
+    
+    Args:
+        content: Content to check (list, string, dict, etc.)
+        
+    Returns:
+        True if content is meaningful, False otherwise
+    """
+    if not content:
+        return False
+    
+    if isinstance(content, list):
+        # Check if list has any non-empty, non-whitespace items
+        for item in content:
+            if isinstance(item, str) and item.strip():
+                return True
+            elif isinstance(item, dict):
+                # For improvement suggestions, check if both original and suggested have content
+                original = item.get('original', '').strip() if item.get('original') else ''
+                suggested = item.get('suggested', '').strip() if item.get('suggested') else ''
+                if original and suggested:
+                    return True
+        return False
+    
+    if isinstance(content, str):
+        return bool(content.strip())
+    
+    if isinstance(content, dict):
+        # For single improvement suggestion dict
+        original = content.get('original', '').strip() if content.get('original') else ''
+        suggested = content.get('suggested', '').strip() if content.get('suggested') else ''
+        return bool(original and suggested)
+    
+    return bool(content)
+
+
 def _sanitize_filename(filename: str) -> str:
     """
     Sanitize filename to be safe for all operating systems.
@@ -164,17 +202,37 @@ def _create_minimal_template(template_path: str):
 {% for dim in gradingResult.dimensions %}
 {{ dim.dimension_name }}维度详情：
 {% if dim.example_good_sentence and dim.example_good_sentence|length > 0 %}
+{%- set has_good_content = [] -%}
+{%- for sentence in dim.example_good_sentence -%}
+{%- if sentence and sentence|string|trim -%}
+{%- set _ = has_good_content.append(sentence) -%}
+{%- endif -%}
+{%- endfor -%}
+{% if has_good_content|length > 0 %}
 亮点句子：
 {% for sentence in dim.example_good_sentence %}
-• {{ sentence }}
+{%- if sentence and sentence|string|trim %}
+• {{ sentence|trim }}
+{% endif -%}
 {% endfor %}
 {% endif %}
+{% endif %}
 {% if dim.example_improvement_suggestion and dim.example_improvement_suggestion|length > 0 %}
+{%- set has_improvement_content = [] -%}
+{%- for suggestion in dim.example_improvement_suggestion -%}
+{%- if suggestion.original and suggestion.original|string|trim and suggestion.suggested and suggestion.suggested|string|trim -%}
+{%- set _ = has_improvement_content.append(suggestion) -%}
+{%- endif -%}
+{%- endfor -%}
+{% if has_improvement_content|length > 0 %}
 待改进句：
 {% for suggestion in dim.example_improvement_suggestion %}
-- 原文：{{ suggestion.original|default('') }}
-- 建议：{{ suggestion.suggested|default('') }}
+{%- if suggestion.original and suggestion.original|string|trim and suggestion.suggested and suggestion.suggested|string|trim %}
+- 原文：{{ suggestion.original|trim }}
+- 建议：{{ suggestion.suggested|trim }}
+{% endif -%}
 {% endfor %}
+{% endif %}
 {% endif %}
 {% endfor %}
 {% else %}
@@ -735,26 +793,35 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
         for rubric in evaluation.scores.rubrics:
             dim_detail = doc.add_heading(f'{rubric.name}维度详情：', level=3)
             
-            # Check if rubric has example_good_sentence data
-            has_good_sentences = hasattr(rubric, 'example_good_sentence') and rubric.example_good_sentence
+            # Check if rubric has meaningful example_good_sentence data
+            has_good_sentences = (
+                hasattr(rubric, 'example_good_sentence') and 
+                _has_meaningful_content(rubric.example_good_sentence)
+            )
             if has_good_sentences:
                 bright_para = doc.add_paragraph()
                 bright_para.add_run('亮点句子：').bold = True
                 for sentence in rubric.example_good_sentence:
-                    doc.add_paragraph(f'• {sentence}')
+                    if isinstance(sentence, str) and sentence.strip():
+                        doc.add_paragraph(f'• {sentence.strip()}')
             
-            # Check if rubric has example_improvement_suggestion data
-            has_improvements = hasattr(rubric, 'example_improvement_suggestion') and rubric.example_improvement_suggestion
+            # Check if rubric has meaningful example_improvement_suggestion data
+            has_improvements = (
+                hasattr(rubric, 'example_improvement_suggestion') and 
+                _has_meaningful_content(rubric.example_improvement_suggestion)
+            )
             if has_improvements:
                 improve_para = doc.add_paragraph()
                 improve_para.add_run('待改进句：').bold = True
                 for suggestion in rubric.example_improvement_suggestion:
-                    original = getattr(suggestion, 'original', '') if hasattr(suggestion, 'original') else suggestion.get('original', '') if isinstance(suggestion, dict) else ''
-                    suggested = getattr(suggestion, 'suggested', '') if hasattr(suggestion, 'suggested') else suggestion.get('suggested', '') if isinstance(suggestion, dict) else ''
-                    if original and suggested:
-                        doc.add_paragraph(f'- 原文：{original}\n- 建议：{suggested}')
-                    else:
-                        doc.add_paragraph(f'• {suggestion}')
+                    if isinstance(suggestion, dict):
+                        original = suggestion.get('original', '').strip() if suggestion.get('original') else ''
+                        suggested = suggestion.get('suggested', '').strip() if suggestion.get('suggested') else ''
+                        if original and suggested:
+                            doc.add_paragraph(f'- 原文：{original}\n- 建议：{suggested}')
+                    elif isinstance(suggestion, str) and suggestion.strip():
+                        # Fallback for string suggestions
+                        doc.add_paragraph(f'• {suggestion.strip()}')
     else:
         # Provide meaningful fallback for rubrics when no scoring data
         doc.add_paragraph('本次作文评估采用系统性标准，重点关注内容理解、结构组织、语言表达和文采创新等维度。建议继续加强写作练习以提升各项能力。')
