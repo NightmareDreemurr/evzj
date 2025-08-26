@@ -359,11 +359,14 @@ def assignment_detail(assignment_id):
         status_map = {
             'graded': '已批改',
             'grading': '批改中',
+            'correcting': 'AI校对中',
             'submitted': '已提交',
             'pending': '待处理',
             'not_submitted': '未提交',
             'error_api': 'API错误',
             'error_parsing': '解析错误',
+            'error_correction': '校对失败',
+            'error_evaluation': '评估失败',
             'error_no_text': '无文本内容',
             'error_no_standard': '无评分标准',
             'error_unknown': '未知错误'
