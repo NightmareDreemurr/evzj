@@ -268,9 +268,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// Progress polling logic
+// Progress polling logic with exponential backoff
 document.addEventListener('DOMContentLoaded', function() {
     const submissionsToPoll = new Map();
+    let pollAttempts = 0;
+    let lastPollTime = 0;
+    const MIN_POLL_INTERVAL = 5000; // Increased from 3000ms to 5000ms
+    const MAX_POLL_INTERVAL = 30000; // Maximum 30 seconds
+    const RATE_LIMIT_DELAY = 1000; // Minimum delay between requests
     
     function findSubmissionsToPoll() {
         submissionsToPoll.clear();
@@ -315,7 +320,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return hasActiveTasks;
     }
     
+    function calculateNextPollInterval(success = true) {
+        if (success) {
+            // Reset attempts on successful poll
+            pollAttempts = 0;
+            return MIN_POLL_INTERVAL;
+        } else {
+            // Exponential backoff on error: 5s, 10s, 20s, 30s (max)
+            pollAttempts++;
+            const backoffInterval = Math.min(MIN_POLL_INTERVAL * Math.pow(2, pollAttempts - 1), MAX_POLL_INTERVAL);
+            return backoffInterval;
+        }
+    }
+    
     async function pollSubmissionStatuses() {
+        // Rate limiting: ensure minimum delay between requests
+        const now = Date.now();
+        if (now - lastPollTime < RATE_LIMIT_DELAY) {
+            setTimeout(pollSubmissionStatuses, RATE_LIMIT_DELAY - (now - lastPollTime));
+            return;
+        }
+        lastPollTime = now;
+        
         findSubmissionsToPoll();
         if (submissionsToPoll.size === 0) return;
 
@@ -326,15 +352,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 const stillProcessing = updateProgressUI(data);
                 if (stillProcessing) {
-                    setTimeout(pollSubmissionStatuses, 3000); // Poll every 3 seconds
+                    const nextInterval = calculateNextPollInterval(true);
+                    setTimeout(pollSubmissionStatuses, nextInterval);
                 }
+            } else if (response.status === 429) {
+                // Rate limited - wait longer before retrying
+                console.warn('Rate limited. Backing off...');
+                const nextInterval = Math.max(calculateNextPollInterval(false), 30000); // At least 30s
+                setTimeout(pollSubmissionStatuses, nextInterval);
             } else {
                 console.error('Failed to fetch submission statuses:', response.statusText);
-                setTimeout(pollSubmissionStatuses, 10000); // Retry after 10 seconds on error
+                const nextInterval = calculateNextPollInterval(false);
+                setTimeout(pollSubmissionStatuses, nextInterval);
             }
         } catch (error) {
             console.error('Error polling submission statuses:', error);
-            setTimeout(pollSubmissionStatuses, 10000); // Retry after 10 seconds on error
+            const nextInterval = calculateNextPollInterval(false);
+            setTimeout(pollSubmissionStatuses, nextInterval);
         }
     }
 

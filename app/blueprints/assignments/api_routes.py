@@ -1,5 +1,6 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 from flask import jsonify, request, current_app
 from flask_login import login_required, current_user
@@ -12,6 +13,29 @@ from app.services.evaluation_builder import load_evaluation_from_essay
 from app.schemas.evaluation import EvaluationResult
 
 from . import assignments_bp
+
+
+# Rate limiting storage (in production, use Redis or similar)
+_rate_limit_store = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # 60 seconds
+MAX_REQUESTS_PER_WINDOW = 30  # Max 30 requests per minute per user
+
+def is_rate_limited(user_id):
+    """Check if user is rate limited for API requests"""
+    now = datetime.utcnow()
+    user_requests = _rate_limit_store[user_id]
+    
+    # Remove requests older than the window
+    cutoff_time = now - timedelta(seconds=RATE_LIMIT_WINDOW)
+    _rate_limit_store[user_id] = [req_time for req_time in user_requests if req_time > cutoff_time]
+    
+    # Check if under limit
+    if len(_rate_limit_store[user_id]) >= MAX_REQUESTS_PER_WINDOW:
+        return True
+    
+    # Add current request
+    _rate_limit_store[user_id].append(now)
+    return False
 
 
 ESSAY_STATUS_PROGRESS_MAP = {
@@ -35,7 +59,15 @@ def get_essay_statuses():
     """
     API endpoint to get the status of multiple essays.
     Expects a comma-separated list of essay IDs in the 'ids' query parameter.
+    Includes rate limiting to prevent excessive polling.
     """
+    # Rate limiting check
+    if is_rate_limited(current_user.id):
+        return jsonify({
+            "error": "Rate limit exceeded. Please wait before making more requests.",
+            "retry_after": RATE_LIMIT_WINDOW
+        }), 429
+    
     essay_ids_str = request.args.get('ids')
     if not essay_ids_str:
         return jsonify({"error": "No essay IDs provided"}), 400
@@ -101,7 +133,15 @@ def get_pending_submissions_status():
     """
     API endpoint to get the status of multiple pending submissions.
     Expects a comma-separated list of pending submission IDs in the 'ids' query parameter.
+    Includes rate limiting to prevent excessive polling.
     """
+    # Rate limiting check
+    if is_rate_limited(current_user.id):
+        return jsonify({
+            "error": "Rate limit exceeded. Please wait before making more requests.",
+            "retry_after": RATE_LIMIT_WINDOW
+        }), 429
+    
     submission_ids_str = request.args.get('ids')
     if not submission_ids_str:
         return jsonify({"error": "No submission IDs provided"}), 400

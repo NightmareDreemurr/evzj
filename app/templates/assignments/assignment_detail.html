@@ -1187,10 +1187,23 @@ document.addEventListener("DOMContentLoaded", function() {
     // Handle form submission with AJAX
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+        
+        // Disable button immediately to prevent double-clicks
+        if (uploadBtn.disabled) {
+            return; // Already uploading
+        }
+        
         if (uploadedFiles.length === 0) {
             alert('请选择要上传的文件。');
             return;
         }
+
+        // Store original button content for restoration on error
+        const originalBtnContent = uploadBtn.innerHTML;
+        
+        // Disable button and show loading state immediately
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>正在上传...';
 
         const formData = new FormData();
         uploadedFiles.forEach(fileObj => {
@@ -1207,6 +1220,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 progressBar.style.width = percentComplete + '%';
                 progressBar.textContent = percentComplete + '%';
                 progressBar.setAttribute('aria-valuenow', percentComplete);
+                uploadBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>上传中... ${percentComplete}%`;
             }
         };
 
@@ -1215,12 +1229,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 progressBar.style.width = '100%';
                 progressBar.textContent = '上传成功! 正在跳转...';
                 progressBar.classList.add('bg-success');
+                uploadBtn.innerHTML = '<i class="fas fa-check mr-2"></i>上传成功，正在跳转...';
                 // Redirect to the confirmation page
                 window.location.href = "{{ url_for('assignments.confirm_submissions', assignment_id=assignment.id) }}";
             } else {
                 progressBar.textContent = `上传失败: ${xhr.statusText || 'Server Error'}`;
                 progressBar.classList.remove('bg-success');
                 progressBar.classList.add('bg-danger');
+                // Re-enable button and restore original content on error
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = originalBtnContent;
             }
         };
 
@@ -1228,9 +1246,11 @@ document.addEventListener("DOMContentLoaded", function() {
             progressBar.textContent = '网络错误，上传失败。';
             progressBar.classList.remove('bg-success');
             progressBar.classList.add('bg-danger');
+            // Re-enable button and restore original content on error
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalBtnContent;
         };
         
-        uploadBtn.disabled = true;
         xhr.send(formData);
     });
     {% endif %}
