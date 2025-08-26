@@ -46,11 +46,11 @@ def _normalize_example_fields(dim: dict) -> dict:
     if 'example_good_sentence' in dim:
         value = dim['example_good_sentence']
         if isinstance(value, str):
-            # Single string -> list with one item
+            # Single string -> list with one item if meaningful
             normalized['example_good_sentence'] = [value] if value.strip() else []
         elif isinstance(value, list):
-            # Already a list, but ensure all items are strings
-            normalized['example_good_sentence'] = [str(item) for item in value if item]
+            # Already a list, but ensure all items are non-empty strings
+            normalized['example_good_sentence'] = [str(item).strip() for item in value if item and str(item).strip()]
         else:
             # Other types -> empty list
             normalized['example_good_sentence'] = []
@@ -59,8 +59,10 @@ def _normalize_example_fields(dim: dict) -> dict:
     if 'example_improvement_suggestion' in dim:
         value = dim['example_improvement_suggestion']
         if isinstance(value, dict) and 'original' in value and 'suggested' in value:
-            # Single dict with original/suggested -> list with one item
-            normalized['example_improvement_suggestion'] = [value]
+            # Single dict with original/suggested -> list with one item if both fields are meaningful
+            original = str(value['original']).strip() if value['original'] else ''
+            suggested = str(value['suggested']).strip() if value['suggested'] else ''
+            normalized['example_improvement_suggestion'] = [{'original': original, 'suggested': suggested}] if original and suggested else []
         elif isinstance(value, str):
             # String -> empty list (can't extract original/suggested from plain string)
             normalized['example_improvement_suggestion'] = []
@@ -69,10 +71,13 @@ def _normalize_example_fields(dim: dict) -> dict:
             suggestions = []
             for item in value:
                 if isinstance(item, dict) and 'original' in item and 'suggested' in item:
-                    suggestions.append({
-                        'original': str(item['original']),
-                        'suggested': str(item['suggested'])
-                    })
+                    original = str(item['original']).strip() if item['original'] else ''
+                    suggested = str(item['suggested']).strip() if item['suggested'] else ''
+                    if original and suggested:  # Only add if both fields have meaningful content
+                        suggestions.append({
+                            'original': original,
+                            'suggested': suggested
+                        })
                 elif isinstance(item, str):
                     # String items can't be normalized to original/suggested structure
                     continue
