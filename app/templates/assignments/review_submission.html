@@ -1655,6 +1655,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         // Collect enhanced content changes
                         const enhancedData = collectEnhancedContentData();
                         
+                        // Validate enhanced content data
+                        if (!validateEnhancedContentData(enhancedData)) {
+                            console.warn('Enhanced content validation failed, skipping save');
+                            return;
+                        }
+                        
                         // Merge with existing evaluation data
                         const updatedEvaluation = {
                             ...currentEvaluation,
@@ -1832,11 +1838,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove diagnostic
         if (e.target.classList.contains('remove-diagnostic-btn')) {
             e.target.closest('.diagnostic-item').remove();
+            // Re-index remaining diagnostic items
+            document.querySelectorAll('.diagnostic-item').forEach((item, index) => {
+                item.dataset.index = index;
+            });
         }
         
         // Remove exercise
         if (e.target.classList.contains('remove-exercise-btn')) {
             e.target.closest('.exercise-item').remove();
+            // Re-index remaining exercise items
+            document.querySelectorAll('.exercise-item').forEach((item, index) => {
+                item.dataset.index = index;
+            });
         }
         
         // Add advice to diagnostic
@@ -1874,6 +1888,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Validate enhanced content data
+    function validateEnhancedContentData(data) {
+        try {
+            // Basic structure validation
+            if (!data || typeof data !== 'object') {
+                console.warn('Enhanced content data is not a valid object');
+                return false;
+            }
+            
+            // Validate analysis structure
+            if (data.analysis && !Array.isArray(data.analysis.outline)) {
+                console.warn('Analysis outline should be an array');
+                return false;
+            }
+            
+            // Validate diagnostics structure
+            if (!Array.isArray(data.diagnostics)) {
+                console.warn('Diagnostics should be an array');
+                return false;
+            }
+            
+            // Validate exercises structure
+            if (!Array.isArray(data.exercises)) {
+                console.warn('Exercises should be an array');
+                return false;
+            }
+            
+            return true;
+        } catch (e) {
+            console.warn('Error validating enhanced content data:', e);
+            return false;
+        }
+    }
+    
     // Collect enhanced content data for saving
     function collectEnhancedContentData() {
         const data = {
@@ -1901,29 +1949,49 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Collect diagnostics data
         document.querySelectorAll('.diagnostic-item').forEach(item => {
-            const para = parseInt(item.querySelector('.diagnostic-para').value) || null;
-            const issue = item.querySelector('.diagnostic-issue').value;
-            const evidence = item.querySelector('.diagnostic-evidence').value;
-            const advice = Array.from(item.querySelectorAll('.advice-item'))
-                .map(input => input.value.trim())
-                .filter(value => value);
-            
-            if (issue.trim()) {
-                data.diagnostics.push({ para, issue, evidence, advice });
+            try {
+                const paraInput = item.querySelector('.diagnostic-para');
+                const issueInput = item.querySelector('.diagnostic-issue');
+                const evidenceInput = item.querySelector('.diagnostic-evidence');
+                
+                if (!issueInput) return; // Skip if required fields are missing
+                
+                const para = paraInput ? (parseInt(paraInput.value) || null) : null;
+                const issue = issueInput.value || '';
+                const evidence = evidenceInput ? evidenceInput.value || '' : '';
+                const advice = Array.from(item.querySelectorAll('.advice-item'))
+                    .map(input => input.value ? input.value.trim() : '')
+                    .filter(value => value);
+                
+                if (issue.trim()) {
+                    data.diagnostics.push({ para, issue, evidence, advice });
+                }
+            } catch (e) {
+                console.warn('Error collecting diagnostic data:', e);
             }
         });
         
         // Collect exercises data
         document.querySelectorAll('.exercise-item').forEach(item => {
-            const type = item.querySelector('.exercise-type').value;
-            const prompt = item.querySelector('.exercise-prompt').value;
-            const hint = Array.from(item.querySelectorAll('.hint-item'))
-                .map(input => input.value.trim())
-                .filter(value => value);
-            const sample = item.querySelector('.exercise-sample').value;
-            
-            if (prompt.trim()) {
-                data.exercises.push({ type, prompt, hint, sample });
+            try {
+                const typeInput = item.querySelector('.exercise-type');
+                const promptInput = item.querySelector('.exercise-prompt');
+                const sampleInput = item.querySelector('.exercise-sample');
+                
+                if (!promptInput) return; // Skip if required fields are missing
+                
+                const type = typeInput ? typeInput.value || '' : '';
+                const prompt = promptInput.value || '';
+                const hint = Array.from(item.querySelectorAll('.hint-item'))
+                    .map(input => input.value ? input.value.trim() : '')
+                    .filter(value => value);
+                const sample = sampleInput ? sampleInput.value || '' : '';
+                
+                if (prompt.trim()) {
+                    data.exercises.push({ type, prompt, hint, sample });
+                }
+            } catch (e) {
+                console.warn('Error collecting exercise data:', e);
             }
         });
         
