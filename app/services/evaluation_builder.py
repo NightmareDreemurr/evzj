@@ -188,7 +188,7 @@ def _build_context_for_essay(essay: Essay) -> Dict[str, Any]:
         
         # Get class info
         if essay.enrollment and essay.enrollment.classroom:
-            context['class_name'] = essay.enrollment.classroom.name
+            context['class_name'] = essay.enrollment.classroom.class_name
         
         # Word count
         if essay.content:
