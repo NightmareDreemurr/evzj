@@ -523,11 +523,25 @@
         margin-bottom: 15px;
     }
     
+    /* Override desktop fixed height layout for mobile */
+    .row {
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .col-12, .col-lg-7, .col-lg-5 {
+        height: auto !important;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    
     /* 卡片统一优化 */
     .card {
         margin-bottom: 20px;
         border-radius: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        height: auto !important;
+        max-height: none !important;
     }
     
     /* 主评分卡片头部 */
@@ -1099,6 +1113,40 @@
     #enhanced-content-panel .card-header h6 {
         flex: 1;
         margin-bottom: 0 !important;
+    }
+    
+    /* Fix mobile height issues for enhanced content panel */
+    #enhanced-content-panel {
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    #enhanced-content-panel .card-body {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    /* Ensure all sections within enhanced content panel are properly sized */
+    #enhanced-content-panel .card-body > div {
+        flex: none !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+    
+    /* Fix textareas to prevent excessive height expansion */
+    #enhanced-content-panel textarea {
+        max-height: 120px !important;
+        resize: vertical;
+    }
+    
+    /* Ensure containers don't take up full viewport height */
+    #diagnostics-container,
+    #exercises-container,
+    #outline-container {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 
