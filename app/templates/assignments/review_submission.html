@@ -230,6 +230,13 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    {% if evaluation_data.summary and "基础模板生成" in evaluation_data.summary %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>提示:</strong> 以下内容基于模板生成，请根据学生实际作文情况进行调整和完善。
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
                     <!-- 段落大纲分析 -->
                     <div class="mb-2">
                         <h6 class="text-primary mb-2">段落大纲分析</h6>

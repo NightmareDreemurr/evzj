@@ -536,8 +536,43 @@ def review_submission(submission_id):
     if current_app.config.get('EVAL_PREBUILD_ENABLED', True):
         try:
             evaluation_data = load_evaluation_from_essay(submission.id)
+            
+            # If no enhanced evaluation data exists, try to generate it on-the-fly
+            if not evaluation_data and submission.content:
+                current_app.logger.info(f"No enhanced evaluation data found for submission {submission.id}, generating on-the-fly")
+                from app.services.evaluation_builder import build_and_persist_evaluation
+                try:
+                    evaluation_data = build_and_persist_evaluation(submission.id)
+                    current_app.logger.info(f"Successfully generated enhanced evaluation data for submission {submission.id}")
+                except Exception as gen_error:
+                    current_app.logger.warning(f"Failed to generate enhanced evaluation data for submission {submission.id}: {gen_error}")
+                    # Use default enhanced content as fallback
+                    from app.services.enhanced_content_defaults import create_default_enhanced_content
+                    student_name = submission.enrollment.student.user.full_name if submission.enrollment and submission.enrollment.student else "Unknown Student"
+                    evaluation_data = create_default_enhanced_content(
+                        essay_content=submission.content or "",
+                        student_name=student_name
+                    )
+                    current_app.logger.info(f"Using default enhanced content for submission {submission.id}")
+            
+            # If still no evaluation data, create minimal structure
+            if not evaluation_data:
+                from app.services.enhanced_content_defaults import create_default_enhanced_content
+                student_name = submission.enrollment.student.user.full_name if submission.enrollment and submission.enrollment.student else "Unknown Student"
+                evaluation_data = create_default_enhanced_content(
+                    essay_content=submission.content or "",
+                    student_name=student_name
+                )
+                
         except Exception as e:
             current_app.logger.warning(f"Failed to load evaluation data for submission {submission.id}: {e}")
+            # Use default enhanced content as fallback
+            from app.services.enhanced_content_defaults import create_default_enhanced_content
+            student_name = submission.enrollment.student.user.full_name if submission.enrollment and submission.enrollment.student else "Unknown Student"
+            evaluation_data = create_default_enhanced_content(
+                essay_content=submission.content or "",
+                student_name=student_name
+            )
 
     return render_template('assignments/review_submission.html',
                            submission=submission,
