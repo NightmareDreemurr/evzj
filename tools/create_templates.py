@@ -15,14 +15,14 @@ def create_assignment_template():
     style = doc.styles['Normal']
     font = style.font
     font.name = 'SimSun'  # 宋体 - good for Chinese
-    font.size = Pt(12)
+    font.size = Pt(14)  # Increased from 12 to 14
     
     # Title with center alignment
     title = doc.add_heading('{{ assignment.title }} - 作业批量报告', 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_run = title.runs[0]
     title_run.font.name = 'SimHei'  # 黑体 for headers
-    title_run.font.size = Pt(18)
+    title_run.font.size = Pt(20)  # Increased from 18 to 20
     title_run.font.color.rgb = RGBColor(0, 0, 0)
     
     # Assignment metadata section
@@ -38,7 +38,7 @@ def create_assignment_template():
     # Set font for info paragraph
     for run in info_para.runs:
         run.font.name = 'SimSun'
-        run.font.size = Pt(12)
+        run.font.size = Pt(14)  # Increased from 12 to 14
     
     # Students section header
     doc.add_heading('学生作文评估报告', level=1)
@@ -51,7 +51,7 @@ def create_assignment_template():
     student_header = doc.add_heading('{{ student.meta.student }}', level=2)
     student_header_run = student_header.runs[0]
     student_header_run.font.name = 'SimHei'
-    student_header_run.font.size = Pt(16)
+    student_header_run.font.size = Pt(18)  # Increased from 16 to 18
     student_header_run.font.color.rgb = RGBColor(0, 102, 204)  # Blue color
     
     # Student basic info
@@ -66,12 +66,12 @@ def create_assignment_template():
     # Set font for student info
     for run in student_info.runs:
         run.font.name = 'SimSun'
-        run.font.size = Pt(11)
+        run.font.size = Pt(13)  # Increased from 11 to 13
     
     # Scores section
     scores_header = doc.add_heading('评分结果', level=3)
     scores_header.runs[0].font.name = 'SimHei'
-    scores_header.runs[0].font.size = Pt(14)
+    scores_header.runs[0].font.size = Pt(16)  # Increased from 14 to 16
     
     # Total score
     total_score_para = doc.add_paragraph()
@@ -90,28 +90,28 @@ def create_assignment_template():
         for run in para.runs:
             if run.font.color.rgb != RGBColor(255, 255, 255):  # Skip hidden template code
                 run.font.name = 'SimSun'
-                run.font.size = Pt(11)
+                run.font.size = Pt(13)  # Increased from 11 to 13
     
     # Original text section
     original_header = doc.add_heading('原文内容', level=3)
     original_header.runs[0].font.name = 'SimHei'
-    original_header.runs[0].font.size = Pt(14)
+    original_header.runs[0].font.size = Pt(16)  # Increased from 14 to 16
     
     original_para = doc.add_paragraph()
     original_para.add_run('{{ student.text.original or "原文不可用" }}')
     original_para.runs[0].font.name = 'SimSun'
-    original_para.runs[0].font.size = Pt(11)
+    original_para.runs[0].font.size = Pt(13)  # Increased from 11 to 13
     original_para.style = doc.styles['Normal']
     
     # AI feedback section
     feedback_header = doc.add_heading('AI评语与建议', level=3)
     feedback_header.runs[0].font.name = 'SimHei'
-    feedback_header.runs[0].font.size = Pt(14)
+    feedback_header.runs[0].font.size = Pt(16)  # Increased from 14 to 16
     
     feedback_para = doc.add_paragraph()
     feedback_para.add_run('{{ student.diagnosis.comment or "暂无评语" }}')
     feedback_para.runs[0].font.name = 'SimSun'
-    feedback_para.runs[0].font.size = Pt(11)
+    feedback_para.runs[0].font.size = Pt(13)  # Increased from 11 to 13
     
     # Page break between students
     pagebreak_para = doc.add_paragraph()
