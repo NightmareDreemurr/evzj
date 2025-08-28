@@ -121,6 +121,52 @@ class TestAIPregrader:
         result = _validate_and_sanitize_response(invalid_data)
         expected = _get_empty_preanalysis()
         assert result == expected
+    
+    def test_validate_and_sanitize_response_with_writing_examples(self):
+        """Test validation handles writing_examples field correctly."""
+        # Test with valid writing_examples
+        valid_data = {
+            "analysis": {"outline": [{"para": 1, "intent": "开篇"}]},
+            "diagnostics": [],
+            "exercises": [],
+            "summary": "测试总结",
+            "diagnosis": {},
+            "writing_examples": [
+                {
+                    "dimension": "动作神态",
+                    "example": "他咬着嘴唇，双手攥紧拳头",
+                    "technique": "通过细节描写突出心理活动"
+                },
+                {
+                    "dimension": "感官体验",
+                    "example": "空气中弥漫着桂花香",
+                    "technique": "调动嗅觉增强画面感"
+                }
+            ]
+        }
+        
+        result = _validate_and_sanitize_response(valid_data)
+        assert "writing_examples" in result
+        assert len(result["writing_examples"]) == 2
+        assert result["writing_examples"][0]["dimension"] == "动作神态"
+        assert result["writing_examples"][1]["dimension"] == "感官体验"
+        
+        # Test with invalid writing_examples (missing required fields)
+        invalid_examples_data = {
+            "analysis": {"outline": []},
+            "diagnostics": [],
+            "exercises": [],
+            "summary": "",
+            "diagnosis": {},
+            "writing_examples": [
+                {"dimension": "动作神态"},  # Missing example and technique
+                {"example": "test", "technique": "test"}  # Missing dimension
+            ]
+        }
+        
+        result_invalid = _validate_and_sanitize_response(invalid_examples_data)
+        assert "writing_examples" in result_invalid
+        assert len(result_invalid["writing_examples"]) == 0  # Invalid items filtered out
 
 
 class TestEvaluationResultTypes:

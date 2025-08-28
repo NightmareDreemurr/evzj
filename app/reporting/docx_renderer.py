@@ -363,6 +363,23 @@ def _create_minimal_template(template_path: str):
         doc.add_heading('个性化练习', level=2)
         doc.add_paragraph('[个性化练习]')
 
+    # 写作范例与技巧说明 - 只在有内容时显示
+    if DOCXTPL_AVAILABLE:
+        doc.add_paragraph('{% if writingExamples and writingExamples|length > 0 %}')
+        doc.add_heading('写作范例与技巧说明', level=2)
+        doc.add_paragraph("""
+{% for example in writingExamples %}
+**{{ example.dimension }}描写**
+范例：{{ example.example }}
+技巧：{{ example.technique }}
+
+{% endfor %}
+        """.strip())
+        doc.add_paragraph('{% endif %}')
+    else:
+        doc.add_heading('写作范例与技巧说明', level=2)
+        doc.add_paragraph('[写作范例与技巧说明]')
+
     # 综合诊断总结 - 只在有内容时显示
     if DOCXTPL_AVAILABLE:
         doc.add_paragraph('{% if summaryData %}')
@@ -955,6 +972,20 @@ def _render_teacher_view_structure(doc, evaluation: EvaluationResult, review_sta
             practice_para.add_run(f'{i}. {title}')
             if requirement:
                 practice_para.add_run(f'\n   要求：{requirement}')
+    
+    # 写作范例与技巧说明 - 只在有内容时显示
+    if evaluation.writingExamples:
+        doc.add_heading('写作范例与技巧说明', level=2)
+        for i, example in enumerate(evaluation.writingExamples, 1):
+            example_para = doc.add_paragraph()
+            dimension = example.get('dimension', '')
+            example_text = example.get('example', '')
+            technique = example.get('technique', '')
+            
+            example_para.add_run(f'{i}. {dimension}描写').bold = True
+            example_para.add_run(f'\n   范例：{example_text}')
+            if technique:
+                example_para.add_run(f'\n   技巧：{technique}')
     
     # 综合诊断总结 - 只在有内容时显示
     if evaluation.summaryData:

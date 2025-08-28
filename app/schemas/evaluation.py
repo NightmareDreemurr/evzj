@@ -135,6 +135,7 @@ class EvaluationResult(BaseModel):
     personalizedPractices: List[Dict[str, Any]] = Field(default_factory=list, description="个性化练习")
     summaryData: Optional[Dict[str, Any]] = Field(None, description="综合诊断总结")
     parentSummary: Optional[str] = Field(None, description="给家长的总结")
+    writingExamples: List[Dict[str, Any]] = Field(default_factory=list, description="写作范例与技巧说明")
     
     # Additional fields for template compatibility
     overall_comment: Optional[str] = Field(None, description="综合评价")
