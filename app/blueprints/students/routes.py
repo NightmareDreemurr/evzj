@@ -430,6 +430,46 @@ def student_essays(student_id):
     })
 
 
+@students_bp.route('/<int:student_id>/essay-scores-chart')
+def student_essay_scores_chart(student_id):
+    """获取学生作文得分率折线图数据API"""
+    student = StudentProfile.query.get_or_404(student_id)
+    
+    # 权限检查
+    if not _check_student_permission(student):
+        abort(403)
+    
+    # 获取学生的已评分作文记录，按时间排序
+    essays = Essay.query.join(
+        Enrollment, Essay.enrollment_id == Enrollment.id
+    ).filter(
+        Enrollment.student_profile_id == student.id,
+        Essay.status == 'graded',
+        Essay.final_score.isnot(None)
+    ).order_by(Essay.created_at).all()
+    
+    # 构建图表数据
+    chart_data = {
+        'labels': [],
+        'scores': [],
+        'titles': []
+    }
+    
+    for essay in essays:
+        # 格式化日期作为标签
+        date_label = essay.created_at.strftime('%m-%d') if essay.created_at else ''
+        chart_data['labels'].append(date_label)
+        
+        # 使用final_score作为得分率（已经包含了教师评分优先的逻辑）
+        chart_data['scores'].append(essay.final_score or 0)
+        
+        # 作文标题用于tooltip
+        title = essay.assignment.title if essay.assignment else '自主练习'
+        chart_data['titles'].append(title)
+    
+    return jsonify(chart_data)
+
+
 def _check_student_permission(student):
     """检查教师是否有权限访问该学生"""
     if not hasattr(current_user, 'teacher_profile') or not current_user.teacher_profile:
