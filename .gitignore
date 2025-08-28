@@ -170,9 +170,6 @@ app.db
 
 # Upload files (user generated content)
 uploads/
-*.jpg
-*.jpeg
-*.png
 *.gif
 *.pdf
 *.doc
