@@ -17,7 +17,7 @@
             line-height: 1.3;
         }
         .page-header p {
-            font-size: 0.9rem;
+            font-size: 1rem; /* Increased from 0.9rem to 1rem */
         }
         .btn-primary {
             width: 100%;
@@ -45,7 +45,7 @@
             flex-wrap: wrap;
         }
         .nav-tabs .nav-link {
-            font-size: 0.9rem;
+            font-size: 1rem; /* Increased from 0.9rem to 1rem */
             padding: 8px 12px;
         }
         .form-control {
@@ -65,13 +65,13 @@
             font-size: 1.1rem;
         }
         .list-group-item p {
-            font-size: 0.9rem;
+            font-size: 1rem; /* Increased from 0.9rem to 1rem */
             line-height: 1.4;
         }
         
         /* 折叠面板优化 */
         .accordion-button {
-            font-size: 0.9rem;
+            font-size: 1rem; /* Increased from 0.9rem to 1rem */
             padding: 12px 15px;
         }
         .accordion-body {
@@ -95,7 +95,7 @@
             border-radius: 8px;
         }
         .table {
-            font-size: 0.85rem;
+            font-size: 0.95rem; /* Increased from 0.85rem to 0.95rem */
         }
         .table th,
         .table td {
@@ -602,7 +602,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow h-100">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">总体分数分布</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">总体得分率分布</h6>
                 </div>
                 <div class="card-body">
                     <div id="score-chart" class="chart-container" style="height:300px"></div>
@@ -935,21 +935,27 @@ document.addEventListener("DOMContentLoaded", function() {
             const scoreChart = echarts.init(scoreChartDom);
             const binCount = 10;
             const maxScore = scoreData.max_score;
-            const binWidth = maxScore > 0 ? maxScore / binCount : 1;
             
+            // Convert raw scores to percentages
+            const scorePercentages = scoreData.scores.map(score => 
+                maxScore > 0 ? (score / maxScore) * 100 : 0
+            );
+            
+            const binWidth = 100 / binCount; // 10% per bin
             const bins = Array(binCount).fill(0);
             const labels = [];
+            
             for (let i = 0; i < binCount; i++) {
                 const start = i * binWidth;
                 const end = (i + 1) * binWidth;
-                labels.push(`${start.toFixed(0)}-${end.toFixed(0)}`);
+                labels.push(`${start.toFixed(0)}%-${end.toFixed(0)}%`);
             }
 
-            scoreData.scores.forEach(score => {
-                if (score >= maxScore) {
+            scorePercentages.forEach(percentage => {
+                if (percentage >= 100) {
                     bins[binCount - 1]++;
                 } else {
-                    const binIndex = Math.floor(score / binWidth);
+                    const binIndex = Math.floor(percentage / binWidth);
                     if (binIndex >= 0 && binIndex < binCount) {
                         bins[binIndex]++;
                     }
@@ -976,7 +982,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         trigger: 'axis', 
                         axisPointer: { type: 'shadow' },
                         formatter: function (params) {
-                            return `${params[0].name}分<br/>${params[0].seriesName}: ${params[0].value}人`;
+                            return `${params[0].name}<br/>${params[0].seriesName}: ${params[0].value}人`;
                         }
                     },
                     xAxis: { type: 'category', data: trimmedLabels },
