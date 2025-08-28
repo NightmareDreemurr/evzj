@@ -304,8 +304,8 @@ const userRoleChart = new Chart(userRoleCtx, {
             ],
             backgroundColor: [
                 '#dc3545',
-                '#28a745',
-                '#17a2b8'
+                '#4CAF50',
+                '#66BB6A'
             ],
             borderWidth: 2,
             borderColor: '#fff'
@@ -331,8 +331,8 @@ const registrationTrendChart = new Chart(registrationTrendCtx, {
         datasets: [{
             label: '新注册用户',
             data: {{ registration_trend_data | tojson if registration_trend_data else "[12, 19, 3, 5, 2, 3, 8]" | safe }},
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            borderColor: '#388E3C',
+            backgroundColor: 'rgba(56, 142, 60, 0.1)',
             tension: 0.4,
             fill: true
         }]
@@ -368,8 +368,8 @@ const essayTrendChart = new Chart(essayTrendCtx, {
         }, {
             label: '作文提交',
             data: {{ essay_trend_data | tojson if essay_trend_data else "[28, 48, 40, 19, 86, 27]" | safe }},
-            borderColor: '#28a745',
-            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
             tension: 0.4
         }]
     },
