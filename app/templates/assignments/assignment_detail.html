@@ -117,7 +117,7 @@
             padding-right: 45px;
             margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-left: 4px solid #007bff;
+            border-left: 4px solid #388E3C;
             cursor: pointer;
             transition: all 0.2s ease;
             text-decoration: none;
@@ -134,7 +134,7 @@
         }
         
         .submission-card:hover .card-arrow {
-            color: #007bff;
+            color: #388E3C;
             opacity: 1;
         }
         
@@ -142,7 +142,7 @@
             transform: translateY(0);
         }
         .submission-card.graded {
-            border-left-color: #28a745;
+            border-left-color: #4CAF50;
         }
         .submission-card.error {
             border-left-color: #dc3545;
@@ -175,7 +175,7 @@
         }
         .submission-score {
             font-weight: bold;
-            color: #007bff;
+            color: #388E3C;
             font-size: 1rem;
         }
         .card-arrow {
@@ -399,8 +399,8 @@
                     
                     {# --- Status Text Logic --- #}
                     {% set status_map = {
-                        'graded': ('#28a745', '已批改'),
-                        'submitted': ('#007bff', '已提交'),
+                        'graded': ('#4CAF50', '已批改'),
+                        'submitted': ('#388E3C', '已提交'),
                         'grading': ('#ffc107', '批改中...'),
                         'error_api': ('#dc3545', 'API错误'),
                         'error_parsing': ('#dc3545', '解析错误'),
@@ -696,7 +696,7 @@
                     </div>
                     <div class="submission-meta">
                         <div class="submission-status">
-                            <span class="status-icon" style="background-color: {{ '#28a745' if submission.status == 'graded' else ('#dc3545' if 'error' in submission.status else '#ffc107') }};"></span>
+                            <span class="status-icon" style="background-color: {{ '#4CAF50' if submission.status == 'graded' else ('#dc3545' if 'error' in submission.status else '#ffc107') }};"></span>
                             {{ status_map.get(submission.status, submission.status) }}
                         </div>
                         <div class="submission-score">
@@ -759,7 +759,7 @@
 
 <style>
 .file-upload-wrapper .drop-zone {
-    border: 2px dashed #007bff;
+    border: 2px dashed #388E3C;
     border-radius: 5px;
     padding: 40px;
     text-align: center;
@@ -768,7 +768,7 @@
 }
 .file-upload-wrapper .drop-zone.dragover {
     background-color: #e9f5ff;
-    border-color: #0056b3;
+    border-color: #2E7D32;
 }
 .file-upload-wrapper .drop-zone-text p {
     margin-bottom: 0.5rem;
@@ -836,7 +836,7 @@
     overflow: hidden;
 }
 .progress-bar {
-    background-color: #28a745;
+    background-color: #4CAF50;
     color: white;
     text-align: center;
     line-height: 20px;

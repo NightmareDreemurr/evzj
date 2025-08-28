@@ -14,18 +14,70 @@
     {% block head %}{% endblock %}
 
     <style>
+        /* Global Bootstrap color overrides for green theme */
+        :root {
+            --bs-primary: #388E3C;
+            --bs-primary-rgb: 56, 142, 60;
+            --bs-success: #4CAF50;
+            --bs-success-rgb: 76, 175, 80;
+        }
+        
+        .btn-primary {
+            background-color: #388E3C !important;
+            border-color: #388E3C !important;
+        }
+        
+        .btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+            background-color: #2E7D32 !important;
+            border-color: #2E7D32 !important;
+        }
+        
+        .text-primary {
+            color: #388E3C !important;
+        }
+        
+        .text-success {
+            color: #2E7D32 !important;
+        }
+        
+        .bg-primary {
+            background-color: #388E3C !important;
+        }
+        
+        .bg-success {
+            background-color: #4CAF50 !important;
+        }
+        
+        .border-primary {
+            border-color: #388E3C !important;
+        }
+        
+        .nav-pills .nav-link.active {
+            background-color: #388E3C !important;
+        }
+        
+        .btn-outline-primary {
+            color: #388E3C !important;
+            border-color: #388E3C !important;
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: #388E3C !important;
+            border-color: #388E3C !important;
+        }
+        
         body {
-            background-color: #f8f9fa;
+            background-color: #E8F5E8;
         }
         .top-navbar {
             height: 58px;
             background: #fff;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 1px solid #C8E6C9;
             padding: 0 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+            box-shadow: 0 2px 4px rgba(46,125,50,.05);
             position: fixed;
             top: 0;
             left: 0;
@@ -33,12 +85,12 @@
             z-index: 1030;
         }
         .page-title .h4 {
-            color: #343a40;
+            color: #1B5E20;
             font-weight: 600;
         }
         .sidebar {
             width: 250px;
-            background: #343a40;
+            background: #1B5E20;
             color: white;
             position: fixed;
             top: 58px; /* Height of top-navbar */
@@ -56,12 +108,12 @@
             text-decoration: none;
         }
         .sidebar .nav-link {
-            color: #adb5bd;
+            color: #C8E6C9;
             padding: 10px 20px;
             display: block;
         }
         .sidebar .nav-link:hover {
-            background: #495057;
+            background: #2E7D32;
             color: white;
         }
         .main-content {
@@ -99,7 +151,7 @@
         }
         .bottom-nav-item:hover,
         .bottom-nav-item.active {
-            color: #007bff;
+            color: #388E3C;
             text-decoration: none;
         }
         .bottom-nav-item i {
