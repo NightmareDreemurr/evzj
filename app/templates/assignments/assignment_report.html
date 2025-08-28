@@ -259,6 +259,9 @@
                         <a href="{{ url_for('assignments.assignment_detail', assignment_id=assignment.id) }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-arrow-left"></i> 返回作业详情
                         </a>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="showMicrocourse()">
+                            <i class="fas fa-play-circle"></i> 查看微课
+                        </button>
                     </div>
                 </div>
             </div>
@@ -815,5 +818,49 @@ document.addEventListener('DOMContentLoaded', function() {
 // 移除了showFeatureDetails函数，因为现在直接显示详细示例
 
 // 移除了searchEssayByExample函数，因为现在直接显示详细示例
+
+// 查看微课功能
+function showMicrocourse() {
+    // 随机选择1-8之间的数字
+    const randomNum = Math.floor(Math.random() * 8) + 1;
+    const imagePath = "{{ url_for('static', filename='weike') }}" + randomNum + ".png";
+    
+    // 设置模态框中的图片
+    document.getElementById('microcourseImage').src = imagePath;
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('microcourseModal'));
+    modal.show();
+}
 </script>
+
+<!-- 微课模态框 -->
+<div class="modal fade" id="microcourseModal" tabindex="-1" aria-labelledby="microcourseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="microcourseModalLabel">
+                    <i class="fas fa-play-circle text-warning"></i> 微课内容
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>教师提示：</strong>请截图此内容，并将二维码发送给学生进行观看学习。
+                </div>
+                <img id="microcourseImage" src="" alt="微课内容" class="img-fluid rounded shadow" style="max-height: 500px;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+                <button type="button" class="btn btn-primary" onclick="showMicrocourse()">
+                    <i class="fas fa-sync-alt"></i> 换一个微课
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
