@@ -253,6 +253,30 @@
         </div>
     </div>
 
+    <!-- 作文得分率趋势图 -->
+    {% if essay_stats and essay_stats.graded_essays > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card info-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>作文得分率趋势
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="essayScoreChart" style="height: 300px;">
+                        <div class="d-flex justify-content-center align-items-center h-100">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- 最近作文记录 -->
     <div class="row">
         <div class="col-12">
@@ -332,7 +356,9 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// 加载更多作文记录函数
 function loadMoreEssays() {
     // AJAX加载更多作文记录
     fetch(`{{ url_for('students.student_essays', student_id=student.id) }}`)
@@ -347,5 +373,94 @@ function loadMoreEssays() {
             alert('加载失败，请稍后重试。');
         });
 }
+
+// 初始化作文得分率趋势图
+{% if essay_stats and essay_stats.graded_essays > 0 %}
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('essayScoreChart');
+    if (ctx) {
+        // 获取图表数据
+        fetch(`{{ url_for('students.student_essay_scores_chart', student_id=student.id) }}`)
+            .then(response => response.json())
+            .then(data => {
+                // 清除加载状态
+                ctx.innerHTML = '<canvas></canvas>';
+                const canvas = ctx.querySelector('canvas');
+                const chartCtx = canvas.getContext('2d');
+                
+                const chart = new Chart(chartCtx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '作文得分',
+                            data: data.scores,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#007bff',
+                            pointBorderColor: '#007bff',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '作文得分趋势（有老师评分时显示老师评分，否则显示AI评分）',
+                                font: {
+                                    size: 14
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        return data.titles[context[0].dataIndex] || '';
+                                    },
+                                    label: function(context) {
+                                        return `得分: ${context.parsed.y.toFixed(1)} 分`;
+                                    },
+                                    afterLabel: function(context) {
+                                        return `日期: ${data.labels[context.dataIndex]}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + ' 分';
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: '得分'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '提交日期'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('加载图表数据失败:', error);
+                ctx.innerHTML = '<div class="d-flex justify-content-center align-items-center h-100 text-muted">图表加载失败</div>';
+            });
+    }
+});
+{% endif %}
 </script>
 {% endblock %}
