@@ -11,7 +11,9 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.getenv('FLASK_CONFIG', 'default')
         
-    app = Flask(__name__)
+    app = Flask(__name__, 
+            static_folder=os.path.join(os.path.dirname(__file__), "..", "static"),
+            static_url_path="/static")
     app.config.from_object(config[config_name])
 
     # Initialize extensions
