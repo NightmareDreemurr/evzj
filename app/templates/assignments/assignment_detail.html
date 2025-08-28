@@ -175,7 +175,7 @@
         }
         .submission-score {
             font-weight: bold;
-            color: #007bff;
+            color: #388E3C;
             font-size: 1rem;
         }
         .card-arrow {
@@ -399,8 +399,8 @@
                     
                     {# --- Status Text Logic --- #}
                     {% set status_map = {
-                        'graded': ('#28a745', '已批改'),
-                        'submitted': ('#007bff', '已提交'),
+                        'graded': ('#4CAF50', '已批改'),
+                        'submitted': ('#388E3C', '已提交'),
                         'grading': ('#ffc107', '批改中...'),
                         'error_api': ('#dc3545', 'API错误'),
                         'error_parsing': ('#dc3545', '解析错误'),
@@ -696,7 +696,7 @@
                     </div>
                     <div class="submission-meta">
                         <div class="submission-status">
-                            <span class="status-icon" style="background-color: {{ '#28a745' if submission.status == 'graded' else ('#dc3545' if 'error' in submission.status else '#ffc107') }};"></span>
+                            <span class="status-icon" style="background-color: {{ '#4CAF50' if submission.status == 'graded' else ('#dc3545' if 'error' in submission.status else '#ffc107') }};"></span>
                             {{ status_map.get(submission.status, submission.status) }}
                         </div>
                         <div class="submission-score">
