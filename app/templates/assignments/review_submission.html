@@ -360,6 +360,45 @@
                         </div>
                     </div>
 
+                    <!-- 写作范例与技巧说明 -->
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="text-primary mb-0">写作范例与技巧说明</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-writing-example-btn">
+                                <i class="fas fa-plus"></i> 添加范例
+                            </button>
+                        </div>
+                        <div id="writing-examples-container">
+                            {% if evaluation_data.writingExamples %}
+                                {% for example in evaluation_data.writingExamples %}
+                                <div class="writing-example-item mb-2 border rounded p-2" data-index="{{ loop.index0 }}">
+                                    <div class="row mb-1">
+                                        <div class="col-4">
+                                            <label class="form-label">写作维度:</label>
+                                            <input type="text" class="form-control form-control-sm writing-example-dimension" value="{{ example.dimension }}" placeholder="如：动作神态、感官体验">
+                                        </div>
+                                        <div class="col-8">
+                                            <label class="form-label">写作范例:</label>
+                                            <textarea class="form-control form-control-sm writing-example-text" rows="2" placeholder="提供具体的写作范例...">{{ example.example }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-1">
+                                        <div class="col-12">
+                                            <label class="form-label">技巧说明:</label>
+                                            <textarea class="form-control form-control-sm writing-example-technique" rows="2" placeholder="解释写作技巧和方法...">{{ example.technique }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-writing-example-btn">删除范例</button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">暂无写作范例</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
                     <!-- 综合诊断总结 -->
                     <div class="mb-2">
                         <h6 class="text-primary mb-2">综合诊断总结</h6>
@@ -1881,6 +1920,37 @@ document.addEventListener('DOMContentLoaded', function() {
         container.insertAdjacentHTML('beforeend', exerciseHTML);
     });
     
+    // Add writing example item
+    document.getElementById('add-writing-example-btn')?.addEventListener('click', function() {
+        const container = document.getElementById('writing-examples-container');
+        const index = container.children.length;
+        
+        const writingExampleHTML = `
+            <div class="writing-example-item mb-2 border rounded p-2" data-index="${index}">
+                <div class="row mb-1">
+                    <div class="col-4">
+                        <label class="form-label">写作维度:</label>
+                        <input type="text" class="form-control form-control-sm writing-example-dimension" placeholder="如：动作神态、感官体验">
+                    </div>
+                    <div class="col-8">
+                        <label class="form-label">写作范例:</label>
+                        <textarea class="form-control form-control-sm writing-example-text" rows="2" placeholder="提供具体的写作范例..."></textarea>
+                    </div>
+                </div>
+                <div class="row mb-1">
+                    <div class="col-12">
+                        <label class="form-label">技巧说明:</label>
+                        <textarea class="form-control form-control-sm writing-example-technique" rows="2" placeholder="解释写作技巧和方法..."></textarea>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-writing-example-btn">删除范例</button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', writingExampleHTML);
+    });
+    
     // Enhanced content event delegation
     document.addEventListener('click', function(e) {
         // Remove diagnostic
@@ -1897,6 +1967,15 @@ document.addEventListener('DOMContentLoaded', function() {
             e.target.closest('.exercise-item').remove();
             // Re-index remaining exercise items
             document.querySelectorAll('.exercise-item').forEach((item, index) => {
+                item.dataset.index = index;
+            });
+        }
+        
+        // Remove writing example
+        if (e.target.classList.contains('remove-writing-example-btn')) {
+            e.target.closest('.writing-example-item').remove();
+            // Re-index remaining writing example items
+            document.querySelectorAll('.writing-example-item').forEach((item, index) => {
                 item.dataset.index = index;
             });
         }
@@ -1963,6 +2042,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
+            // Validate writing examples structure
+            if (!Array.isArray(data.writingExamples)) {
+                console.warn('Writing examples should be an array');
+                return false;
+            }
+            
             return true;
         } catch (e) {
             console.warn('Error validating enhanced content data:', e);
@@ -1978,6 +2063,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             diagnostics: [],
             exercises: [],
+            writingExamples: [],
             diagnosis: {
                 before: document.getElementById('diagnosis-before')?.value || '',
                 comment: document.getElementById('diagnosis-comment')?.value || '',
@@ -2040,6 +2126,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (e) {
                 console.warn('Error collecting exercise data:', e);
+            }
+        });
+        
+        // Collect writing examples data
+        document.querySelectorAll('.writing-example-item').forEach(item => {
+            try {
+                const dimensionInput = item.querySelector('.writing-example-dimension');
+                const exampleInput = item.querySelector('.writing-example-text');
+                const techniqueInput = item.querySelector('.writing-example-technique');
+                
+                if (!dimensionInput || !exampleInput) return; // Skip if required fields are missing
+                
+                const dimension = dimensionInput.value || '';
+                const example = exampleInput.value || '';
+                const technique = techniqueInput ? techniqueInput.value || '' : '';
+                
+                if (dimension.trim() && example.trim()) {
+                    data.writingExamples.push({ dimension, example, technique });
+                }
+            } catch (e) {
+                console.warn('Error collecting writing example data:', e);
             }
         });
         

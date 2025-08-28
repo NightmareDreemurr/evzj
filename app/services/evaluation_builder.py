@@ -279,6 +279,9 @@ def _build_evaluation_result(essay: Essay, original_text: str, cleaned_text: Opt
     # Get summary
     summary = preanalysis_data.get("summary", "")
     
+    # Handle writing examples
+    writing_examples = preanalysis_data.get("writing_examples", [])
+    
     # Build final result
     evaluation_result = EvaluationResult(
         meta=meta,
@@ -289,7 +292,8 @@ def _build_evaluation_result(essay: Essay, original_text: str, cleaned_text: Opt
         analysis=analysis,
         diagnostics=diagnostics,
         exercises=exercises,
-        summary=summary
+        summary=summary,
+        writingExamples=writing_examples
     )
     
     return evaluation_result

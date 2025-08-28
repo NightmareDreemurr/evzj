@@ -152,6 +152,12 @@ def _build_analysis_prompt(text: str, context: Dict[str, Any]) -> str:
 {diagnosis_instruction}
 - 格式：{{"before": "问题描述", "comment": "改进建议", "after": "预期效果"}}
 
+### 6. 写作范例与技巧说明 (writing_examples)
+- 提供以下两个维度的写作范例与技巧说明：
+  1. 动作神态描写：如何通过人物的动作、表情、姿态等展现情绪或性格
+  2. 感官体验描写：如何调动视觉、听觉、嗅觉、味觉、触觉等五感增强画面感
+- 格式：[{{"dimension": "动作神态", "example": "具体范例", "technique": "技巧说明"}}, {{"dimension": "感官体验", "example": "具体范例", "technique": "技巧说明"}}]
+
 ## 返回格式
 请严格按照以下JSON格式返回，不要包含任何额外的文本或Markdown标记：
 
@@ -173,7 +179,19 @@ def _build_analysis_prompt(text: str, context: Dict[str, Any]) -> str:
     "before": "作文结构基本合理，但细节描写不够生动",
     "comment": "建议多运用感官描写，让文章更加生动具体",
     "after": "通过增加细节描写，文章将更加生动感人"
-  }}
+  }},
+  "writing_examples": [
+    {{
+      "dimension": "动作神态",
+      "example": "他咬着嘴唇，双手攥紧拳头，眼中闪烁着不甘的泪光",
+      "technique": "通过细致的动作和表情描写，生动展现人物内心的复杂情感"
+    }},
+    {{
+      "dimension": "感官体验", 
+      "example": "空气中弥漫着桂花的清香，微风轻抚过脸颊，带来一丝秋日的凉意",
+      "technique": "调动嗅觉、触觉等多重感官，营造身临其境的画面感"
+    }}
+  ]
 }}
 """
     
@@ -188,7 +206,8 @@ def _validate_and_sanitize_response(data: Dict[str, Any]) -> Dict[str, Any]:
         "diagnostics": [],
         "exercises": [],
         "summary": "",
-        "diagnosis": {}
+        "diagnosis": {},
+        "writing_examples": []
     }
     
     if not isinstance(data, dict):
@@ -268,6 +287,19 @@ def _validate_and_sanitize_response(data: Dict[str, Any]) -> Dict[str, Any]:
                 validated_diagnosis[key] = str(diagnosis[key])[:300]
         result["diagnosis"] = validated_diagnosis
     
+    # Validate writing_examples
+    writing_examples = data.get("writing_examples", [])
+    if isinstance(writing_examples, list):
+        validated_writing_examples = []
+        for item in writing_examples:
+            if isinstance(item, dict) and all(k in item for k in ["dimension", "example", "technique"]):
+                validated_writing_examples.append({
+                    "dimension": str(item["dimension"])[:20],
+                    "example": str(item["example"])[:300],
+                    "technique": str(item["technique"])[:200]
+                })
+        result["writing_examples"] = validated_writing_examples
+    
     return result
 
 
@@ -278,5 +310,6 @@ def _get_empty_preanalysis() -> Dict[str, Any]:
         "diagnostics": [],
         "exercises": [],
         "summary": "",
-        "diagnosis": {}
+        "diagnosis": {},
+        "writing_examples": []
     }
